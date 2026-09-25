@@ -58,7 +58,7 @@ deposito: [
 { href: "/compras", label: "Compras", icon: "compras", description: "Proyección y cotizaciones" },
 ],
 administracion: [
-{ href: "/pacientes", label: "Pacientes", icon: "pacientes", description: "Autorizaciones de stock" },
+{ href: "/pacientes", label: "Autorizaciones", icon: "pacientes", description: "Stock por paciente" },
 { href: "/pedidos", label: "Pedidos", icon: "pedidos", description: "Entregas a domicilio" },
 { href: "/seguimiento", label: "Seguimiento", icon: "seguimiento", description: "Equipos en tránsito" },
 { href: "/compras", label: "Compras", icon: "compras", description: "Proyección y cotizaciones" },

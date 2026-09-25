@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { createObraSocialAction, addValueHistoryAction } from "./actions";
 import PageHeader from "@/components/PageHeader";
+import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconBuilding } from "@/components/icons";
 
 function formatARS(value: number | null) {
@@ -31,7 +32,8 @@ export default async function ObrasSocialesPage() {
         icon={<IconBuilding className="w-5 h-5" />}
         title="Obras sociales"
         section="DF-C1 §3 · DF-C4 §2/§3"
-        description="Catálogo con plazo de facturación e histórico de valores por módulo — evita perder trazabilidad cuando un valor cambia (DF-C4 §3)."
+        purpose="Acá mantenés al día el valor del módulo de cada obra social. Cuando cambia, actualizalo acá en vez de pisarlo — así Facturación nunca pierde de vista con qué valor se facturó cada período."
+        description="Catálogo con plazo de facturación e histórico de valores por módulo."
       />
 
       <section className="space-y-3">
@@ -63,14 +65,13 @@ export default async function ObrasSocialesPage() {
               )}
 
               {canManage && (
-                <details className="mt-3">
-                  <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-800">+ Actualizar valor</summary>
-                  <form action={addValueHistoryAction} className="flex flex-wrap gap-2 mt-2">
+                <ActionDisclosure label="Actualizar valor" tone="subtle">
+                  <form action={addValueHistoryAction} className="flex flex-wrap gap-2">
                     <input type="hidden" name="obra_social_id" value={os.id} />
                     <input name="valor" type="number" step="0.01" placeholder="Nuevo valor" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs w-32" />
                     <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Actualizar</button>
                   </form>
-                </details>
+                </ActionDisclosure>
               )}
             </div>
           );

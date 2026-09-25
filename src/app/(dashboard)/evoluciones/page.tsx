@@ -73,7 +73,8 @@ export default async function EvolucionesPage() {
         icon={<IconSignature className="w-5 h-5" />}
         title="Historia clínica digital"
         section="DF-C2 §5"
-        description="Formulario dinámico por disciplina — operacionaliza el motor config-driven del sistema viejo (informe-tecnico §3.2) con las definiciones clínicas reales de DF-C2, incluida la Escala Nova 5 de riesgo UPP (§5.4)."
+        purpose="Acá cargás la evolución de cada visita que ya marcaste como realizada, con el formulario que corresponde a tu disciplina (y la Escala Nova 5 de riesgo de UPP si es enfermería). Una visita realizada sin evolución queda visible en la auditoría de abajo hasta que se complete."
+        description="Formulario dinámico por disciplina — operacionaliza el motor config-driven del sistema viejo (informe-tecnico §3.2)."
       />
 
       {isMedico && (discrepancias ?? []).length > 0 && (

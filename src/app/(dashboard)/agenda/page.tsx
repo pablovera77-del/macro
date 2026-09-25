@@ -56,7 +56,12 @@ export default async function AgendaPage() {
         icon={<IconCalendar className="w-5 h-5" />}
         title={isCoordinador ? "Agenda de visitas" : "Mi agenda"}
         section="DF-C2 §4"
-        description="Programación y seguimiento de visitas domiciliarias por disciplina. Toda visita marcada 'realizada' debe tener una evolución asociada (control DF-C2 §8)."
+        purpose={
+          isCoordinador
+            ? "Acá programás la visita de cada profesional a cada paciente. Cuando el profesional la marca 'realizada', queda pendiente de evolución — si pasa mucho tiempo sin cargarse, aparece en la auditoría de Historia clínica."
+            : "Acá ves tus visitas asignadas. Confirmá cuando estés en camino y marcá 'realizada' al terminar — eso habilita cargar la evolución en Historia clínica."
+        }
+        description="Toda visita marcada 'realizada' debe tener una evolución asociada (control DF-C2 §8)."
       />
 
       <section className="space-y-3">

@@ -3,31 +3,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
-import type { Enums } from "@/types/database";
 
-export async function createPatientAction(formData: FormData) {
-  const { profile } = await requireProfile();
-  if (profile.role !== "administracion") throw new Error("Solo Administración da de alta pacientes.");
-
-  const supabase = await createClient();
-  const nombre_completo = String(formData.get("nombre_completo") || "").trim();
-  const domicilio = String(formData.get("domicilio") || "").trim();
-  const obra_social = String(formData.get("obra_social") || "").trim() || null;
-  const frecuencia_reposicion = String(formData.get("frecuencia_reposicion") || "a_demanda") as Enums<"replenishment_frequency">;
-
-  if (!nombre_completo || !domicilio) throw new Error("Faltan nombre o domicilio.");
-
-  const { error } = await supabase.from("patients").insert({
-    nombre_completo,
-    domicilio,
-    obra_social,
-    frecuencia_reposicion,
-  });
-
-  if (error) throw new Error(error.message);
-  revalidatePath("/pacientes");
-  return;
-}
+// El alta de pacientes se hace desde Internación (createAdmissionAction,
+// DF-C3), con el legajo completo — no desde acá. Antes existía un
+// createPatientAction paralelo con 4 campos que podía generar un
+// registro duplicado/incompleto frente al que arma Internación sobre la
+// misma tabla `patients`; se sacó para que haya un único punto de alta.
 
 // Carga de equipo/descartables autorizados (DF-C5 §4, paso 1) — dispara
 // la visibilidad del pedido para Depósito.

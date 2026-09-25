@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
@@ -81,10 +82,10 @@ const valorComprometido = (purchaseOrderItemsAbiertos ?? []).reduce(
 );
 
 const stats = [
-{ label: "Equipos en domicilios", value: (enDomicilio ?? []).length, icon: IconMapPin, tone: "from-blue-500 to-blue-600" },
-{ label: "Equipos disponibles en depósito", value: totalEquiposDisponibles, icon: IconBox, tone: "from-emerald-500 to-emerald-600" },
-{ label: "Unidades de descartables/alimento", value: totalDescartablesEnStock, icon: IconTruck, tone: "from-violet-500 to-violet-600" },
-{ label: "Alertas de ubicación no confirmada", value: alertCount, icon: IconAlert, tone: "from-red-500 to-red-600", alert: alertCount > 0 },
+{ label: "Equipos en domicilios", value: (enDomicilio ?? []).length, icon: IconMapPin, tone: "from-blue-500 to-blue-600", href: "/seguimiento" },
+{ label: "Equipos disponibles en depósito", value: totalEquiposDisponibles, icon: IconBox, tone: "from-emerald-500 to-emerald-600", href: "/catalogo" },
+{ label: "Unidades de descartables/alimento", value: totalDescartablesEnStock, icon: IconTruck, tone: "from-violet-500 to-violet-600", href: "/catalogo" },
+{ label: "Alertas de ubicación no confirmada", value: alertCount, icon: IconAlert, tone: "from-red-500 to-red-600", alert: alertCount > 0, href: "/seguimiento" },
 ];
 
 return (
@@ -93,26 +94,30 @@ return (
 icon={<IconChart className="w-5 h-5" />}
 title="Dashboard ejecutivo"
 section="DF-C5 §6"
-description="Tráfico de insumos, disponibilidad en depósito, equipos en domicilios y costo estimado por paciente, en tiempo real."
+purpose="Foto en tiempo real de toda la operación — stock, pacientes, visitas y facturación — para que Dirección detecte un problema sin entrar módulo por módulo. Cada indicador lleva al módulo que lo explica en detalle."
+description="Tráfico de insumos, disponibilidad en depósito, equipos en domicilios y costo estimado por paciente."
 />
 
 <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
 {stats.map((s, i) => {
 const Icon = s.icon;
-return (
-<div
-key={s.label}
-className={`animate-count-up stagger-${i + 1} card-hover rounded-2xl border p-5 relative overflow-hidden ${
+const className = `animate-count-up stagger-${i + 1} card-hover rounded-2xl border p-5 relative overflow-hidden block ${
 s.alert ? "bg-red-50 border-red-200" : "bg-white border-slate-200"
-}`}
->
+}`;
+const content = (
+<>
 {s.alert && <span className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse-ring" />}
 <span className={`inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br ${s.tone} text-white mb-3 shadow-sm`}>
 <Icon className="w-5 h-5" />
 </span>
 <div className={`text-2xl font-semibold tabular-nums ${s.alert ? "text-red-700" : "text-slate-900"}`}>{s.value}</div>
 <div className={`text-xs mt-1 leading-snug ${s.alert ? "text-red-600" : "text-slate-500"}`}>{s.label}</div>
-</div>
+</>
+);
+return s.href ? (
+<Link key={s.label} href={s.href} className={className}>{content}</Link>
+) : (
+<div key={s.label} className={className}>{content}</div>
 );
 })}
 </section>
@@ -211,28 +216,31 @@ Estimado a partir del último precio de compra cargado × cantidad autorizada �
 </h2>
 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
 {[
-{ label: "Pacientes activos", value: pacientesActivos, icon: IconUsers, tone: "from-rose-500 to-rose-600" },
-{ label: "Pendientes de llegada", value: pacientesPendientesLlegada, icon: IconUsers, tone: "from-amber-500 to-amber-600" },
-{ label: "Visitas realizadas esta semana", value: `${visitasRealizadasSemana}/${visitasSemana.length}`, icon: IconCalendar, tone: "from-teal-500 to-teal-600" },
-{ label: "Evoluciones cargadas hoy", value: evolucionesHoyCount, icon: IconSignature, tone: "from-indigo-500 to-indigo-600" },
-{ label: "Autorizaciones por vencer/vencidas", value: autorizacionesVencenPronto, icon: IconAlert, tone: "from-orange-500 to-orange-600", alert: autorizacionesVencenPronto > 0 },
-{ label: "Períodos de facturación abiertos", value: periodosAbiertos, icon: IconCash, tone: "from-blue-500 to-blue-600" },
-{ label: "Débitos pendientes de gestión", value: formatARS(totalDebitosPendientes), icon: IconAlert, tone: "from-red-500 to-red-600", alert: totalDebitosPendientes > 0 },
+{ label: "Pacientes activos", value: pacientesActivos, icon: IconUsers, tone: "from-rose-500 to-rose-600", href: "/internacion" },
+{ label: "Pendientes de llegada", value: pacientesPendientesLlegada, icon: IconUsers, tone: "from-amber-500 to-amber-600", href: "/internacion" },
+{ label: "Visitas realizadas esta semana", value: `${visitasRealizadasSemana}/${visitasSemana.length}`, icon: IconCalendar, tone: "from-teal-500 to-teal-600", href: "/agenda" },
+{ label: "Evoluciones cargadas hoy", value: evolucionesHoyCount, icon: IconSignature, tone: "from-indigo-500 to-indigo-600", href: "/evoluciones" },
+{ label: "Autorizaciones por vencer/vencidas", value: autorizacionesVencenPronto, icon: IconAlert, tone: "from-orange-500 to-orange-600", alert: autorizacionesVencenPronto > 0, href: "/internacion" },
+{ label: "Períodos de facturación abiertos", value: periodosAbiertos, icon: IconCash, tone: "from-blue-500 to-blue-600", href: "/facturacion" },
+{ label: "Débitos pendientes de gestión", value: formatARS(totalDebitosPendientes), icon: IconAlert, tone: "from-red-500 to-red-600", alert: totalDebitosPendientes > 0, href: "/facturacion" },
 ].map((s, i) => {
 const Icon = s.icon;
-return (
-<div
-key={s.label}
-className={`animate-count-up stagger-${i + 1} card-hover rounded-2xl border p-5 relative overflow-hidden ${
+const className = `animate-count-up stagger-${i + 1} card-hover rounded-2xl border p-5 relative overflow-hidden block ${
 s.alert ? "bg-red-50 border-red-200" : "bg-white border-slate-200"
-}`}
->
+}`;
+const content = (
+<>
 <span className={`inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br ${s.tone} text-white mb-3 shadow-sm`}>
 <Icon className="w-5 h-5" />
 </span>
 <div className={`text-2xl font-semibold tabular-nums ${s.alert ? "text-red-700" : "text-slate-900"}`}>{s.value}</div>
 <div className={`text-xs mt-1 leading-snug ${s.alert ? "text-red-600" : "text-slate-500"}`}>{s.label}</div>
-</div>
+</>
+);
+return s.href ? (
+<Link key={s.label} href={s.href} className={className}>{content}</Link>
+) : (
+<div key={s.label} className={className}>{content}</div>
 );
 })}
 </div>
@@ -247,22 +255,23 @@ Consolida C2 (visitas/evoluciones), C3 (pacientes/autorizaciones) y C4 (facturac
 </h2>
 <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
 {[
-{ label: "Cotizaciones a proveedores en curso", value: cotizacionesAbiertas, icon: IconClipboardCheck, tone: "from-[var(--brand-teal)] to-[var(--brand-green)]" },
-{ label: "Órdenes de compra en curso", value: ordenesCompraAbiertas, icon: IconTruck, tone: "from-violet-500 to-violet-600" },
-{ label: "Valor comprometido en compras abiertas", value: formatARS(valorComprometido), icon: IconCash, tone: "from-amber-500 to-amber-600" },
+{ label: "Cotizaciones a proveedores en curso", value: cotizacionesAbiertas, icon: IconClipboardCheck, tone: "from-[var(--brand-teal)] to-[var(--brand-green)]", href: "/compras" },
+{ label: "Órdenes de compra en curso", value: ordenesCompraAbiertas, icon: IconTruck, tone: "from-violet-500 to-violet-600", href: "/compras" },
+{ label: "Valor comprometido en compras abiertas", value: formatARS(valorComprometido), icon: IconCash, tone: "from-amber-500 to-amber-600", href: "/compras" },
 ].map((s, i) => {
 const Icon = s.icon;
 return (
-<div
+<Link
 key={s.label}
-className={`animate-count-up stagger-${i + 1} card-hover rounded-2xl border p-5 bg-white border-slate-200 relative overflow-hidden`}
+href={s.href}
+className={`animate-count-up stagger-${i + 1} card-hover rounded-2xl border p-5 bg-white border-slate-200 relative overflow-hidden block`}
 >
 <span className={`inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br ${s.tone} text-white mb-3 shadow-sm`}>
 <Icon className="w-5 h-5" />
 </span>
 <div className="text-2xl font-semibold tabular-nums text-slate-900">{s.value}</div>
 <div className="text-xs mt-1 leading-snug text-slate-500">{s.label}</div>
-</div>
+</Link>
 );
 })}
 </div>

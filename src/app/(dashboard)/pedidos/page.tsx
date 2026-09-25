@@ -9,6 +9,7 @@ deliverOrderAction,
 } from "./actions";
 import PageHeader from "@/components/PageHeader";
 import SearchableSelect from "@/components/SearchableSelect";
+import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconTruck, IconClipboard, IconCheck, IconSignature, IconMapPin, IconRefresh } from "@/components/icons";
 
 const ESTADO_STEPS = ["borrador", "autorizado", "despachado", "entregado"];
@@ -51,7 +52,8 @@ return (
 icon={<IconTruck className="w-5 h-5" />}
 title="Pedidos — flujo de entrega"
 section="DF-C5 §4"
-description="Pedido → autorización (automática si ya está cubierto por la autorización estándar del paciente, o manual de Administración si no) → despacho (remito digital) → entrega con firma del familiar."
+purpose="Acá Depósito arma lo que hay que llevarle a un paciente. Si ya está cubierto por su autorización estándar se autoriza solo; si no, espera el visto bueno de Administración antes de poder despacharse."
+description="Pedido → autorización (automática o manual) → despacho (remito digital) → entrega con firma del familiar."
 />
 
 <section className="space-y-4">
@@ -141,11 +143,8 @@ Despachado: {new Date(remito.fecha_despacho).toLocaleString("es-AR")}
 
 <div className="flex flex-wrap gap-2">
 {profile.role === "deposito" && order.estado === "borrador" && (
-<details className="w-full">
-<summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-800">
-+ Agregar ítem a este pedido
-</summary>
-<form action={addOrderItemAction} className="flex flex-wrap gap-2 mt-2 items-start">
+<ActionDisclosure label="Agregar ítem a este pedido" tone="subtle" className="w-full">
+<form action={addOrderItemAction} className="flex flex-wrap gap-2 items-start">
 <input type="hidden" name="patient_id" value={order.patient_id} />
 <SearchableSelect
 name="product_id"
@@ -165,7 +164,7 @@ options={(products ?? []).map((p) => ({ value: p.id, label: p.descripcion, group
 Agregar
 </button>
 </form>
-</details>
+</ActionDisclosure>
 )}
 
 {profile.role === "administracion" && order.estado === "borrador" && items.length > 0 && (

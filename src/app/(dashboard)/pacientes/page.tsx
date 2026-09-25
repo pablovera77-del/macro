@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
-import { createPatientAction, addAuthorizationAction } from "./actions";
+import { addAuthorizationAction } from "./actions";
 import PageHeader from "@/components/PageHeader";
-import { IconUsers, IconUser, IconMapPin } from "@/components/icons";
+import ActionDisclosure from "@/components/ActionDisclosure";
+import { IconUsers, IconUser, IconMapPin, IconClipboard } from "@/components/icons";
 
 const ESTADO_LABELS: Record<string, string> = {
 admitido_pendiente_llegada: "Admitido, pendiente de llegada",
@@ -35,10 +36,20 @@ return (
 <div className="space-y-8">
 <PageHeader
 icon={<IconUsers className="w-5 h-5" />}
-title="Pacientes — autorizaciones de stock"
+title="Autorizaciones de stock"
 section="DF-C5 §4, paso 1"
+purpose="Acá cargás qué insumos y equipos tiene autorizados cada paciente — eso es lo que le habilita a Depósito armarle el pedido. El alta del paciente y su legajo clínico se hacen desde Internación (Coordinación); esta pantalla solo gestiona sus autorizaciones de stock, no crea pacientes nuevos."
 description="Lo que cada paciente tiene autorizado (equipo y descartables) dispara la visibilidad del pedido para Depósito."
 />
+
+<section className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-start gap-3 animate-fade-slide-up">
+<span className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 text-blue-600 shrink-0">
+<IconClipboard className="w-4 h-4" />
+</span>
+<p className="text-sm text-blue-800">
+¿Falta un paciente en la lista? El alta se hace desde <span className="font-medium">Internación</span> (Coordinación de Internación o Médico Coordinador), con el legajo completo. Acá solo aparecen los pacientes ya admitidos, para cargarles autorizaciones de stock.
+</p>
+</section>
 
 <section className="space-y-3">
 {(patients ?? []).map((p, i) => {
@@ -78,11 +89,8 @@ return (
 </ul>
 
 {profile.role === "administracion" && (
-<details className="mt-3">
-<summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-800">
-+ Cargar autorización
-</summary>
-<form action={addAuthorizationAction} className="flex flex-wrap gap-2 mt-2">
+<ActionDisclosure label="Cargar autorización" tone="subtle">
+<form action={addAuthorizationAction} className="flex flex-wrap gap-2">
 <input type="hidden" name="patient_id" value={p.id} />
 <select name="product_id" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
 <option value="">Producto...</option>
@@ -96,35 +104,13 @@ return (
 Cargar
 </button>
 </form>
-</details>
+</ActionDisclosure>
 )}
 </div>
 );
 })}
 </section>
 
-{profile.role === "administracion" && (
-<section className="bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
-<h2 className="text-sm font-medium text-slate-900 mb-4 flex items-center gap-2">
-<span className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 text-slate-500">+</span>
-Nuevo paciente
-</h2>
-<form action={createPatientAction} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-<input name="nombre_completo" placeholder="Nombre completo" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2" />
-<input name="domicilio" placeholder="Domicilio" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2" />
-<input name="obra_social" placeholder="Obra social" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
-<select name="frecuencia_reposicion" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm">
-<option value="a_demanda">A demanda</option>
-<option value="mensualizado">Mensualizado</option>
-<option value="semanal">Semanal</option>
-<option value="quincenal">Quincenal</option>
-</select>
-<button className="rounded-xl bg-slate-900 text-white text-sm font-medium px-4 py-2.5 hover:bg-slate-800 transition-colors sm:col-span-4">
-Dar de alta
-</button>
-</form>
-</section>
-)}
 </div>
 );
 }

@@ -67,7 +67,8 @@ export default async function CatalogoPage() {
         icon={<IconBox className="w-5 h-5" />}
         title="Catálogo"
         section="DF-C5 §3"
-        description="Insumos, equipos y alimentos. Cada producto admite varios proveedores (uno marcado como preferido) y un código de barras EAN/UPC opcional para carga por escaneo."
+        purpose="Acá vive todo lo que se puede pedir: insumos, equipos y alimentos. Cargá un producto nuevo, sumale proveedores alternativos y marcá cuál es el preferido — de acá sale la lista que usan Pedidos y Compras."
+        description="Cada producto admite varios proveedores (uno marcado como preferido) y un código de barras EAN/UPC opcional para carga por escaneo."
       />
 
       <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-slide-up card-hover">

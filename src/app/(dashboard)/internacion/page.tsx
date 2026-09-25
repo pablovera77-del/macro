@@ -8,6 +8,7 @@ import {
   assignCareTeamAction,
 } from "./actions";
 import PageHeader from "@/components/PageHeader";
+import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconClipboard, IconUser, IconMapPin, IconAlert, IconCheck, IconClock } from "@/components/icons";
 
 const ESTADO_LABELS: Record<string, string> = {
@@ -88,7 +89,8 @@ export default async function InternacionPage() {
         icon={<IconClipboard className="w-5 h-5" />}
         title="Pacientes e internaciones"
         section="DF-C3"
-        description="Legajo completo, admisión, confirmación de llegada y egreso. Contrasta con informe-tecnico §4 (el sistema viejo solo tenía nombre/domicilio/obra social en texto libre)."
+        purpose="Acá se admite un paciente nuevo con su legajo completo, se le autorizan prácticas (enfermería, kinesiología, etc.), se arma su equipo tratante y se informa el egreso cuando corresponda. Este es el único lugar donde se da de alta un paciente — Autorizaciones de stock (Administración) solo gestiona lo que ya está admitido acá."
+        description="Contrasta con informe-tecnico §4 (el sistema viejo solo tenía nombre/domicilio/obra social en texto libre)."
       />
 
       {canManage && misNovedades.length > 0 && (
@@ -208,9 +210,8 @@ export default async function InternacionPage() {
               )}
 
               {canManage && p.estado !== "dado_de_baja" && (
-                <details className="mt-3">
-                  <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-800">+ Gestionar</summary>
-                  <div className="mt-2 space-y-3">
+                <ActionDisclosure label="Gestionar" tone="subtle">
+                  <div className="space-y-3">
                     <form action={addTreatmentAuthorizationAction} className="flex flex-wrap gap-2">
                       <input type="hidden" name="patient_id" value={p.id} />
                       <input name="practica" placeholder="Práctica (ej. Enfermería 3v/sem)" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs flex-1 min-w-[180px]" />
@@ -251,7 +252,7 @@ export default async function InternacionPage() {
                       <button className="rounded-lg bg-red-600 text-white text-xs font-medium px-3 py-1.5 hover:bg-red-700 transition-colors">Informar egreso</button>
                     </form>
                   </div>
-                </details>
+                </ActionDisclosure>
               )}
             </div>
           );

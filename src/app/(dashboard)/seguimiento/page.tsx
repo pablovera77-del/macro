@@ -44,7 +44,8 @@ return (
 icon={<IconRefresh className="w-5 h-5" />}
 title="Seguimiento de equipos"
 section="DF-C5 §4.2"
-description="Doble check retirado / llegó a depósito — cada movimiento queda en el historial del equipo, para no perder de vista dónde quedó."
+purpose="Acá sabés dónde está cada equipo serializado. Transporte marca cuándo lo retira del domicilio, Depósito confirma cuándo llegó — si pasa mucho tiempo sin esa confirmación, se dispara una alerta."
+description="Doble check retirado / llegó a depósito — cada movimiento queda en el historial del equipo."
 />
 
 {(retiradosSinConfirmar ?? []).length > 0 && (

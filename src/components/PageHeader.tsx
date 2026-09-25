@@ -2,12 +2,16 @@ export default function PageHeader({
 icon,
 title,
 section,
+purpose,
 description,
 }: {
 icon: React.ReactNode;
 title: string;
 section?: string;
-description: string;
+/** Una frase en criollo: para qué sirve esta pantalla y qué acción dispara. */
+purpose: string;
+/** Nota técnica/trazabilidad al DF-Cx — se muestra más chica, debajo. */
+description?: string;
 }) {
 return (
 <div className="flex items-start gap-4 animate-fade-slide-up">
@@ -23,7 +27,8 @@ return (
 </span>
 )}
 </div>
-<p className="text-sm text-slate-500 mt-1 max-w-2xl">{description}</p>
+<p className="text-sm text-slate-700 mt-1.5 max-w-2xl font-medium">{purpose}</p>
+{description && <p className="text-xs text-slate-400 mt-1 max-w-2xl">{description}</p>}
 </div>
 </div>
 );

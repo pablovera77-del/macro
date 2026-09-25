@@ -85,7 +85,8 @@ export default async function ComprasPage() {
         icon={<IconClipboardCheck className="w-5 h-5" />}
         title="Compras — proyección y cotizaciones"
         section="DF-C5 §6"
-        description="Proyección automática de compras a partir del consumo autorizado por paciente vs. existencia en depósito, pedido de cotización a proveedores habituales, comparativa de precios y orden de compra directa desde el sistema."
+        purpose="Acá se completa el círculo del stock: cuando lo autorizado a pacientes activos supera la existencia, esta pantalla te lo marca y en un clic generás el pedido de cotización a los proveedores habituales, comparás precios y armás la orden de compra."
+        description="Proyección automática (consumo autorizado vs. existencia) → cotización a proveedores → comparativa de precios → orden de compra."
       />
 
       <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-slide-up card-hover">
