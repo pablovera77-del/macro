@@ -1,0 +1,188 @@
+import { createClient } from "@/lib/supabase/server";
+import { requireProfile } from "@/lib/auth";
+import {
+createDischargeAlertAction,
+markRetiradoAction,
+confirmLlegadaAction,
+} from "./actions";
+import PageHeader from "@/components/PageHeader";
+import { IconRefresh, IconAlert, IconMapPin, IconTruck, IconCheck } from "@/components/icons";
+
+const MOTIVO_LABELS: Record<string, string> = {
+alta: "Alta médica",
+fallecimiento: "Fallecimiento",
+fin_internacion: "Fin de internación domiciliaria",
+};
+
+export default async function SeguimientoPage() {
+const { profile } = await requireProfile();
+const supabase = await createClient();
+
+const [
+{ data: equiposEnDomicilio },
+{ data: retiradosSinConfirmar },
+{ data: checklistPendiente },
+{ data: patientsActivos },
+] = await Promise.all([
+supabase.from("v_equipos_en_domicilio").select("*"),
+supabase.from("v_equipos_retirados_sin_confirmar").select("*"),
+supabase
+.from("retrieval_checklist")
+.select(
+"id, retirado_at, llego_deposito_at, discharge_alert_id, equipment_assets(numero_serie, products(descripcion)), discharge_alerts(patient_id, motivo, patients(nombre_completo))"
+)
+.is("llego_deposito_at", null),
+supabase.from("patients").select("id, nombre_completo").eq("estado", "activo"),
+]);
+
+const pendienteRetiro = (checklistPendiente ?? []).filter((c) => !c.retirado_at);
+const pendienteConfirmacion = (checklistPendiente ?? []).filter((c) => c.retirado_at);
+
+return (
+<div className="space-y-8">
+<PageHeader
+icon={<IconRefresh className="w-5 h-5" />}
+title="Seguimiento de equipos"
+section="DF-C5 §4.2"
+description="Doble check retirado / llegó a depósito — cada movimiento queda en el historial del equipo, para no perder de vista dónde quedó."
+/>
+
+{(retiradosSinConfirmar ?? []).length > 0 && (
+<section className="bg-red-50 border border-red-200 rounded-2xl p-5 animate-fade-slide-up">
+<div className="flex items-center gap-2 mb-3">
+<span className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600">
+<span className="absolute inset-0 rounded-lg animate-pulse-ring" />
+<IconAlert className="w-4 h-4" />
+</span>
+<h2 className="text-sm font-medium text-red-800">Ubicación no confirmada — retirados sin llegar a depósito</h2>
+</div>
+<ul className="text-sm text-red-700 space-y-1.5">
+{(retiradosSinConfirmar ?? []).map((r) => (
+<li key={r.checklist_id} className="flex items-center gap-2">
+<span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+<span className="font-mono text-xs">{r.numero_serie}</span> · {r.descripcion} — retirado el{" "}
+{r.retirado_at ? new Date(r.retirado_at).toLocaleString("es-AR") : "—"}
+</li>
+))}
+</ul>
+<p className="text-xs text-red-500 mt-3">
+El plazo para disparar esta alerta automáticamente queda pendiente de definir con Administración (DF-C5 §8).
+</p>
+</section>
+)}
+
+<section className="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-slide-up card-hover">
+<div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+<IconMapPin className="w-4 h-4 text-slate-400" />
+<h2 className="text-sm font-medium text-slate-900">Equipos actualmente en domicilios</h2>
+</div>
+<div className="overflow-x-auto">
+<table className="w-full text-sm">
+<thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+<tr>
+<th className="text-left px-5 py-2.5 font-medium">N° de serie</th>
+<th className="text-left px-5 py-2.5 font-medium">Equipo</th>
+<th className="text-left px-5 py-2.5 font-medium">Paciente</th>
+<th className="text-left px-5 py-2.5 font-medium">Domicilio</th>
+<th className="text-left px-5 py-2.5 font-medium">Desde</th>
+</tr>
+</thead>
+<tbody className="divide-y divide-slate-100">
+{(equiposEnDomicilio ?? []).map((e) => (
+<tr key={e.asset_id} className="row-hover hover:bg-slate-50">
+<td className="px-5 py-2.5 font-mono text-xs text-slate-500">{e.numero_serie}</td>
+<td className="px-5 py-2.5 text-slate-900">{e.descripcion}</td>
+<td className="px-5 py-2.5 text-slate-600">{e.nombre_completo}</td>
+<td className="px-5 py-2.5 text-slate-500 text-xs">{e.domicilio_destino}</td>
+<td className="px-5 py-2.5 text-slate-500 text-xs">
+{e.desde ? new Date(e.desde).toLocaleDateString("es-AR") : "—"}
+</td>
+</tr>
+))}
+{(equiposEnDomicilio ?? []).length === 0 && (
+<tr><td colSpan={5} className="px-5 py-8 text-center text-slate-400 text-xs">Sin equipos en domicilios.</td></tr>
+)}
+</tbody>
+</table>
+</div>
+</section>
+
+{profile.role === "transporte" && pendienteRetiro.length > 0 && (
+<section className="bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
+<h2 className="text-sm font-medium text-slate-900 mb-3 flex items-center gap-2">
+<IconTruck className="w-4 h-4 text-slate-400" /> Pendientes de retirar
+</h2>
+<div className="space-y-2">
+{pendienteRetiro.map((c) => {
+const asset = c.equipment_assets as unknown as { numero_serie: string; products: { descripcion: string } | null } | null;
+const alert = c.discharge_alerts as unknown as { motivo: string; patients: { nombre_completo: string } | null } | null;
+return (
+<div key={c.id} className="flex items-center justify-between gap-3 text-sm border border-slate-100 rounded-xl px-3.5 py-2.5 row-hover hover:bg-slate-50">
+<span>
+{asset?.numero_serie} · {asset?.products?.descripcion} — {alert?.patients?.nombre_completo}{" "}
+<span className="text-xs text-slate-400">({MOTIVO_LABELS[alert?.motivo ?? ""] ?? alert?.motivo})</span>
+</span>
+<form action={markRetiradoAction}>
+<input type="hidden" name="checklist_id" value={c.id} />
+<button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">
+Marcar retirado
+</button>
+</form>
+</div>
+);
+})}
+</div>
+</section>
+)}
+
+{profile.role === "deposito" && pendienteConfirmacion.length > 0 && (
+<section className="bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
+<h2 className="text-sm font-medium text-slate-900 mb-3 flex items-center gap-2">
+<IconCheck className="w-4 h-4 text-slate-400" /> Pendientes de confirmar llegada
+</h2>
+<div className="space-y-2">
+{pendienteConfirmacion.map((c) => {
+const asset = c.equipment_assets as unknown as { numero_serie: string; products: { descripcion: string } | null } | null;
+return (
+<div key={c.id} className="flex items-center justify-between gap-3 text-sm border border-slate-100 rounded-xl px-3.5 py-2.5 row-hover hover:bg-slate-50">
+<span>{asset?.numero_serie} · {asset?.products?.descripcion}</span>
+<form action={confirmLlegadaAction}>
+<input type="hidden" name="checklist_id" value={c.id} />
+<button className="rounded-lg bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 hover:bg-emerald-700 transition-colors">
+Confirmar llegada a depósito
+</button>
+</form>
+</div>
+);
+})}
+</div>
+</section>
+)}
+
+{profile.role === "administracion" && (
+<section className="bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
+<h2 className="text-sm font-medium text-slate-900 mb-4 flex items-center gap-2">
+<IconAlert className="w-4 h-4 text-slate-400" /> Generar egreso de paciente
+</h2>
+<form action={createDischargeAlertAction} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+<select name="patient_id" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm">
+<option value="">Paciente...</option>
+{(patientsActivos ?? []).map((p) => (
+<option key={p.id} value={p.id}>{p.nombre_completo}</option>
+))}
+</select>
+<select name="motivo" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm">
+<option value="">Motivo...</option>
+<option value="alta">Alta médica</option>
+<option value="fallecimiento">Fallecimiento</option>
+<option value="fin_internacion">Fin de internación domiciliaria</option>
+</select>
+<button className="rounded-xl bg-slate-900 text-white text-sm font-medium px-4 py-2.5 hover:bg-slate-800 transition-colors">
+Generar alerta a Depósito
+</button>
+</form>
+</section>
+)}
+</div>
+);
+}

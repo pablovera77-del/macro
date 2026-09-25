@@ -1,26 +1,116 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+--background: #f4f6f9;
+--foreground: #171717;
+--sidebar-bg: #0d1f1a;
+--sidebar-bg-2: #123028;
+--brand-green: #4caf50;
+--brand-teal: #0095a8;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+--color-background: var(--background);
+--color-foreground: var(--foreground);
+--font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+--font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+background: var(--background);
+color: var(--foreground);
+}
+
+/* Entrance animations */
+@keyframes fadeSlideUp {
+from { opacity: 0; transform: translateY(8px); }
+to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+from { opacity: 0; }
+to { opacity: 1; }
+}
+@keyframes scaleIn {
+from { opacity: 0; transform: scale(0.96); }
+to { opacity: 1; transform: scale(1); }
+}
+@keyframes shimmer {
+0% { background-position: -400px 0; }
+100% { background-position: 400px 0; }
+}
+@keyframes pulseRing {
+0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.35); }
+70% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+}
+@keyframes countUp {
+from { opacity: 0; transform: translateY(4px) scale(0.98); }
+to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes slideInLeft {
+from { opacity: 0; transform: translateX(-10px); }
+to { opacity: 1; transform: translateX(0); }
+}
+@keyframes progressGrow {
+from { transform: scaleX(0); }
+to { transform: scaleX(1); }
+}
+
+.animate-fade-slide-up {
+animation: fadeSlideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-fade-in {
+animation: fadeIn 0.5s ease both;
+}
+.animate-scale-in {
+animation: scaleIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-count-up {
+animation: countUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-slide-in-left {
+animation: slideInLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-pulse-ring {
+animation: pulseRing 2s infinite;
+}
+.progress-fill {
+transform-origin: left;
+animation: progressGrow 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.stagger-1 { animation-delay: 0.03s; }
+.stagger-2 { animation-delay: 0.07s; }
+.stagger-3 { animation-delay: 0.11s; }
+.stagger-4 { animation-delay: 0.15s; }
+.stagger-5 { animation-delay: 0.19s; }
+.stagger-6 { animation-delay: 0.23s; }
+.stagger-7 { animation-delay: 0.27s; }
+.stagger-8 { animation-delay: 0.31s; }
+
+.skeleton-shimmer {
+background: linear-gradient(90deg, #e2e8f0 0px, #f1f5f9 40px, #e2e8f0 80px);
+background-size: 800px 100%;
+animation: shimmer 1.6s linear infinite;
+}
+
+.card-hover {
+transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.card-hover:hover {
+transform: translateY(-2px);
+box-shadow: 0 8px 24px -8px rgba(15, 23, 42, 0.12);
+}
+
+.row-hover {
+transition: background-color 0.15s ease;
+}
+
+::selection {
+background: #c7d2fe;
+}
+
+* {
+scrollbar-width: thin;
+scrollbar-color: #cbd5e1 transparent;
 }
