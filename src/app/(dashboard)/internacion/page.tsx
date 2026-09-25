@@ -267,7 +267,7 @@ export default async function InternacionPage() {
           </h2>
           <form action={createAdmissionAction} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <input name="nombre_completo" placeholder="Nombre completo" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2" />
-            <input name="dni" placeholder="DNI" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+            <input name="dni" placeholder="DNI (obligatorio, sin puntos)" required inputMode="numeric" pattern="[0-9.\s]{6,12}" title="Solo números — identifica al paciente de forma única en todo el sistema" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
             <input name="fecha_nacimiento" type="date" placeholder="Fecha de nacimiento" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
             <input name="domicilio" placeholder="Domicilio" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2" />
             <input name="telefono_contacto" placeholder="Teléfono de contacto" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />

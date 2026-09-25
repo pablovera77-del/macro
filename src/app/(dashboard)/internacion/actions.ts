@@ -7,6 +7,12 @@ import type { Enums } from "@/types/database";
 
 const COORDINACION_ROLES: Enums<"app_role">[] = ["coordinador_internacion", "medico_coordinador"];
 
+const ESTADO_LABEL: Record<string, string> = {
+  admitido_pendiente_llegada: "admitido, pendiente de llegada",
+  activo: "activo",
+  dado_de_baja: "dado de baja",
+};
+
 // Wizard de admisión — legajo completo (DF-C3 §3/§4). Mejora sobre el
 // sistema viejo, que solo pedía nombre/domicilio/obra social en texto libre
 // (informe-tecnico §4): acá la obra social es una FK real a obras_sociales.
@@ -17,7 +23,11 @@ export async function createAdmissionAction(formData: FormData) {
   const supabase = await createClient();
 
   const nombre_completo = String(formData.get("nombre_completo") || "").trim();
-  const dni = String(formData.get("dni") || "").trim() || null;
+  // El DNI es el identificador único del paciente en toda la plataforma
+  // (pedido de Pablo, 25/09) — se normaliza a solo dígitos acá para que
+  // "30.998.221" y "30998221" cuenten como el mismo DNI, igual que ya lo
+  // normaliza la migración de base de datos sobre los registros existentes.
+  const dni = String(formData.get("dni") || "").replace(/\D/g, "");
   const fecha_nacimiento = String(formData.get("fecha_nacimiento") || "") || null;
   const domicilio = String(formData.get("domicilio") || "").trim();
   const telefono_contacto = String(formData.get("telefono_contacto") || "").trim() || null;
@@ -30,6 +40,8 @@ export async function createAdmissionAction(formData: FormData) {
   const fecha_ingreso = String(formData.get("fecha_ingreso") || "") || new Date().toISOString().slice(0, 10);
 
   if (!nombre_completo || !domicilio) throw new Error("Faltan nombre o domicilio.");
+  if (!dni) throw new Error("Falta el DNI — es obligatorio y es el identificador único del paciente en todo el sistema.");
+  if (dni.length < 6 || dni.length > 9) throw new Error("El DNI no parece válido (debe tener entre 6 y 9 dígitos).");
 
   // Denormalizamos también el nombre de la obra social en la columna de texto
   // existente (obra_social) para no romper la UI del mockup C5 (Catálogo/Pedidos)
@@ -58,7 +70,20 @@ export async function createAdmissionAction(formData: FormData) {
     estado: "admitido_pendiente_llegada",
   });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    // 23505 = unique_violation — ya existe un paciente con este DNI. Se
+    // busca el registro existente para que el mensaje sea accionable (quién
+    // es, en vez de un error crudo de Postgres).
+    if (error.code === "23505" && error.message.includes("patients_dni_key")) {
+      const { data: existente } = await supabase.from("patients").select("nombre_completo, estado").eq("dni", dni).maybeSingle();
+      throw new Error(
+        existente
+          ? `Ya existe un paciente con DNI ${dni}: ${existente.nombre_completo} (${ESTADO_LABEL[existente.estado] ?? existente.estado}). No se puede dar de alta dos veces al mismo paciente — buscalo en la lista.`
+          : `Ya existe un paciente con DNI ${dni}. No se puede dar de alta dos veces al mismo paciente.`
+      );
+    }
+    throw new Error(error.message);
+  }
   revalidatePath("/internacion");
   return;
 }

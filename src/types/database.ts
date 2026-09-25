@@ -765,7 +765,7 @@ export type Database = {
           coordinador_id: string | null
           created_at: string
           diagnostico_principal: string | null
-          dni: string | null
+          dni: string
           domicilio: string
           estado: Database["public"]["Enums"]["patient_status"]
           fecha_egreso: string | null
@@ -788,7 +788,7 @@ export type Database = {
           coordinador_id?: string | null
           created_at?: string
           diagnostico_principal?: string | null
-          dni?: string | null
+          dni: string
           domicilio: string
           estado?: Database["public"]["Enums"]["patient_status"]
           fecha_egreso?: string | null
@@ -811,7 +811,7 @@ export type Database = {
           coordinador_id?: string | null
           created_at?: string
           diagnostico_principal?: string | null
-          dni?: string | null
+          dni?: string
           domicilio?: string
           estado?: Database["public"]["Enums"]["patient_status"]
           fecha_egreso?: string | null

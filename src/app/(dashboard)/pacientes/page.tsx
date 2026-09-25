@@ -27,7 +27,7 @@ const { profile } = await requireProfile();
 const supabase = await createClient();
 
 const [{ data: patients }, { data: products }, { data: authorizations }] = await Promise.all([
-supabase.from("patients").select("id, nombre_completo, domicilio, obra_social, estado, frecuencia_reposicion").order("nombre_completo"),
+supabase.from("patients").select("id, nombre_completo, dni, domicilio, obra_social, estado, frecuencia_reposicion").order("nombre_completo"),
 supabase.from("products").select("id, descripcion").eq("active", true),
 supabase.from("patient_authorizations").select("id, patient_id, cantidad_autorizada, vigente_desde, vigente_hasta, products(descripcion)"),
 ]);
@@ -63,7 +63,7 @@ return (
 {initials || <IconUser className="w-4 h-4" />}
 </span>
 <div>
-<div className="font-medium text-slate-900">{p.nombre_completo}</div>
+<div className="font-medium text-slate-900">{p.nombre_completo} <span className="text-xs font-normal text-slate-400">· DNI {p.dni}</span></div>
 <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
 <IconMapPin className="w-3 h-3" /> {p.domicilio} · {p.obra_social ?? "sin obra social"}
 </div>
