@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { createProductAction, createAssetAction, addProductSupplierAction, setPreferredSupplierAction } from "./actions";
 import PageHeader from "@/components/PageHeader";
+import SearchableSelect from "@/components/SearchableSelect";
+import ExportCsvButton from "@/components/ExportCsvButton";
 import { IconBox, IconPill, IconApple, IconGrid, IconBarcode, IconStar } from "@/components/icons";
 
 const TIPO_LABELS: Record<string, string> = {
@@ -72,7 +74,19 @@ export default async function CatalogoPage() {
         <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
           <IconGrid className="w-4 h-4 text-slate-400" />
           <h2 className="text-sm font-medium text-slate-900">Productos del catálogo</h2>
-          <span className="ml-auto text-xs text-slate-400">{(products ?? []).length} ítems</span>
+          <span className="text-xs text-slate-400">{(products ?? []).length} ítems</span>
+          <ExportCsvButton
+            className="ml-auto"
+            filename="catalogo-productos.csv"
+            rows={(products ?? []).map((p) => ({
+              codigo: p.codigo,
+              ean: p.ean ?? "",
+              descripcion: p.descripcion,
+              tipo: p.tipo,
+              existencia: p.tipo === "equipo" ? "" : p.existencia_actual,
+              se_factura_aparte: p.se_factura_aparte ? "si" : "no",
+            }))}
+          />
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -261,12 +275,13 @@ export default async function CatalogoPage() {
             Agregar unidad física
           </h2>
           <form action={createAssetAction} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <select name="product_id" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2">
-              <option value="">Equipo (tipo)...</option>
-              {equipoProducts.map((p) => (
-                <option key={p.id} value={p.id}>{p.descripcion}</option>
-              ))}
-            </select>
+            <SearchableSelect
+              name="product_id"
+              required
+              placeholder="Equipo (tipo)..."
+              className="sm:col-span-2"
+              options={equipoProducts.map((p) => ({ value: p.id, label: p.descripcion }))}
+            />
             <input name="numero_serie" placeholder="Número de serie" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
             <select name="propiedad" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm">
               <option value="propio">Propio</option>

@@ -8,6 +8,7 @@ dispatchOrderAction,
 deliverOrderAction,
 } from "./actions";
 import PageHeader from "@/components/PageHeader";
+import SearchableSelect from "@/components/SearchableSelect";
 import { IconTruck, IconClipboard, IconCheck, IconSignature, IconMapPin, IconRefresh } from "@/components/icons";
 
 const ESTADO_STEPS = ["borrador", "autorizado", "despachado", "entregado"];
@@ -144,14 +145,15 @@ Despachado: {new Date(remito.fecha_despacho).toLocaleString("es-AR")}
 <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-800">
 + Agregar ítem a este pedido
 </summary>
-<form action={addOrderItemAction} className="flex flex-wrap gap-2 mt-2">
+<form action={addOrderItemAction} className="flex flex-wrap gap-2 mt-2 items-start">
 <input type="hidden" name="patient_id" value={order.patient_id} />
-<select name="product_id" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
-<option value="">Producto...</option>
-{(products ?? []).map((p) => (
-<option key={p.id} value={p.id}>{p.descripcion}</option>
-))}
-</select>
+<SearchableSelect
+name="product_id"
+required
+placeholder="Producto..."
+className="w-56"
+options={(products ?? []).map((p) => ({ value: p.id, label: p.descripcion, group: p.tipo }))}
+/>
 <select name="equipment_asset_id" className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
 <option value="">(sin unidad serializada)</option>
 {(assets ?? []).map((a) => (
@@ -226,18 +228,19 @@ className="rounded-lg border border-slate-300 px-2.5 py-2 text-xs"
 Iniciar pedido para un paciente nuevo
 </h2>
 <form action={addOrderItemAction} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-<select name="patient_id" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2">
-<option value="">Paciente...</option>
-{(patients ?? []).map((p) => (
-<option key={p.id} value={p.id}>{p.nombre_completo}</option>
-))}
-</select>
-<select name="product_id" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm">
-<option value="">Producto...</option>
-{(products ?? []).map((p) => (
-<option key={p.id} value={p.id}>{p.descripcion}</option>
-))}
-</select>
+<SearchableSelect
+name="patient_id"
+required
+placeholder="Paciente..."
+className="sm:col-span-2"
+options={(patients ?? []).map((p) => ({ value: p.id, label: p.nombre_completo }))}
+/>
+<SearchableSelect
+name="product_id"
+required
+placeholder="Producto..."
+options={(products ?? []).map((p) => ({ value: p.id, label: p.descripcion, group: p.tipo }))}
+/>
 <input name="cantidad" type="number" min="1" defaultValue="1" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
 <select name="equipment_asset_id" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2">
 <option value="">(sin unidad serializada)</option>
