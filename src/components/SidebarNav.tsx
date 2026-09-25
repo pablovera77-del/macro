@@ -41,9 +41,9 @@ active
 }`}
 >
 {active && (
-<span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-gradient-to-b from-[var(--brand-teal)] to-[var(--brand-green)]" />
+<span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-gradient-to-b from-[#4CAF50] to-[#0095A8]" />
 )}
-<span className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-200 ${active ? "bg-gradient-to-br from-[var(--brand-teal)] to-[var(--brand-green)] text-white" : "bg-white/5 text-slate-400 group-hover:text-white group-hover:bg-white/10"}`}>
+<span className={`flex items-center justify-center w-9 h-9 rounded-lg transition-colors duration-200 ${active ? "bg-gradient-to-br from-[#4CAF50] to-[#0095A8] text-white" : "bg-white/5 text-slate-400 group-hover:text-white group-hover:bg-white/10"}`}>
 <Icon className="w-4.5 h-4.5" />
 </span>
 <span className="flex flex-col">

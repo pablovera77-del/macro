@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { IconBox, IconTruck, IconRefresh, IconChart, IconClipboard, IconSignature, IconStethoscope } from "@/components/icons";
-import BrandLogo from "@/components/BrandLogo";
+import { BrandMark, BrandWordmark } from "@/components/BrandLogo";
 
 const DEMO_ACCOUNTS = [
 { label: "Depósito", email: "deposito.demo@profesionales-srl.test", icon: IconBox, tone: "from-teal-500 to-teal-600" },
@@ -45,18 +45,18 @@ setPassword(DEMO_PASSWORD);
 }
 
 return (
-<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f172a] via-[#131c31] to-[#1e293b] px-4 py-10 relative overflow-hidden">
-<div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-[var(--brand-teal)]/20 blur-3xl" />
-<div className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-[var(--brand-green)]/20 blur-3xl" />
+<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0b2a27] via-[#0f3d38] to-[#153f3a] px-4 py-10 relative overflow-hidden">
+<div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-[#4CAF50]/20 blur-3xl" />
+<div className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-[#0095A8]/20 blur-3xl" />
 
 <div className="w-full max-w-sm space-y-6 relative animate-scale-in">
 <div className="text-center">
-<div className="mx-auto flex items-center justify-center w-14 h-14 rounded-2xl bg-white shadow-lg shadow-black/40 mb-4 text-[var(--brand-green)]">
-<BrandLogo className="w-7 h-7" />
+<div className="mx-auto flex items-center justify-center bg-white/95 rounded-2xl shadow-lg px-8 py-6 mb-4 w-fit">
+<span className="inline-flex flex-col items-center gap-2">
+<BrandMark className="h-14 w-14" />
+<BrandWordmark theme="color" tagline className="text-3xl" />
+</span>
 </div>
-<h1 className="text-xl font-semibold text-white tracking-tight">
-profesionales
-</h1>
 <p className="text-sm text-slate-400 mt-1">
 Mockup plataforma completa — C1 a C5
 </p>

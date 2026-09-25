@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { AppRole, NavIconId } from "@/lib/auth";
 import SidebarNav from "@/components/SidebarNav";
 import { IconLogout, IconMenu } from "@/components/icons";
-import BrandLogo, { BrandWordmark } from "@/components/BrandLogo";
+import { BrandMark, BrandWordmark } from "@/components/BrandLogo";
 
 type NavItem = { href: string; label: string; icon: NavIconId; description: string };
 type Accent = { bg: string; text: string; ring: string; dot: string };
@@ -37,11 +37,12 @@ const initials = fullName
 const SidebarContent = (
 <div className="flex flex-col h-full">
 <div className="px-5 pt-6 pb-5">
-<Link href="/" className="flex items-center gap-2.5 text-white">
-<span className="flex items-center justify-center w-9 h-9 rounded-xl bg-white shadow-lg shadow-black/20 text-[var(--brand-green)]">
-<BrandLogo className="w-5 h-5" />
+<Link href="/" className="flex flex-col gap-2">
+<span className="inline-flex items-center gap-2.5">
+<BrandMark className="h-8 w-8" />
+<BrandWordmark theme="light" className="text-xl" />
 </span>
-<BrandWordmark />
+<span className="text-[11px] text-slate-400 pl-0.5">Mockup DF-C5 · Stock e Insumos</span>
 </Link>
 </div>
 
@@ -83,11 +84,11 @@ return (
 
 <div className="flex-1 min-w-0 flex flex-col">
 <header className="lg:hidden sticky top-0 z-30 bg-white/90 backdrop-blur border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-<Link href="/" className="flex items-center gap-2 text-slate-900 font-semibold text-sm">
-<span className="flex items-center justify-center w-7 h-7 rounded-lg bg-white border border-slate-200 text-[var(--brand-green)]">
-<BrandLogo className="w-4 h-4" />
+<Link href="/" className="flex items-center">
+<span className="inline-flex items-center gap-2.5">
+<BrandMark className="h-7 w-7" />
+<BrandWordmark theme="color" className="text-lg" />
 </span>
-profesionales
 </Link>
 <button
 onClick={() => setOpen(true)}
