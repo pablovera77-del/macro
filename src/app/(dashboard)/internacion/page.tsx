@@ -10,27 +10,37 @@ import {
 import PageHeader from "@/components/PageHeader";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconClipboard, IconUser, IconMapPin, IconAlert, IconCheck, IconClock } from "@/components/icons";
+import { SEMANTIC_TONE_BADGE_STYLES, SemanticTone } from "@/lib/semantic-status";
 
 const ESTADO_LABELS: Record<string, string> = {
   admitido_pendiente_llegada: "Admitido, pendiente de llegada",
   activo: "Activo",
   dado_de_baja: "Dado de baja",
 };
-const ESTADO_STYLES: Record<string, string> = {
-  admitido_pendiente_llegada: "bg-amber-100 text-amber-700",
-  activo: "bg-emerald-100 text-emerald-700",
-  dado_de_baja: "bg-slate-200 text-slate-600",
+// Color semántico único (DF-C1 §10): cada estado de negocio mapea a uno de los 4 tonos.
+const ESTADO_TONE: Record<string, SemanticTone> = {
+  admitido_pendiente_llegada: "amarillo",
+  activo: "verde",
+  dado_de_baja: "gris",
 };
+const ESTADO_STYLES: Record<string, string> = Object.fromEntries(
+  Object.entries(ESTADO_TONE).map(([k, tone]) => [k, SEMANTIC_TONE_BADGE_STYLES[tone]])
+);
 const MOTIVO_LABELS: Record<string, string> = {
   alta: "Alta médica",
   fallecimiento: "Fallecimiento",
   fin_internacion: "Fin de internación",
 };
-const SEMAFORO_STYLES: Record<string, string> = {
-  vigente: "bg-emerald-100 text-emerald-700",
-  por_vencer: "bg-amber-100 text-amber-700",
-  vencida: "bg-red-100 text-red-700",
+// Semáforo de vencimientos de autorizaciones (DF-C3 §10) — mismo tono que el resto
+// de los semáforos de la plataforma (DF-C4 §9, DF-C5 §3), ver DF-C1 §10.
+const SEMAFORO_TONE: Record<string, SemanticTone> = {
+  vigente: "verde",
+  por_vencer: "amarillo",
+  vencida: "rojo",
 };
+const SEMAFORO_STYLES: Record<string, string> = Object.fromEntries(
+  Object.entries(SEMAFORO_TONE).map(([k, tone]) => [k, SEMANTIC_TONE_BADGE_STYLES[tone]])
+);
 const SEMAFORO_LABELS: Record<string, string> = {
   vigente: "Vigente",
   por_vencer: "Por vencer",

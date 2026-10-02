@@ -4,24 +4,35 @@ import { createBillingPeriodAction, advanceBillingPeriodAction, addBillingDebitA
 import PageHeader from "@/components/PageHeader";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconCash, IconAlert } from "@/components/icons";
+import { SEMANTIC_TONE_BADGE_STYLES, SemanticTone } from "@/lib/semantic-status";
 
+// Semáforo de cierre mensual (DF-C4 §9) — "abierto" y "facturado" son etapas de flujo,
+// no estados de alerta, así que mantienen su propio color de workflow; "en_revision" y
+// "cerrado" sí son semánticos (amarillo = requiere atención, verde = al día) y usan la
+// paleta única de DF-C1 §10, igual que el resto de los semáforos de la plataforma.
 const ESTADO_LABELS: Record<string, string> = { abierto: "Abierto", en_revision: "En revisión", cerrado: "Cerrado", facturado: "Facturado" };
 const ESTADO_STYLES: Record<string, string> = {
   abierto: "bg-blue-100 text-blue-700",
-  en_revision: "bg-amber-100 text-amber-700",
-  cerrado: "bg-emerald-100 text-emerald-700",
+  en_revision: SEMANTIC_TONE_BADGE_STYLES.amarillo,
+  cerrado: SEMANTIC_TONE_BADGE_STYLES.verde,
   facturado: "bg-slate-800 text-white",
 };
 const NEXT_ESTADO: Record<string, string> = { abierto: "en_revision", en_revision: "cerrado", cerrado: "facturado" };
 const NEXT_LABEL: Record<string, string> = { abierto: "Pasar a revisión", en_revision: "Cerrar período", cerrado: "Marcar facturado" };
 
 const DEBIT_LABELS: Record<string, string> = { pendiente: "Pendiente", en_gestion: "En gestión", resuelto: "Resuelto", perdido: "Perdido" };
-const DEBIT_STYLES: Record<string, string> = {
-  pendiente: "bg-red-100 text-red-700",
-  en_gestion: "bg-amber-100 text-amber-700",
-  resuelto: "bg-emerald-100 text-emerald-700",
-  perdido: "bg-slate-200 text-slate-500",
+// Color semántico único (DF-C1 §10): mismo Verde/Amarillo/Rojo/Gris que el resto de los
+// semáforos (DF-C3 §10, DF-C5 §3) — rojo = pendiente de gestionar, amarillo = en curso,
+// verde = resuelto, gris = perdido (no aplica más acción).
+const DEBIT_TONE: Record<string, SemanticTone> = {
+  pendiente: "rojo",
+  en_gestion: "amarillo",
+  resuelto: "verde",
+  perdido: "gris",
 };
+const DEBIT_STYLES: Record<string, string> = Object.fromEntries(
+  Object.entries(DEBIT_TONE).map(([k, tone]) => [k, SEMANTIC_TONE_BADGE_STYLES[tone]])
+);
 
 function formatARS(value: number | null) {
   if (value == null) return "—";
