@@ -1166,6 +1166,104 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_order_invoice_items: {
+        Row: {
+          cantidad_facturada: number
+          id: number
+          invoice_id: string
+          precio_unitario_facturado: number
+          product_id: string
+        }
+        Insert: {
+          cantidad_facturada: number
+          id?: never
+          invoice_id: string
+          precio_unitario_facturado: number
+          product_id: string
+        }
+        Update: {
+          cantidad_facturada?: number
+          id?: never
+          invoice_id?: string
+          precio_unitario_facturado?: number
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_order_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_invoice_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_invoice_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_disponibilidad_deposito"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "purchase_order_invoice_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_products_status"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_order_invoices: {
+        Row: {
+          cargada_por: string | null
+          created_at: string
+          fecha_factura: string
+          id: string
+          monto_total: number
+          numero_factura: string
+          purchase_order_id: string
+        }
+        Insert: {
+          cargada_por?: string | null
+          created_at?: string
+          fecha_factura: string
+          id?: string
+          monto_total: number
+          numero_factura: string
+          purchase_order_id: string
+        }
+        Update: {
+          cargada_por?: string | null
+          created_at?: string
+          fecha_factura?: string
+          id?: string
+          monto_total?: number
+          numero_factura?: string
+          purchase_order_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_invoices_cargada_por_fkey"
+            columns: ["cargada_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_order_invoices_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: true
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_order_items: {
         Row: {
           cantidad: number

@@ -156,6 +156,65 @@ export async function generatePurchaseOrdersAction(formData: FormData) {
   return;
 }
 
+// DF-C5 §6.1: paso de carga de factura del proveedor, vinculada a la orden
+// de compra ya recibida. La comparación contra lo pedido/recibido (cantidad
+// y precio cotizado) se calcula al mostrarla en compras/page.tsx, no acá —
+// no hay nada que "decidir" en el servidor, es una tabla comparativa.
+export async function loadPurchaseOrderInvoiceAction(formData: FormData) {
+  const { profile } = await requireProfile();
+  if (!COMPRAS_ROLES.includes(profile.role as (typeof COMPRAS_ROLES)[number])) {
+    throw new Error("No autorizado para cargar facturas de proveedor.");
+  }
+
+  const supabase = await createClient();
+  const purchase_order_id = String(formData.get("purchase_order_id") || "");
+  const numero_factura = String(formData.get("numero_factura") || "").trim();
+  const fecha_factura = String(formData.get("fecha_factura") || "");
+  const monto_total = Number(formData.get("monto_total") || 0);
+
+  if (!purchase_order_id || !numero_factura || !fecha_factura || !monto_total) {
+    throw new Error("Faltan datos de la factura (orden, número, fecha o monto).");
+  }
+
+  const { data: po } = await supabase.from("purchase_orders").select("estado").eq("id", purchase_order_id).single();
+  if (!po || po.estado !== "recibida") {
+    throw new Error("Solo se puede cargar la factura de una orden ya recibida.");
+  }
+
+  const productIds = formData.getAll("invoice_product_id").map(String);
+  const cantidades = formData.getAll("invoice_cantidad").map(Number);
+  const precios = formData.getAll("invoice_precio_unitario").map(Number);
+
+  const { data: invoice, error } = await supabase
+    .from("purchase_order_invoices")
+    .insert({ purchase_order_id, numero_factura, fecha_factura, monto_total, cargada_por: profile.id })
+    .select("id")
+    .single();
+
+  if (error) {
+    // 23505 = unique_violation — purchase_order_id es unique (una factura por OC).
+    if (error.code === "23505") throw new Error("Esta orden de compra ya tiene una factura cargada.");
+    throw new Error(error.message);
+  }
+
+  const items = productIds
+    .map((product_id, i) => ({
+      invoice_id: invoice.id,
+      product_id,
+      cantidad_facturada: cantidades[i] || 0,
+      precio_unitario_facturado: precios[i] || 0,
+    }))
+    .filter((it) => it.cantidad_facturada > 0);
+
+  if (items.length > 0) {
+    const { error: itemsError } = await supabase.from("purchase_order_invoice_items").insert(items);
+    if (itemsError) throw new Error(itemsError.message);
+  }
+
+  revalidatePath("/compras");
+  return;
+}
+
 export async function advancePurchaseOrderAction(formData: FormData) {
   const { profile } = await requireProfile();
   if (profile.role !== "deposito") throw new Error("Solo Depósito gestiona la recepción de órdenes de compra.");

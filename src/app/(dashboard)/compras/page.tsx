@@ -5,8 +5,10 @@ import {
   logSupplierQuoteAction,
   generatePurchaseOrdersAction,
   advancePurchaseOrderAction,
+  loadPurchaseOrderInvoiceAction,
 } from "./actions";
 import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
 import { IconClipboardCheck, IconAlert, IconStar, IconTruck, IconCheck } from "@/components/icons";
 
 function formatARS(value: number | null) {
@@ -53,6 +55,18 @@ export default async function ComprasPage() {
     supabase.from("purchase_orders").select("id, supplier_id, estado, created_at, fecha_recepcion, suppliers(nombre)").order("created_at", { ascending: false }).limit(10),
     supabase.from("purchase_order_items").select("purchase_order_id, product_id, cantidad, precio_unitario, products(descripcion)"),
   ]);
+
+  // DF-C5 §6.1: factura del proveedor + comparación automática contra lo
+  // pedido/recibido — se consultan aparte porque solo aplican a las OC
+  // "recibida" que trajo el límite de 10 más recientes de arriba.
+  const purchaseOrderIds = (purchaseOrders ?? []).map((po) => po.id);
+  const [{ data: invoices }, { data: invoiceItems }] =
+    purchaseOrderIds.length > 0
+      ? await Promise.all([
+          supabase.from("purchase_order_invoices").select("id, purchase_order_id, numero_factura, fecha_factura, monto_total").in("purchase_order_id", purchaseOrderIds),
+          supabase.from("purchase_order_invoice_items").select("invoice_id, product_id, cantidad_facturada, precio_unitario_facturado, purchase_order_invoices!inner(purchase_order_id)").in("purchase_order_invoices.purchase_order_id", purchaseOrderIds),
+        ])
+      : [{ data: [] }, { data: [] }];
 
   const canManage = profile.role === "deposito" || profile.role === "administracion";
 
@@ -238,6 +252,17 @@ export default async function ComprasPage() {
               const items = (purchaseOrderItems ?? []).filter((it) => it.purchase_order_id === po.id);
               const supplier = po.suppliers as unknown as { nombre: string } | null;
               const next = PO_NEXT[po.estado];
+              const invoice = (invoices ?? []).find((inv) => inv.purchase_order_id === po.id);
+              const itemsFacturados = invoice ? (invoiceItems ?? []).filter((it) => it.invoice_id === invoice.id) : [];
+              // DF-C5 §6.1: comparación automática — por cada ítem pedido,
+              // ¿coincide lo facturado en cantidad y precio?
+              const comparacion = items.map((it) => {
+                const facturado = itemsFacturados.find((f) => f.product_id === it.product_id);
+                const coincideCantidad = facturado ? facturado.cantidad_facturada === it.cantidad : null;
+                const coincidePrecio = facturado && it.precio_unitario != null ? facturado.precio_unitario_facturado === it.precio_unitario : null;
+                return { it, facturado, coincideCantidad, coincidePrecio };
+              });
+              const hayDiscrepancias = invoice && comparacion.some((c) => c.coincideCantidad === false || c.coincidePrecio === false);
               return (
                 <div key={po.id} className="px-5 py-3.5">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -246,6 +271,7 @@ export default async function ComprasPage() {
                       <span className="text-xs text-slate-400 ml-2">{new Date(po.created_at).toLocaleDateString("es-AR")}</span>
                     </div>
                     <div className="flex items-center gap-2">
+                      {invoice && <StatusBadge tone={hayDiscrepancias ? "rojo" : "verde"} label={hayDiscrepancias ? "Factura con diferencias" : "Factura OK"} />}
                       <span className="inline-block rounded-full px-2.5 py-1 text-xs font-medium bg-slate-100 text-slate-600">{PO_ESTADO_LABELS[po.estado]}</span>
                       {profile.role === "deposito" && next && (
                         <form action={advancePurchaseOrderAction}>
@@ -268,6 +294,66 @@ export default async function ComprasPage() {
                       );
                     })}
                   </ul>
+
+                  {po.estado === "recibida" && !invoice && canManage && (
+                    <form action={loadPurchaseOrderInvoiceAction} className="mt-3 border border-slate-100 rounded-xl p-3 bg-slate-50">
+                      <input type="hidden" name="purchase_order_id" value={po.id} />
+                      <p className="text-xs font-medium text-slate-600 mb-2">DF-C5 §6.1 · Cargar factura del proveedor</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+                        <input name="numero_factura" placeholder="N° de factura" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
+                        <input name="fecha_factura" type="date" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
+                        <input name="monto_total" type="number" step="0.01" placeholder="Monto total" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
+                      </div>
+                      <div className="space-y-1.5 mb-2">
+                        {items.map((it, i) => {
+                          const product = it.products as unknown as { descripcion: string } | null;
+                          return (
+                            <div key={i} className="flex items-center gap-2 text-xs">
+                              <input type="hidden" name="invoice_product_id" value={it.product_id} />
+                              <span className="flex-1 text-slate-600">{product?.descripcion} <span className="text-slate-400">(pedido: {it.cantidad}{it.precio_unitario ? ` · ${formatARS(it.precio_unitario)} c/u` : ""})</span></span>
+                              <input name="invoice_cantidad" type="number" step="0.01" defaultValue={it.cantidad} placeholder="Cant. facturada" className="w-28 rounded-lg border border-slate-300 px-2 py-1 text-xs" />
+                              <input name="invoice_precio_unitario" type="number" step="0.01" defaultValue={it.precio_unitario ?? undefined} placeholder="Precio facturado" className="w-32 rounded-lg border border-slate-300 px-2 py-1 text-xs" />
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Cargar factura</button>
+                    </form>
+                  )}
+
+                  {invoice && (
+                    <div className="mt-3 border border-slate-100 rounded-xl p-3">
+                      <p className="text-xs font-medium text-slate-600 mb-1.5">
+                        Factura {invoice.numero_factura} · {new Date(invoice.fecha_factura).toLocaleDateString("es-AR")} · {formatARS(invoice.monto_total)}
+                      </p>
+                      <ul className="text-xs space-y-1">
+                        {comparacion.map((c, i) => {
+                          const product = c.it.products as unknown as { descripcion: string } | null;
+                          return (
+                            <li key={i} className="flex items-center gap-2 flex-wrap">
+                              <span className="text-slate-600">{product?.descripcion}</span>
+                              {c.facturado ? (
+                                <>
+                                  <StatusBadge
+                                    tone={c.coincideCantidad ? "verde" : "rojo"}
+                                    label={`Cant. pedida ${c.it.cantidad} / facturada ${c.facturado.cantidad_facturada}`}
+                                  />
+                                  {c.it.precio_unitario != null && (
+                                    <StatusBadge
+                                      tone={c.coincidePrecio ? "verde" : "rojo"}
+                                      label={`Precio cotizado ${formatARS(c.it.precio_unitario)} / facturado ${formatARS(c.facturado.precio_unitario_facturado)}`}
+                                    />
+                                  )}
+                                </>
+                              ) : (
+                                <StatusBadge tone="gris" label="No incluido en la factura" />
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               );
             })}
