@@ -8,6 +8,13 @@ import type { Enums } from "@/types/database";
 // DF-C5 §3, comentario cliente 25/09: alta manual del producto. El código de
 // barras (EAN/UPC) es opcional — lo asigna el fabricante vía GS1, no todos
 // los proveedores lo traen (productos fraccionados / proveedores chicos).
+//
+// DF-C5 §3, feedback cliente 01/10-02/10: stock mínimo/máximo (semáforo de
+// reposición, ver vista v_products_status), fecha de vencimiento + n° de
+// lote (obligatorios según tipo), y campos específicos de equipo/aparatología
+// (alquiler, service). El EAN se valida contra el índice único parcial
+// products_ean_unique_idx — si ya existe, se devuelve un mensaje claro en vez
+// del error crudo de Postgres.
 export async function createProductAction(formData: FormData) {
   const { profile } = await requireProfile();
   if (profile.role !== "deposito") throw new Error("Solo Depósito carga el catálogo.");
@@ -24,17 +31,54 @@ export async function createProductAction(formData: FormData) {
   const precio = Number(formData.get("precio_compra") || 0);
   const supplier_id = String(formData.get("supplier_id") || "") || null;
 
+  const stock_minimo = formData.get("stock_minimo") ? Number(formData.get("stock_minimo")) : null;
+  const stock_maximo = formData.get("stock_maximo") ? Number(formData.get("stock_maximo")) : null;
+  const fecha_vencimiento = String(formData.get("fecha_vencimiento") || "").trim() || null;
+  const n_lote = String(formData.get("n_lote") || "").trim() || null;
+  const precio_alquiler_mensual = formData.get("precio_alquiler_mensual") ? Number(formData.get("precio_alquiler_mensual")) : null;
+  const frecuencia_service = String(formData.get("frecuencia_service") || "").trim() || null;
+  const fecha_ultimo_service = String(formData.get("fecha_ultimo_service") || "").trim() || null;
+  const vida_util_estimada = String(formData.get("vida_util_estimada") || "").trim() || null;
+
   if (!codigo || !descripcion || !tipo) {
     throw new Error("Faltan campos obligatorios (código, descripción, tipo).");
   }
 
+  // DF-C5 §3: vencimiento obligatorio para descartable y alimento; lote solo para alimento.
+  if ((tipo === "descartable" || tipo === "alimento") && !fecha_vencimiento) {
+    throw new Error("La fecha de vencimiento es obligatoria para descartables y alimentos.");
+  }
+  if (tipo === "alimento" && !n_lote) {
+    throw new Error("El N° de lote es obligatorio para alimentos.");
+  }
+
   const { data: product, error } = await supabase
     .from("products")
-    .insert({ codigo, descripcion, observacion, tipo, ean, categoria_iva, se_factura_aparte })
+    .insert({
+      codigo,
+      descripcion,
+      observacion,
+      tipo,
+      ean,
+      categoria_iva,
+      se_factura_aparte,
+      stock_minimo,
+      stock_maximo,
+      fecha_vencimiento: tipo === "equipo" ? null : fecha_vencimiento,
+      n_lote: tipo === "alimento" ? n_lote : null,
+      precio_alquiler_mensual: tipo === "equipo" ? precio_alquiler_mensual : null,
+      frecuencia_service: tipo === "equipo" ? frecuencia_service : null,
+      fecha_ultimo_service: tipo === "equipo" ? fecha_ultimo_service : null,
+      vida_util_estimada: tipo === "equipo" ? vida_util_estimada : null,
+    })
     .select("id")
     .single();
 
   if (error) {
+    // 23505 = unique_violation — products_ean_unique_idx (EAN duplicado entre productos activos).
+    if (error.code === "23505" && error.message.includes("ean")) {
+      throw new Error(`Ya existe un producto activo con el EAN ${ean}. Revisá el catálogo antes de cargarlo de nuevo.`);
+    }
     throw new Error(error.message);
   }
 

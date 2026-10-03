@@ -4,7 +4,10 @@ import { createProductAction, createAssetAction, addProductSupplierAction, setPr
 import PageHeader from "@/components/PageHeader";
 import SearchableSelect from "@/components/SearchableSelect";
 import ExportCsvButton from "@/components/ExportCsvButton";
-import { IconBox, IconPill, IconApple, IconGrid, IconBarcode, IconStar } from "@/components/icons";
+import ProductFormFields from "@/components/ProductFormFields";
+import StatusBadge from "@/components/StatusBadge";
+import { IconBox, IconPill, IconApple, IconGrid, IconBarcode, IconStar, IconCalendar } from "@/components/icons";
+import { SemanticTone } from "@/lib/semantic-status";
 
 const TIPO_LABELS: Record<string, string> = {
   descartable: "Descartable",
@@ -31,14 +34,24 @@ const ESTADO_STYLES: Record<string, string> = {
   baja: "bg-slate-200 text-slate-600",
 };
 
+// DF-C5 §3, feedback cliente 01/10-02/10: semáforos calculados en la vista
+// v_products_status (mismo patrón que v_treatment_authorization_status de
+// DF-C3 §7), mapeados al tono único de DF-C1 §10.
+const STOCK_TONE: Record<string, SemanticTone> = { critico: "rojo", bajo: "amarillo", normal: "verde" };
+const STOCK_LABEL: Record<string, string> = { critico: "Reponer ya", bajo: "Stock bajo", normal: "Stock OK" };
+const VENCIMIENTO_TONE: Record<string, SemanticTone> = { vencida: "rojo", por_vencer: "amarillo", vigente: "verde" };
+const VENCIMIENTO_LABEL: Record<string, string> = { vencida: "Vencido", por_vencer: "Por vencer", vigente: "Vigente" };
+
 export default async function CatalogoPage() {
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
-  const [{ data: products }, { data: assets }, { data: productSuppliers }, { data: suppliers }] = await Promise.all([
+  const [{ data: products }, { data: assets }, { data: productSuppliers }, { data: suppliers }, { data: productStatus }] = await Promise.all([
     supabase
       .from("products")
-      .select("id, codigo, descripcion, observacion, tipo, proveedor, ean, categoria_iva, se_factura_aparte, existencia_actual, active")
+      .select(
+        "id, codigo, descripcion, observacion, tipo, proveedor, ean, categoria_iva, se_factura_aparte, existencia_actual, active, stock_minimo, stock_maximo, fecha_vencimiento, n_lote, precio_alquiler_mensual, frecuencia_service, fecha_ultimo_service, vida_util_estimada"
+      )
       .order("tipo")
       .order("descripcion"),
     supabase
@@ -49,10 +62,19 @@ export default async function CatalogoPage() {
       .select("product_id, supplier_id, preferido, precio_referencia, suppliers(nombre, email)")
       .order("preferido", { ascending: false }),
     supabase.from("suppliers").select("id, nombre").eq("activo", true).order("nombre"),
+    // DF-C5 §3: semáforos calculados server-side en la vista (ver nota más arriba) — se
+    // consultan aparte para no heredar los tipos "todo nullable" que Supabase genera para
+    // las vistas y así no tocar el resto de las columnas, ya tipadas desde `products`.
+    supabase.from("v_products_status").select("id, estado_stock, estado_vencimiento"),
   ]);
 
   const equipoProducts = (products ?? []).filter((p) => p.tipo === "equipo");
   const isDeposito = profile.role === "deposito";
+
+  const statusByProduct = new Map<string, { estado_stock: string | null; estado_vencimiento: string | null }>();
+  (productStatus ?? []).forEach((s) => {
+    if (s.id) statusByProduct.set(s.id, { estado_stock: s.estado_stock, estado_vencimiento: s.estado_vencimiento });
+  });
 
   const suppliersByProduct = new Map<string, typeof productSuppliers>();
   (productSuppliers ?? []).forEach((ps) => {
@@ -99,12 +121,15 @@ export default async function CatalogoPage() {
                 <th className="text-left px-5 py-2.5 font-medium">Tipo</th>
                 <th className="text-left px-5 py-2.5 font-medium">Proveedores</th>
                 <th className="text-right px-5 py-2.5 font-medium">Existencia</th>
+                <th className="text-left px-5 py-2.5 font-medium">Stock</th>
+                <th className="text-left px-5 py-2.5 font-medium">Vencimiento</th>
                 <th className="text-left px-5 py-2.5 font-medium">¿Factura aparte?</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {(products ?? []).map((p) => {
                 const Icon = TIPO_ICON[p.tipo];
+                const status = statusByProduct.get(p.id);
                 const psList = suppliersByProduct.get(p.id) ?? [];
                 const preferido = psList.find((ps) => ps.preferido);
                 const otros = psList.filter((ps) => !ps.preferido);
@@ -122,6 +147,13 @@ export default async function CatalogoPage() {
                       <div className="text-slate-900">{p.descripcion}</div>
                       {p.observacion && (
                         <div className="text-xs text-slate-400">a.k.a. {p.observacion}</div>
+                      )}
+                      {p.tipo === "equipo" && (p.precio_alquiler_mensual || p.frecuencia_service) && (
+                        <div className="text-xs text-slate-400 mt-0.5">
+                          {p.precio_alquiler_mensual != null && <>Alquiler ${p.precio_alquiler_mensual}/mes</>}
+                          {p.precio_alquiler_mensual != null && p.frecuencia_service && " · "}
+                          {p.frecuencia_service && <>Service {p.frecuencia_service}</>}
+                        </div>
                       )}
                     </td>
                     <td className="px-5 py-2.5">
@@ -179,6 +211,38 @@ export default async function CatalogoPage() {
                     <td className="px-5 py-2.5 text-right text-slate-700 font-medium tabular-nums">
                       {p.tipo === "equipo" ? "—" : p.existencia_actual}
                     </td>
+                    <td className="px-5 py-2.5">
+                      {p.stock_minimo == null ? (
+                        <span className="text-slate-400">—</span>
+                      ) : (
+                        <div className="flex flex-col gap-0.5">
+                          <StatusBadge
+                            tone={STOCK_TONE[status?.estado_stock ?? "normal"]}
+                            label={STOCK_LABEL[status?.estado_stock ?? "normal"]}
+                          />
+                          <span className="text-[11px] text-slate-400">
+                            mín {p.stock_minimo}{p.stock_maximo != null && ` · máx ${p.stock_maximo}`}
+                          </span>
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-5 py-2.5">
+                      {p.fecha_vencimiento == null ? (
+                        <span className="text-slate-400">—</span>
+                      ) : (
+                        <div className="flex flex-col gap-0.5">
+                          <StatusBadge
+                            tone={VENCIMIENTO_TONE[status?.estado_vencimiento ?? "vigente"]}
+                            label={VENCIMIENTO_LABEL[status?.estado_vencimiento ?? "vigente"]}
+                          />
+                          <span className="text-[11px] text-slate-400 inline-flex items-center gap-1">
+                            <IconCalendar className="w-3 h-3" />
+                            {new Date(p.fecha_vencimiento).toLocaleDateString("es-AR")}
+                            {p.n_lote && ` · lote ${p.n_lote}`}
+                          </span>
+                        </div>
+                      )}
+                    </td>
                     <td className="px-5 py-2.5 text-slate-600">{p.se_factura_aparte ? "Sí" : "No"}</td>
                   </tr>
                 );
@@ -201,12 +265,7 @@ export default async function CatalogoPage() {
           <form action={createProductAction} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <input name="codigo" placeholder="Código de producto (SKU interno)" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-slate-300" />
             <input name="ean" placeholder="EAN / código de barras (opcional)" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-slate-300" />
-            <select name="tipo" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm">
-              <option value="">Tipo...</option>
-              <option value="descartable">Descartable</option>
-              <option value="equipo">Equipo / aparatología</option>
-              <option value="alimento">Alimento</option>
-            </select>
+            <ProductFormFields />
             <input name="descripcion" placeholder="Descripción" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2 transition-shadow focus:outline-none focus:ring-2 focus:ring-slate-300" />
             <input name="observacion" placeholder="Observación / nombre de uso común" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-slate-300" />
             <select name="supplier_id" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm">

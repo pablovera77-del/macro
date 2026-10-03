@@ -374,6 +374,13 @@ export type Database = {
             referencedRelation: "v_disponibilidad_deposito"
             referencedColumns: ["product_id"]
           },
+          {
+            foreignKeyName: "equipment_assets_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_products_status"
+            referencedColumns: ["id"]
+          },
         ]
       }
       evolutions: {
@@ -587,6 +594,13 @@ export type Database = {
             referencedRelation: "v_disponibilidad_deposito"
             referencedColumns: ["product_id"]
           },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_products_status"
+            referencedColumns: ["id"]
+          },
         ]
       }
       orders: {
@@ -716,6 +730,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_disponibilidad_deposito"
             referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "patient_authorizations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_products_status"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -879,6 +900,13 @@ export type Database = {
             referencedRelation: "v_disponibilidad_deposito"
             referencedColumns: ["product_id"]
           },
+          {
+            foreignKeyName: "product_price_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_products_status"
+            referencedColumns: ["id"]
+          },
         ]
       }
       product_suppliers: {
@@ -919,6 +947,13 @@ export type Database = {
             referencedColumns: ["product_id"]
           },
           {
+            foreignKeyName: "product_suppliers_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_products_status"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "product_suppliers_supplier_id_fkey"
             columns: ["supplier_id"]
             isOneToOne: false
@@ -936,12 +971,20 @@ export type Database = {
           descripcion: string
           ean: string | null
           existencia_actual: number
+          fecha_ultimo_service: string | null
+          fecha_vencimiento: string | null
+          frecuencia_service: string | null
           id: string
+          n_lote: string | null
           observacion: string | null
+          precio_alquiler_mensual: number | null
           proveedor: string | null
           se_factura_aparte: boolean
+          stock_maximo: number | null
+          stock_minimo: number | null
           supplier_id: string | null
           tipo: Database["public"]["Enums"]["product_type"]
+          vida_util_estimada: string | null
         }
         Insert: {
           active?: boolean
@@ -951,12 +994,20 @@ export type Database = {
           descripcion: string
           ean?: string | null
           existencia_actual?: number
+          fecha_ultimo_service?: string | null
+          fecha_vencimiento?: string | null
+          frecuencia_service?: string | null
           id?: string
+          n_lote?: string | null
           observacion?: string | null
+          precio_alquiler_mensual?: number | null
           proveedor?: string | null
           se_factura_aparte?: boolean
+          stock_maximo?: number | null
+          stock_minimo?: number | null
           supplier_id?: string | null
           tipo: Database["public"]["Enums"]["product_type"]
+          vida_util_estimada?: string | null
         }
         Update: {
           active?: boolean
@@ -966,12 +1017,20 @@ export type Database = {
           descripcion?: string
           ean?: string | null
           existencia_actual?: number
+          fecha_ultimo_service?: string | null
+          fecha_vencimiento?: string | null
+          frecuencia_service?: string | null
           id?: string
+          n_lote?: string | null
           observacion?: string | null
+          precio_alquiler_mensual?: number | null
           proveedor?: string | null
           se_factura_aparte?: boolean
+          stock_maximo?: number | null
+          stock_minimo?: number | null
           supplier_id?: string | null
           tipo?: Database["public"]["Enums"]["product_type"]
+          vida_util_estimada?: string | null
         }
         Relationships: [
           {
@@ -1049,6 +1108,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_disponibilidad_deposito"
             referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "purchase_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_products_status"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "purchase_order_items_purchase_order_id_fkey"
@@ -1137,6 +1203,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_disponibilidad_deposito"
             referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "quote_request_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_products_status"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "quote_request_items_quote_request_id_fkey"
@@ -1353,6 +1426,13 @@ export type Database = {
             referencedRelation: "v_disponibilidad_deposito"
             referencedColumns: ["product_id"]
           },
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_products_status"
+            referencedColumns: ["id"]
+          },
         ]
       }
       supplier_price_quotes: {
@@ -1397,6 +1477,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_disponibilidad_deposito"
             referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "supplier_price_quotes_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_products_status"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "supplier_price_quotes_quote_request_id_fkey"
@@ -1625,6 +1712,94 @@ export type Database = {
           },
         ]
       }
+      v_products_status: {
+        Row: {
+          active: boolean | null
+          categoria_iva: Database["public"]["Enums"]["iva_category"] | null
+          codigo: string | null
+          created_at: string | null
+          descripcion: string | null
+          ean: string | null
+          estado_stock: Database["public"]["Enums"]["stock_level_status"] | null
+          estado_vencimiento:
+            | Database["public"]["Enums"]["authorization_status"]
+            | null
+          existencia_actual: number | null
+          fecha_ultimo_service: string | null
+          fecha_vencimiento: string | null
+          frecuencia_service: string | null
+          id: string | null
+          n_lote: string | null
+          observacion: string | null
+          precio_alquiler_mensual: number | null
+          proveedor: string | null
+          se_factura_aparte: boolean | null
+          stock_maximo: number | null
+          stock_minimo: number | null
+          supplier_id: string | null
+          tipo: Database["public"]["Enums"]["product_type"] | null
+          vida_util_estimada: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          categoria_iva?: Database["public"]["Enums"]["iva_category"] | null
+          codigo?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          ean?: string | null
+          estado_stock?: never
+          estado_vencimiento?: never
+          existencia_actual?: number | null
+          fecha_ultimo_service?: string | null
+          fecha_vencimiento?: string | null
+          frecuencia_service?: string | null
+          id?: string | null
+          n_lote?: string | null
+          observacion?: string | null
+          precio_alquiler_mensual?: number | null
+          proveedor?: string | null
+          se_factura_aparte?: boolean | null
+          stock_maximo?: number | null
+          stock_minimo?: number | null
+          supplier_id?: string | null
+          tipo?: Database["public"]["Enums"]["product_type"] | null
+          vida_util_estimada?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          categoria_iva?: Database["public"]["Enums"]["iva_category"] | null
+          codigo?: string | null
+          created_at?: string | null
+          descripcion?: string | null
+          ean?: string | null
+          estado_stock?: never
+          estado_vencimiento?: never
+          existencia_actual?: number | null
+          fecha_ultimo_service?: string | null
+          fecha_vencimiento?: string | null
+          frecuencia_service?: string | null
+          id?: string | null
+          n_lote?: string | null
+          observacion?: string | null
+          precio_alquiler_mensual?: number | null
+          proveedor?: string | null
+          se_factura_aparte?: boolean | null
+          stock_maximo?: number | null
+          stock_minimo?: number | null
+          supplier_id?: string | null
+          tipo?: Database["public"]["Enums"]["product_type"] | null
+          vida_util_estimada?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_treatment_authorization_status: {
         Row: {
           autorizado_por: string | null
@@ -1774,6 +1949,7 @@ export type Database = {
         | "nutricion"
         | "trabajo_social"
         | "otra"
+      stock_level_status: "critico" | "bajo" | "normal"
       stock_movement_type: "ingreso_compra" | "egreso_entrega" | "ajuste"
       visit_status:
         | "programada"
@@ -1973,6 +2149,7 @@ export const Constants = {
         "trabajo_social",
         "otra",
       ],
+      stock_level_status: ["critico", "bajo", "normal"],
       stock_movement_type: ["ingreso_compra", "egreso_entrega", "ajuste"],
       visit_status: [
         "programada",
