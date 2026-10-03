@@ -6,10 +6,12 @@ import {
   informEgresoAction,
   addTreatmentAuthorizationAction,
   assignCareTeamAction,
+  signLegalDocumentAction,
 } from "./actions";
 import PageHeader from "@/components/PageHeader";
 import ActionDisclosure from "@/components/ActionDisclosure";
-import { IconClipboard, IconUser, IconMapPin, IconAlert, IconCheck, IconClock } from "@/components/icons";
+import ConsentDocumentRow from "@/components/ConsentDocumentRow";
+import { IconClipboard, IconUser, IconMapPin, IconAlert, IconCheck, IconClock, IconSignature } from "@/components/icons";
 import { SEMANTIC_TONE_BADGE_STYLES, SemanticTone } from "@/lib/semantic-status";
 
 const ESTADO_LABELS: Record<string, string> = {
@@ -60,6 +62,8 @@ export default async function InternacionPage() {
     { data: careTeam },
     { data: profesionales },
     { data: orderNews },
+    { data: legalDocuments },
+    { data: signatures },
   ] = await Promise.all([
     supabase
       .from("patients")
@@ -83,9 +87,15 @@ export default async function InternacionPage() {
           .order("fecha_autorizacion", { ascending: false })
           .limit(10)
       : Promise.resolve({ data: null }),
+    // DF-C2 §6: catálogo de consentimientos que se firman al ingreso, uno por uno.
+    supabase.from("legal_documents").select("id, codigo, titulo, resumen, requiere_firma_profesional").eq("activo", true).order("orden"),
+    supabase.from("patient_document_signatures").select("patient_id, legal_document_id, firmante_nombre, firmado_at, profesional_id"),
   ]);
 
   const vencenPronto = (authorizations ?? []).filter((a) => a.estado_semaforo !== "vigente");
+  const signatureKey = (patientId: string, documentId: string) => `${patientId}:${documentId}`;
+  const signaturesByKey = new Map((signatures ?? []).map((s) => [signatureKey(s.patient_id, s.legal_document_id), s]));
+  const profesionalesLivianos = (profesionales ?? []).map((p) => ({ id: p.id, full_name: p.full_name }));
   // Notificación de vuelta al coordinador (autorizado / no autorizado) tras la
   // validación manual de Administración — DF-C5 §4, comentario cliente 25/09.
   const misNovedades = (orderNews ?? []).filter((o) => {
@@ -212,6 +222,34 @@ export default async function InternacionPage() {
                 ))}
                 {auths.length === 0 && <li className="text-slate-400 text-xs">Sin autorizaciones de práctica cargadas.</li>}
               </ul>
+
+              {p.estado !== "dado_de_baja" && (
+                <div className="mt-3 bg-slate-50 rounded-xl px-3 py-2">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 mb-1">
+                    <IconSignature className="w-3.5 h-3.5" /> Consentimientos de ingreso — DF-C2 §6
+                  </div>
+                  {(legalDocuments ?? []).map((doc) => {
+                    const sig = signaturesByKey.get(signatureKey(p.id, doc.id));
+                    return (
+                      <ConsentDocumentRow
+                        key={doc.id}
+                        signAction={signLegalDocumentAction}
+                        patientId={p.id}
+                        documentId={doc.id}
+                        titulo={doc.titulo}
+                        resumen={doc.resumen}
+                        requiereFirmaProfesional={doc.requiere_firma_profesional}
+                        profesionales={profesionalesLivianos}
+                        firmado={sig ? { firmante_nombre: sig.firmante_nombre, firmado_at: sig.firmado_at, profesional_id: sig.profesional_id } : null}
+                        canSign={canManage}
+                      />
+                    );
+                  })}
+                  {(legalDocuments ?? []).length === 0 && (
+                    <p className="text-xs text-slate-400">Sin documentos configurados en el catálogo.</p>
+                  )}
+                </div>
+              )}
 
               {p.estado === "dado_de_baja" && p.motivo_egreso && (
                 <div className="text-xs text-slate-500 mt-3 flex items-center gap-1">

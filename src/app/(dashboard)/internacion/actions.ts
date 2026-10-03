@@ -183,6 +183,46 @@ export async function addTreatmentAuthorizationAction(formData: FormData) {
   return;
 }
 
+// DF-C2 §6, resuelto legal hoy (Roy, vía Vanina): no se puede usar una firma
+// única para varios documentos — cada consentimiento (legal_documents) se
+// firma por separado, con su propio registro de firmante/fecha/geolocalización.
+// requiere_firma_profesional (ej. R PFS 04) agrega además la firma del
+// profesional actuante en el mismo paso.
+export async function signLegalDocumentAction(formData: FormData) {
+  const { profile } = await requireProfile();
+  if (!COORDINACION_ROLES.includes(profile.role)) throw new Error("Solo Coordinación de Internación registra las firmas de ingreso.");
+
+  const supabase = await createClient();
+  const patient_id = String(formData.get("patient_id") || "");
+  const legal_document_id = String(formData.get("legal_document_id") || "");
+  const firmante_nombre = String(formData.get("firmante_nombre") || "").trim();
+  const profesional_id = String(formData.get("profesional_id") || "") || null;
+  const lat = formData.get("lat") ? Number(formData.get("lat")) : null;
+  const lng = formData.get("lng") ? Number(formData.get("lng")) : null;
+
+  if (!patient_id || !legal_document_id || !firmante_nombre) {
+    throw new Error("Faltan datos para registrar la firma (documento, paciente o nombre de quien firma).");
+  }
+
+  const { error } = await supabase.from("patient_document_signatures").insert({
+    patient_id,
+    legal_document_id,
+    firmante_nombre,
+    geolocalizacion_lat: lat,
+    geolocalizacion_lng: lng,
+    profesional_id,
+    profesional_firmado_at: profesional_id ? new Date().toISOString() : null,
+  });
+
+  if (error) {
+    // 23505 = unique_violation — ya existe una firma para este par paciente/documento.
+    if (error.code === "23505") throw new Error("Este documento ya fue firmado para este paciente.");
+    throw new Error(error.message);
+  }
+  revalidatePath("/internacion");
+  return;
+}
+
 // Arma el equipo de atención de un paciente (DF-C3 §5).
 export async function assignCareTeamAction(formData: FormData) {
   const { profile } = await requireProfile();

@@ -464,6 +464,39 @@ export type Database = {
           },
         ]
       }
+      legal_documents: {
+        Row: {
+          activo: boolean
+          codigo: string
+          created_at: string
+          id: string
+          orden: number
+          requiere_firma_profesional: boolean
+          resumen: string | null
+          titulo: string
+        }
+        Insert: {
+          activo?: boolean
+          codigo: string
+          created_at?: string
+          id?: string
+          orden?: number
+          requiere_firma_profesional?: boolean
+          resumen?: string | null
+          titulo: string
+        }
+        Update: {
+          activo?: boolean
+          codigo?: string
+          created_at?: string
+          id?: string
+          orden?: number
+          requiere_firma_profesional?: boolean
+          resumen?: string | null
+          titulo?: string
+        }
+        Relationships: []
+      }
       obra_social_value_history: {
         Row: {
           cargado_por: string | null
@@ -772,6 +805,64 @@ export type Database = {
           },
           {
             foreignKeyName: "patient_care_team_profesional_id_fkey"
+            columns: ["profesional_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_document_signatures: {
+        Row: {
+          firmado_at: string
+          firmante_nombre: string
+          geolocalizacion_lat: number | null
+          geolocalizacion_lng: number | null
+          id: string
+          legal_document_id: string
+          patient_id: string
+          profesional_firmado_at: string | null
+          profesional_id: string | null
+        }
+        Insert: {
+          firmado_at?: string
+          firmante_nombre: string
+          geolocalizacion_lat?: number | null
+          geolocalizacion_lng?: number | null
+          id?: string
+          legal_document_id: string
+          patient_id: string
+          profesional_firmado_at?: string | null
+          profesional_id?: string | null
+        }
+        Update: {
+          firmado_at?: string
+          firmante_nombre?: string
+          geolocalizacion_lat?: number | null
+          geolocalizacion_lng?: number | null
+          id?: string
+          legal_document_id?: string
+          patient_id?: string
+          profesional_firmado_at?: string | null
+          profesional_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_document_signatures_legal_document_id_fkey"
+            columns: ["legal_document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_document_signatures_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_document_signatures_profesional_id_fkey"
             columns: ["profesional_id"]
             isOneToOne: false
             referencedRelation: "profiles"
