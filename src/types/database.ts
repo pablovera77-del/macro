@@ -640,6 +640,7 @@ export type Database = {
         Row: {
           autorizacion_automatica: boolean
           autorizado_por: string | null
+          canal_entrega: Database["public"]["Enums"]["order_delivery_channel"]
           creado_por: string
           created_at: string
           estado: Database["public"]["Enums"]["order_status"]
@@ -647,11 +648,13 @@ export type Database = {
           id: string
           motivo_rechazo: string | null
           patient_id: string
+          prioridad: Database["public"]["Enums"]["order_priority"]
           rechazado_por: string | null
         }
         Insert: {
           autorizacion_automatica?: boolean
           autorizado_por?: string | null
+          canal_entrega?: Database["public"]["Enums"]["order_delivery_channel"]
           creado_por: string
           created_at?: string
           estado?: Database["public"]["Enums"]["order_status"]
@@ -659,11 +662,13 @@ export type Database = {
           id?: string
           motivo_rechazo?: string | null
           patient_id: string
+          prioridad?: Database["public"]["Enums"]["order_priority"]
           rechazado_por?: string | null
         }
         Update: {
           autorizacion_automatica?: boolean
           autorizado_por?: string | null
+          canal_entrega?: Database["public"]["Enums"]["order_delivery_channel"]
           creado_por?: string
           created_at?: string
           estado?: Database["public"]["Enums"]["order_status"]
@@ -671,6 +676,7 @@ export type Database = {
           id?: string
           motivo_rechazo?: string | null
           patient_id?: string
+          prioridad?: Database["public"]["Enums"]["order_priority"]
           rechazado_por?: string | null
         }
         Relationships: [
@@ -1350,6 +1356,8 @@ export type Database = {
           firma_familiar_url: string | null
           firmado_at: string | null
           id: string
+          notificacion_canal: string | null
+          notificacion_enviada_at: string | null
           order_id: string
           transportista_id: string | null
         }
@@ -1359,6 +1367,8 @@ export type Database = {
           firma_familiar_url?: string | null
           firmado_at?: string | null
           id?: string
+          notificacion_canal?: string | null
+          notificacion_enviada_at?: string | null
           order_id: string
           transportista_id?: string | null
         }
@@ -1368,6 +1378,8 @@ export type Database = {
           firma_familiar_url?: string | null
           firmado_at?: string | null
           id?: string
+          notificacion_canal?: string | null
+          notificacion_enviada_at?: string | null
           order_id?: string
           transportista_id?: string | null
         }
@@ -1391,28 +1403,37 @@ export type Database = {
       retrieval_checklist: {
         Row: {
           asset_id: string | null
+          cantidad: number | null
           discharge_alert_id: string
+          foto_url: string | null
           id: number
           llego_deposito_at: string | null
           llego_deposito_confirmado_por: string | null
+          product_id: string | null
           retirado_at: string | null
           retirado_por: string | null
         }
         Insert: {
           asset_id?: string | null
+          cantidad?: number | null
           discharge_alert_id: string
+          foto_url?: string | null
           id?: never
           llego_deposito_at?: string | null
           llego_deposito_confirmado_por?: string | null
+          product_id?: string | null
           retirado_at?: string | null
           retirado_por?: string | null
         }
         Update: {
           asset_id?: string | null
+          cantidad?: number | null
           discharge_alert_id?: string
+          foto_url?: string | null
           id?: never
           llego_deposito_at?: string | null
           llego_deposito_confirmado_por?: string | null
+          product_id?: string | null
           retirado_at?: string | null
           retirado_por?: string | null
         }
@@ -1443,6 +1464,27 @@ export type Database = {
             columns: ["llego_deposito_confirmado_por"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retrieval_checklist_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retrieval_checklist_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_disponibilidad_deposito"
+            referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "retrieval_checklist_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "v_products_status"
             referencedColumns: ["id"]
           },
           {
@@ -2011,6 +2053,8 @@ export type Database = {
         | "2.5%"
         | "Exento"
         | "No Gravado"
+      order_delivery_channel: "domicilio" | "retiro_local"
+      order_priority: "normal" | "urgente"
       order_status:
         | "borrador"
         | "autorizado"
@@ -2207,6 +2251,8 @@ export const Constants = {
         "Exento",
         "No Gravado",
       ],
+      order_delivery_channel: ["domicilio", "retiro_local"],
+      order_priority: ["normal", "urgente"],
       order_status: [
         "borrador",
         "autorizado",

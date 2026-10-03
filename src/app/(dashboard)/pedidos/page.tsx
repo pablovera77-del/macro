@@ -10,7 +10,8 @@ deliverOrderAction,
 import PageHeader from "@/components/PageHeader";
 import SearchableSelect from "@/components/SearchableSelect";
 import ActionDisclosure from "@/components/ActionDisclosure";
-import { IconTruck, IconClipboard, IconCheck, IconSignature, IconMapPin, IconRefresh } from "@/components/icons";
+import StatusBadge from "@/components/StatusBadge";
+import { IconTruck, IconClipboard, IconCheck, IconSignature, IconMapPin, IconRefresh, IconAlert } from "@/components/icons";
 
 const ESTADO_STEPS = ["borrador", "autorizado", "despachado", "entregado"];
 const STEP_ICONS = [IconClipboard, IconCheck, IconTruck, IconSignature];
@@ -29,22 +30,33 @@ despachado: "bg-amber-100 text-amber-700",
 entregado: "bg-emerald-100 text-emerald-700",
 cancelado: "bg-red-100 text-red-700",
 };
+// DF-C5 §4.3: canal de entrega — domicilio (Transporte) o retiro en el
+// local (familiar retira en Depósito, sin tarea de Transporte).
+const CANAL_LABELS: Record<string, string> = { domicilio: "Entrega a domicilio", retiro_local: "Retiro en el local" };
 
 export default async function PedidosPage() {
 const { profile } = await requireProfile();
 const supabase = await createClient();
 
-const [{ data: orders }, { data: patients }, { data: products }, { data: assets }] = await Promise.all([
+const [{ data: ordersRaw }, { data: patients }, { data: products }, { data: assets }] = await Promise.all([
 supabase
 .from("orders")
 .select(
-"id, estado, created_at, fecha_autorizacion, autorizacion_automatica, motivo_rechazo, patient_id, patients(nombre_completo, domicilio), order_items(id, cantidad, product_id, equipment_asset_id, products(descripcion)), remitos(fecha_despacho, fecha_entrega, firma_familiar_url)"
+"id, estado, created_at, fecha_autorizacion, autorizacion_automatica, motivo_rechazo, patient_id, canal_entrega, prioridad, patients(nombre_completo, domicilio), order_items(id, cantidad, product_id, equipment_asset_id, products(descripcion)), remitos(fecha_despacho, fecha_entrega, firma_familiar_url, notificacion_enviada_at, notificacion_canal)"
 )
 .order("created_at", { ascending: false }),
 supabase.from("patients").select("id, nombre_completo").in("estado", ["activo", "admitido_pendiente_llegada"]),
 supabase.from("products").select("id, descripcion, tipo").eq("active", true),
 supabase.from("equipment_assets").select("id, numero_serie, product_id, estado").eq("estado", "disponible"),
 ]);
+
+// DF-C5 §4.3: prioridad de las tareas de Transporte — los pedidos urgentes
+// suben al principio de la lista, sin perder el orden por fecha dentro de
+// cada prioridad.
+const orders = [...(ordersRaw ?? [])].sort((a, b) => {
+if (a.prioridad !== b.prioridad) return a.prioridad === "urgente" ? -1 : 1;
+return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+});
 
 return (
 <div className="space-y-8">
@@ -57,9 +69,9 @@ description="Pedido → autorización (automática o manual) → despacho (remit
 />
 
 <section className="space-y-4">
-{(orders ?? []).map((order, idx) => {
+{orders.map((order, idx) => {
 const patient = order.patients as unknown as { nombre_completo: string; domicilio: string } | null;
-const remito = (order.remitos as unknown as { fecha_despacho: string | null; fecha_entrega: string | null; firma_familiar_url: string | null }[])?.[0];
+const remito = (order.remitos as unknown as { fecha_despacho: string | null; fecha_entrega: string | null; firma_familiar_url: string | null; notificacion_enviada_at: string | null; notificacion_canal: string | null }[])?.[0];
 const items = (order.order_items as unknown as { id: number; cantidad: number; equipment_asset_id: string | null; products: { descripcion: string } | null }[]) ?? [];
 const stepIndex = ESTADO_STEPS.indexOf(order.estado);
 
@@ -75,9 +87,17 @@ return (
 <div className="text-xs text-slate-500">{patient?.domicilio}</div>
 </div>
 </div>
+<div className="flex items-center gap-1.5 flex-wrap justify-end">
+{order.prioridad === "urgente" && order.estado !== "entregado" && order.estado !== "cancelado" && (
+<span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium bg-red-100 text-red-700">
+<IconAlert className="w-3 h-3" /> Urgente
+</span>
+)}
+<span className="text-[11px] text-slate-400 bg-slate-50 rounded-full px-2.5 py-1">{CANAL_LABELS[order.canal_entrega]}</span>
 <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${ESTADO_STYLES[order.estado]}`}>
 {ESTADO_LABELS[order.estado]}
 </span>
+</div>
 </div>
 
 {order.autorizacion_automatica && order.estado !== "borrador" && (
@@ -138,6 +158,9 @@ done ? "bg-slate-900 border-slate-900 text-white" : "bg-white border-slate-200 t
 Despachado: {new Date(remito.fecha_despacho).toLocaleString("es-AR")}
 {remito.fecha_entrega && ` · Entregado: ${new Date(remito.fecha_entrega).toLocaleString("es-AR")}`}
 {remito.firma_familiar_url && ` · Firma: ${remito.firma_familiar_url}`}
+{remito.notificacion_enviada_at && (
+<span className="text-emerald-600"> · Notificado al familiar ({remito.notificacion_canal})</span>
+)}
 </p>
 )}
 
@@ -198,7 +221,10 @@ No autorizar
 </form>
 )}
 
-{profile.role === "transporte" && order.estado === "despachado" && (
+{/* DF-C5 §4.3: "retiro_local" lo confirma Depósito (el familiar retira ahí mismo); "domicilio" sigue siendo Transporte. */}
+{order.estado === "despachado" &&
+((order.canal_entrega === "retiro_local" && profile.role === "deposito") ||
+(order.canal_entrega === "domicilio" && profile.role === "transporte")) && (
 <form action={deliverOrderAction} className="flex flex-wrap gap-2 items-center">
 <input type="hidden" name="order_id" value={order.id} />
 <input
@@ -207,7 +233,8 @@ placeholder="Nombre de quien firma"
 className="rounded-lg border border-slate-300 px-2.5 py-2 text-xs"
 />
 <button className="rounded-lg bg-emerald-600 text-white text-xs font-medium px-3.5 py-2 hover:bg-emerald-700 transition-colors flex items-center gap-1.5">
-<IconSignature className="w-3.5 h-3.5" /> Confirmar entrega y firma
+<IconSignature className="w-3.5 h-3.5" />
+{order.canal_entrega === "retiro_local" ? "Confirmar retiro y firma" : "Confirmar entrega y firma"}
 </button>
 </form>
 )}
@@ -215,7 +242,7 @@ className="rounded-lg border border-slate-300 px-2.5 py-2 text-xs"
 </div>
 );
 })}
-{(orders ?? []).length === 0 && (
+{orders.length === 0 && (
 <p className="text-sm text-slate-400">No hay pedidos todavía.</p>
 )}
 </section>
@@ -246,6 +273,14 @@ options={(products ?? []).map((p) => ({ value: p.id, label: p.descripcion, group
 {(assets ?? []).map((a) => (
 <option key={a.id} value={a.id}>{a.numero_serie}</option>
 ))}
+</select>
+<select name="canal_entrega" defaultValue="domicilio" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm">
+<option value="domicilio">Entrega a domicilio</option>
+<option value="retiro_local">Retiro en el local</option>
+</select>
+<select name="prioridad" defaultValue="normal" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm">
+<option value="normal">Prioridad normal</option>
+<option value="urgente">Urgente</option>
 </select>
 <button className="rounded-xl bg-slate-900 text-white text-sm font-medium px-4 py-2.5 hover:bg-slate-800 transition-colors sm:col-span-2">
 Crear pedido

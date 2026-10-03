@@ -4,9 +4,10 @@ import {
 createDischargeAlertAction,
 markRetiradoAction,
 confirmLlegadaAction,
+reportDiscardableReturnAction,
 } from "./actions";
 import PageHeader from "@/components/PageHeader";
-import { IconRefresh, IconAlert, IconMapPin, IconTruck, IconCheck } from "@/components/icons";
+import { IconRefresh, IconAlert, IconMapPin, IconTruck, IconCheck, IconApple } from "@/components/icons";
 
 const MOTIVO_LABELS: Record<string, string> = {
 alta: "Alta médica",
@@ -23,16 +24,26 @@ const [
 { data: retiradosSinConfirmar },
 { data: checklistPendiente },
 { data: patientsActivos },
+{ data: egresosAbiertos },
+{ data: productosRetornables },
 ] = await Promise.all([
 supabase.from("v_equipos_en_domicilio").select("*"),
 supabase.from("v_equipos_retirados_sin_confirmar").select("*"),
 supabase
 .from("retrieval_checklist")
 .select(
-"id, retirado_at, llego_deposito_at, discharge_alert_id, equipment_assets(numero_serie, products(descripcion)), discharge_alerts(patient_id, motivo, patients(nombre_completo))"
+"id, retirado_at, llego_deposito_at, cantidad, foto_url, discharge_alert_id, equipment_assets(numero_serie, products(descripcion)), products(descripcion), discharge_alerts(patient_id, motivo, patients(nombre_completo))"
 )
 .is("llego_deposito_at", null),
 supabase.from("patients").select("id, nombre_completo").eq("estado", "activo"),
+// DF-C5 §4.3: egresos todavía no cerrados — ahí es donde Transporte puede
+// reportar la devolución de descartables/alimentos no utilizados.
+supabase
+.from("discharge_alerts")
+.select("id, motivo, patients(nombre_completo)")
+.neq("estado", "cerrado")
+.order("created_at", { ascending: false }),
+supabase.from("products").select("id, descripcion").in("tipo", ["descartable", "alimento"]).eq("active", true).order("descripcion"),
 ]);
 
 const pendienteRetiro = (checklistPendiente ?? []).filter((c) => !c.retirado_at);
@@ -116,15 +127,17 @@ El plazo para disparar esta alerta automáticamente queda pendiente de definir c
 <div className="space-y-2">
 {pendienteRetiro.map((c) => {
 const asset = c.equipment_assets as unknown as { numero_serie: string; products: { descripcion: string } | null } | null;
+const producto = c.products as unknown as { descripcion: string } | null;
 const alert = c.discharge_alerts as unknown as { motivo: string; patients: { nombre_completo: string } | null } | null;
 return (
-<div key={c.id} className="flex items-center justify-between gap-3 text-sm border border-slate-100 rounded-xl px-3.5 py-2.5 row-hover hover:bg-slate-50">
+<div key={c.id} className="flex items-center justify-between gap-3 text-sm border border-slate-100 rounded-xl px-3.5 py-2.5 row-hover hover:bg-slate-50 flex-wrap">
 <span>
-{asset?.numero_serie} · {asset?.products?.descripcion} — {alert?.patients?.nombre_completo}{" "}
+{asset ? `${asset.numero_serie} · ${asset.products?.descripcion}` : `${producto?.descripcion} x${c.cantidad}`} — {alert?.patients?.nombre_completo}{" "}
 <span className="text-xs text-slate-400">({MOTIVO_LABELS[alert?.motivo ?? ""] ?? alert?.motivo})</span>
 </span>
-<form action={markRetiradoAction}>
+<form action={markRetiradoAction} className="flex items-center gap-1.5">
 <input type="hidden" name="checklist_id" value={c.id} />
+<input name="foto_url" placeholder="Foto (URL) — obligatoria" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs w-48" />
 <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">
 Marcar retirado
 </button>
@@ -136,6 +149,34 @@ Marcar retirado
 </section>
 )}
 
+{profile.role === "transporte" && egresosAbiertos && egresosAbiertos.length > 0 && (
+<section className="bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
+<h2 className="text-sm font-medium text-slate-900 mb-1 flex items-center gap-2">
+<IconApple className="w-4 h-4 text-slate-400" /> Reportar devolución de descartable/alimento
+</h2>
+<p className="text-xs text-slate-400 mb-3">
+DF-C5 §4.3: lo que sobró sin usar en el egreso de un paciente, con foto obligatoria — se acredita al stock cuando Depósito confirma la llegada.
+</p>
+<form action={reportDiscardableReturnAction} className="flex flex-wrap gap-2">
+<select name="discharge_alert_id" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs flex-1 min-w-[160px]">
+<option value="">Egreso del paciente...</option>
+{egresosAbiertos.map((e) => (
+<option key={e.id} value={e.id}>{(e.patients as unknown as { nombre_completo: string } | null)?.nombre_completo}</option>
+))}
+</select>
+<select name="product_id" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs flex-1 min-w-[160px]">
+<option value="">Producto...</option>
+{(productosRetornables ?? []).map((p) => (
+<option key={p.id} value={p.id}>{p.descripcion}</option>
+))}
+</select>
+<input name="cantidad" type="number" min="1" placeholder="Cantidad" required className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
+<input name="foto_url" placeholder="Foto (URL) — obligatoria" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs w-48" />
+<button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Reportar</button>
+</form>
+</section>
+)}
+
 {profile.role === "deposito" && pendienteConfirmacion.length > 0 && (
 <section className="bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
 <h2 className="text-sm font-medium text-slate-900 mb-3 flex items-center gap-2">
@@ -144,9 +185,10 @@ Marcar retirado
 <div className="space-y-2">
 {pendienteConfirmacion.map((c) => {
 const asset = c.equipment_assets as unknown as { numero_serie: string; products: { descripcion: string } | null } | null;
+const producto = c.products as unknown as { descripcion: string } | null;
 return (
 <div key={c.id} className="flex items-center justify-between gap-3 text-sm border border-slate-100 rounded-xl px-3.5 py-2.5 row-hover hover:bg-slate-50">
-<span>{asset?.numero_serie} · {asset?.products?.descripcion}</span>
+<span>{asset ? `${asset.numero_serie} · ${asset.products?.descripcion}` : `${producto?.descripcion} x${c.cantidad} (devolución)`}</span>
 <form action={confirmLlegadaAction}>
 <input type="hidden" name="checklist_id" value={c.id} />
 <button className="rounded-lg bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 hover:bg-emerald-700 transition-colors">
