@@ -32,7 +32,7 @@ supabase.from("v_disponibilidad_deposito").select("*"),
 supabase.from("v_equipos_en_domicilio").select("*"),
 supabase.from("v_equipos_retirados_sin_confirmar").select("*"),
 supabase.from("v_costos_por_paciente").select("*"),
-supabase.from("patients").select("id, estado"),
+supabase.from("patients").select("id, estado, fecha_ingreso, fecha_egreso"),
 supabase.from("visits").select("id, estado, fecha_programada"),
 supabase.from("evolutions").select("id, created_at"),
 supabase.from("billing_periods").select("id, estado, total_facturado"),
@@ -73,6 +73,29 @@ const totalEquiposDisponibles = (disponibilidad ?? [])
 const costoTotalEstimado = (costosPorPaciente ?? []).reduce((acc, c) => acc + (c.costo_estimado ?? 0), 0);
 
 const alertCount = (retiradosSinConfirmar ?? []).length;
+
+// DF-C3 §13: dashboard gerencial de pacientes — pedido reiterado de Andrés.
+// Altas/bajas por día y total mensual, más histórico anual mensualizado de
+// altas para detectar picos de más o menos pacientes.
+const hoyStr = new Date().toISOString().slice(0, 10);
+const mesActualStr = hoyStr.slice(0, 7);
+const altasHoy = (pacientes ?? []).filter((p) => p.fecha_ingreso === hoyStr).length;
+const bajasHoy = (pacientes ?? []).filter((p) => p.fecha_egreso === hoyStr).length;
+const altasMes = (pacientes ?? []).filter((p) => p.fecha_ingreso?.slice(0, 7) === mesActualStr).length;
+const bajasMes = (pacientes ?? []).filter((p) => p.fecha_egreso?.slice(0, 7) === mesActualStr).length;
+
+const historicoAltasMensual = Array.from({ length: 12 }, (_, i) => {
+const d = new Date();
+d.setDate(1);
+d.setMonth(d.getMonth() - (11 - i));
+const key = d.toISOString().slice(0, 7);
+return {
+mes: key,
+label: d.toLocaleDateString("es-AR", { month: "short" }),
+altas: (pacientes ?? []).filter((p) => p.fecha_ingreso?.slice(0, 7) === key).length,
+};
+});
+const maxAltasMensual = Math.max(1, ...historicoAltasMensual.map((m) => m.altas));
 
 const cotizacionesAbiertas = (quoteRequestsAbiertas ?? []).length;
 const ordenesCompraAbiertas = (purchaseOrdersAbiertas ?? []).length;
@@ -247,6 +270,52 @@ return s.href ? (
 <p className="text-xs text-slate-400 mt-3">
 Consolida C2 (visitas/evoluciones), C3 (pacientes/autorizaciones) y C4 (facturación) en una sola vista para Dirección — DF-C1 §1: &ldquo;vista unificada del negocio&rdquo;.
 </p>
+</section>
+
+<section className="animate-fade-slide-up">
+<h2 className="text-sm font-medium text-slate-900 mb-3 flex items-center gap-2">
+<span className="w-1.5 h-1.5 rounded-full bg-slate-900" /> Dashboard gerencial de pacientes — DF-C3 §13
+</h2>
+<div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+{[
+{ label: "Altas hoy", value: altasHoy, tone: "from-emerald-500 to-emerald-600" },
+{ label: "Bajas hoy", value: bajasHoy, tone: "from-slate-500 to-slate-600" },
+{ label: "Altas este mes", value: altasMes, tone: "from-teal-500 to-teal-600" },
+{ label: "Bajas este mes", value: bajasMes, tone: "from-rose-400 to-rose-500" },
+].map((s, i) => (
+<Link
+key={s.label}
+href="/internacion"
+className={`animate-count-up stagger-${i + 1} card-hover rounded-2xl border p-5 bg-white border-slate-200 relative overflow-hidden block`}
+>
+<div className="text-2xl font-semibold tabular-nums text-slate-900">{s.value}</div>
+<div className="text-xs mt-1 leading-snug text-slate-500">{s.label}</div>
+<span className={`absolute bottom-0 left-0 h-0.5 w-full bg-gradient-to-r ${s.tone}`} />
+</Link>
+))}
+</div>
+
+<div className="bg-white rounded-2xl border border-slate-200 p-5 mt-4 animate-fade-slide-up card-hover">
+<div className="flex items-center gap-2 mb-4">
+<IconUsers className="w-4 h-4 text-slate-400" />
+<h3 className="text-sm font-medium text-slate-900">Histórico anual de altas, mensualizado</h3>
+</div>
+<div className="flex items-end gap-2 h-32">
+{historicoAltasMensual.map((m) => (
+<div key={m.mes} className="flex-1 flex flex-col items-center gap-1.5">
+<div className="text-[11px] text-slate-500 tabular-nums">{m.altas}</div>
+<div
+className="w-full rounded-t-md bg-gradient-to-t from-[var(--brand-teal)] to-[var(--brand-green)] min-h-[3px]"
+style={{ height: `${Math.max(3, (m.altas / maxAltasMensual) * 100)}px` }}
+/>
+<div className="text-[11px] text-slate-400 capitalize">{m.label}</div>
+</div>
+))}
+</div>
+<p className="text-xs text-slate-400 mt-3">
+Cantidad de pacientes admitidos por mes, últimos 12 meses — para detectar picos de más o menos pacientes (pedido reiterado de Andrés). Pacientes activos en tiempo real: ver la tarjeta &ldquo;Pacientes activos&rdquo; más arriba.
+</p>
+</div>
 </section>
 
 <section className="animate-fade-slide-up">
