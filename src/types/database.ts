@@ -1929,9 +1929,11 @@ export type Database = {
         Row: {
           checklist_id: number | null
           descripcion: string | null
+          egreso_notificado_at: string | null
           numero_serie: string | null
           retirado_at: string | null
           retirado_por: string | null
+          vencido_48h: boolean | null
         }
         Relationships: [
           {

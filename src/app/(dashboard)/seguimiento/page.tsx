@@ -69,16 +69,21 @@ description="Doble check retirado / llegó a depósito — cada movimiento queda
 <h2 className="text-sm font-medium text-red-800">Ubicación no confirmada — retirados sin llegar a depósito</h2>
 </div>
 <ul className="text-sm text-red-700 space-y-1.5">
-{(retiradosSinConfirmar ?? []).map((r) => (
+{[...(retiradosSinConfirmar ?? [])]
+.sort((a, b) => (b.vencido_48h ? 1 : 0) - (a.vencido_48h ? 1 : 0))
+.map((r) => (
 <li key={r.checklist_id} className="flex items-center gap-2">
-<span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+<span className={`w-1.5 h-1.5 rounded-full ${r.vencido_48h ? "bg-red-600" : "bg-red-400"}`} />
 <span className="font-mono text-xs">{r.numero_serie}</span> · {r.descripcion} — retirado el{" "}
 {r.retirado_at ? new Date(r.retirado_at).toLocaleString("es-AR") : "—"}
+{r.vencido_48h && (
+<span className="ml-1 rounded-full bg-red-600 text-white text-[10px] font-medium px-2 py-0.5">+48hs</span>
+)}
 </li>
 ))}
 </ul>
 <p className="text-xs text-red-500 mt-3">
-El plazo para disparar esta alerta automáticamente queda pendiente de definir con Administración (DF-C5 §8).
+Pasadas 48hs desde la notificación de cierre de la internación sin confirmar la llegada a depósito, el equipo queda marcado “+48hs” — plazo confirmado por Administración (DF-C5 §8).
 </p>
 </section>
 )}
