@@ -3,7 +3,7 @@ import { requireProfile, SPECIALTY_LABELS } from "@/lib/auth";
 import {
   createAdmissionAction,
   confirmArrivalAction,
-  informEgresoAction,
+  reportarEgresoAction,
   addTreatmentAuthorizationAction,
   assignCareTeamAction,
   signLegalDocumentAction,
@@ -54,6 +54,9 @@ export default async function InternacionPage() {
   const supabase = await createClient();
 
   const canManage = profile.role === "coordinador_internacion" || profile.role === "medico_coordinador";
+  // DF-C3 §11: cualquier profesional asistencial puede informar un egreso,
+  // aunque no tenga el resto de los permisos de gestión de Coordinación.
+  const canReportEgreso = canManage || profile.role === "profesional_asistencial";
 
   const [
     { data: patients },
@@ -68,12 +71,12 @@ export default async function InternacionPage() {
     supabase
       .from("patients")
       .select(
-        "id, nombre_completo, dni, domicilio, obra_social, estado, fecha_ingreso, fecha_egreso, motivo_egreso, diagnostico_principal, llegada_confirmada_at, obras_sociales(nombre)"
+        "id, nombre_completo, dni, domicilio, obra_social, estado, fecha_ingreso, fecha_egreso, motivo_egreso, diagnostico_principal, llegada_confirmada_at, egreso_informado_at, egreso_motivo_informado, profiles:egreso_informado_por(full_name), obras_sociales(nombre)"
       )
       .order("fecha_ingreso", { ascending: false }),
     supabase.from("obras_sociales").select("id, nombre").eq("activa", true).order("nombre"),
     supabase.from("v_treatment_authorization_status").select("*").order("periodo_hasta"),
-    supabase.from("patient_care_team").select("id, patient_id, especialidad, profiles(full_name)"),
+    supabase.from("patient_care_team").select("id, patient_id, profesional_id, especialidad, profiles(full_name)"),
     supabase.from("profiles").select("id, full_name, role").in("role", ["profesional_asistencial", "medico_coordinador"]).eq("active", true),
     canManage
       ? supabase
@@ -93,6 +96,11 @@ export default async function InternacionPage() {
   ]);
 
   const vencenPronto = (authorizations ?? []).filter((a) => a.estado_semaforo !== "vigente");
+  // DF-C3 §11: un profesional asistencial solo informa el egreso de sus
+  // propios pacientes (los de su equipo tratante), no de cualquiera.
+  const misPacientesIds = new Set(
+    (careTeam ?? []).filter((t) => t.profesional_id === profile.id).map((t) => t.patient_id)
+  );
   const signatureKey = (patientId: string, documentId: string) => `${patientId}:${documentId}`;
   const signaturesByKey = new Map((signatures ?? []).map((s) => [signatureKey(s.patient_id, s.legal_document_id), s]));
   const profesionalesLivianos = (profesionales ?? []).map((p) => ({ id: p.id, full_name: p.full_name }));
@@ -257,6 +265,29 @@ export default async function InternacionPage() {
                 </div>
               )}
 
+              {p.estado !== "dado_de_baja" && p.egreso_informado_at && (
+                <div className="text-xs text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 mt-3 flex items-center gap-1.5">
+                  <IconAlert className="w-3.5 h-3.5" /> Egreso informado
+                  {p.motivo_egreso ? "" : ` (${MOTIVO_LABELS[p.egreso_motivo_informado ?? ""] ?? p.egreso_motivo_informado})`}
+                  {" "}por {(p.profiles as unknown as { full_name: string } | null)?.full_name ?? "—"} — pendiente de que Administración confirme la baja definitiva.
+                </div>
+              )}
+
+              {p.estado === "activo" && !p.egreso_informado_at && canReportEgreso && (canManage || misPacientesIds.has(p.id)) && (
+                <form action={reportarEgresoAction} className="flex flex-wrap gap-2 mt-3">
+                  <input type="hidden" name="patient_id" value={p.id} />
+                  <select name="motivo" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
+                    <option value="">Informar egreso — motivo...</option>
+                    <option value="alta">Alta médica</option>
+                    <option value="fallecimiento">Fallecimiento</option>
+                    <option value="fin_internacion">Fin de internación</option>
+                  </select>
+                  <button className="rounded-lg bg-red-50 text-red-700 border border-red-200 text-xs font-medium px-3 py-1.5 hover:bg-red-100 transition-colors">
+                    Informar egreso
+                  </button>
+                </form>
+              )}
+
               {canManage && p.estado !== "dado_de_baja" && (
                 <ActionDisclosure label="Gestionar" tone="subtle">
                   <div className="space-y-3">
@@ -287,17 +318,6 @@ export default async function InternacionPage() {
                         ))}
                       </select>
                       <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Asignar al equipo</button>
-                    </form>
-
-                    <form action={informEgresoAction} className="flex flex-wrap gap-2">
-                      <input type="hidden" name="patient_id" value={p.id} />
-                      <select name="motivo" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
-                        <option value="">Motivo de egreso...</option>
-                        <option value="alta">Alta médica</option>
-                        <option value="fallecimiento">Fallecimiento</option>
-                        <option value="fin_internacion">Fin de internación</option>
-                      </select>
-                      <button className="rounded-lg bg-red-600 text-white text-xs font-medium px-3 py-1.5 hover:bg-red-700 transition-colors">Informar egreso</button>
                     </form>
                   </div>
                 </ActionDisclosure>

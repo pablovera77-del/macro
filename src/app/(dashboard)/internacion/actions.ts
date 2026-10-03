@@ -108,48 +108,37 @@ export async function confirmArrivalAction(formData: FormData) {
   return;
 }
 
-// DF-C3 §11: informar egreso. Integra con C5 — dispara la misma alerta de
-// egreso (discharge_alerts) que ya arma el checklist de retiro de equipos,
-// y además cierra el paciente en C3 (motivo_egreso, fecha_egreso, estado).
-export async function informEgresoAction(formData: FormData) {
+// DF-C3 §11, flujo de egreso revisado (comentario cliente): "Cualquier
+// profesional asistencial que esté con el paciente tiene un botón para
+// informar... pero no cierra el caso por sí solo". Este es el PASO 1 — solo
+// deja constancia de que se informó el egreso y por qué. El cierre
+// definitivo (estado, discharge_alerts) lo hace Administración por separado
+// con confirmarEgresoAction (pacientes/actions.ts).
+const EGRESO_INFORMANTE_ROLES: Enums<"app_role">[] = [...COORDINACION_ROLES, "profesional_asistencial"];
+
+export async function reportarEgresoAction(formData: FormData) {
   const { profile } = await requireProfile();
-  if (!COORDINACION_ROLES.includes(profile.role)) throw new Error("Solo Coordinación o Médico Coordinador informan el egreso.");
+  if (!EGRESO_INFORMANTE_ROLES.includes(profile.role)) {
+    throw new Error("Solo un profesional asistencial, Coordinación o Médico Coordinador pueden informar un egreso.");
+  }
 
   const supabase = await createClient();
   const patient_id = String(formData.get("patient_id") || "");
   const motivo = String(formData.get("motivo") || "") as Enums<"discharge_reason">;
   if (!patient_id || !motivo) throw new Error("Faltan paciente o motivo.");
 
-  const today = new Date().toISOString();
-
-  const { error: patientError } = await supabase
+  const { error } = await supabase
     .from("patients")
-    .update({ estado: "dado_de_baja", motivo_egreso: motivo, fecha_egreso: today.slice(0, 10) })
+    .update({
+      egreso_informado_at: new Date().toISOString(),
+      egreso_informado_por: profile.id,
+      egreso_motivo_informado: motivo,
+    })
     .eq("id", patient_id);
-  if (patientError) throw new Error(patientError.message);
-
-  const { data: alert, error } = await supabase
-    .from("discharge_alerts")
-    .insert({ patient_id, motivo, generado_por: profile.id })
-    .select("id")
-    .single();
   if (error) throw new Error(error.message);
 
-  const { data: assignedAssets } = await supabase
-    .from("v_equipos_en_domicilio")
-    .select("asset_id")
-    .eq("patient_id", patient_id);
-
-  if (assignedAssets && assignedAssets.length > 0) {
-    await supabase.from("retrieval_checklist").insert(
-      assignedAssets
-        .filter((a) => a.asset_id)
-        .map((a) => ({ discharge_alert_id: alert.id, asset_id: a.asset_id as string }))
-    );
-  }
-
   revalidatePath("/internacion");
-  revalidatePath("/seguimiento");
+  revalidatePath("/pacientes");
   return;
 }
 

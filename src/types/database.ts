@@ -547,6 +547,7 @@ export type Database = {
           dias_para_facturar: number
           id: string
           nombre: string
+          responsable_id: string | null
           valor_modulo: number | null
         }
         Insert: {
@@ -556,6 +557,7 @@ export type Database = {
           dias_para_facturar?: number
           id?: string
           nombre: string
+          responsable_id?: string | null
           valor_modulo?: number | null
         }
         Update: {
@@ -565,9 +567,18 @@ export type Database = {
           dias_para_facturar?: number
           id?: string
           nombre?: string
+          responsable_id?: string | null
           valor_modulo?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "obras_sociales_responsable_id_fkey"
+            columns: ["responsable_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_items: {
         Row: {
@@ -885,6 +896,11 @@ export type Database = {
           diagnostico_principal: string | null
           dni: string
           domicilio: string
+          egreso_informado_at: string | null
+          egreso_informado_por: string | null
+          egreso_motivo_informado:
+            | Database["public"]["Enums"]["discharge_reason"]
+            | null
           estado: Database["public"]["Enums"]["patient_status"]
           fecha_egreso: string | null
           fecha_ingreso: string | null
@@ -908,6 +924,11 @@ export type Database = {
           diagnostico_principal?: string | null
           dni: string
           domicilio: string
+          egreso_informado_at?: string | null
+          egreso_informado_por?: string | null
+          egreso_motivo_informado?:
+            | Database["public"]["Enums"]["discharge_reason"]
+            | null
           estado?: Database["public"]["Enums"]["patient_status"]
           fecha_egreso?: string | null
           fecha_ingreso?: string | null
@@ -931,6 +952,11 @@ export type Database = {
           diagnostico_principal?: string | null
           dni?: string
           domicilio?: string
+          egreso_informado_at?: string | null
+          egreso_informado_por?: string | null
+          egreso_motivo_informado?:
+            | Database["public"]["Enums"]["discharge_reason"]
+            | null
           estado?: Database["public"]["Enums"]["patient_status"]
           fecha_egreso?: string | null
           fecha_ingreso?: string | null
@@ -950,6 +976,13 @@ export type Database = {
           {
             foreignKeyName: "patients_coordinador_id_fkey"
             columns: ["coordinador_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patients_egreso_informado_por_fkey"
+            columns: ["egreso_informado_por"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

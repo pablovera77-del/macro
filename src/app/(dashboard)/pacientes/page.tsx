@@ -1,9 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
-import { addAuthorizationAction } from "./actions";
+import { addAuthorizationAction, confirmarEgresoAction } from "./actions";
 import PageHeader from "@/components/PageHeader";
 import ActionDisclosure from "@/components/ActionDisclosure";
-import { IconUsers, IconUser, IconMapPin, IconClipboard } from "@/components/icons";
+import { IconUsers, IconUser, IconMapPin, IconClipboard, IconAlert } from "@/components/icons";
+
+const MOTIVO_EGRESO_LABELS: Record<string, string> = {
+alta: "Alta médica",
+fallecimiento: "Fallecimiento",
+fin_internacion: "Fin de internación",
+};
 
 const ESTADO_LABELS: Record<string, string> = {
 admitido_pendiente_llegada: "Admitido, pendiente de llegada",
@@ -27,10 +33,18 @@ const { profile } = await requireProfile();
 const supabase = await createClient();
 
 const [{ data: patients }, { data: products }, { data: authorizations }] = await Promise.all([
-supabase.from("patients").select("id, nombre_completo, dni, domicilio, obra_social, estado, frecuencia_reposicion").order("nombre_completo"),
+supabase
+.from("patients")
+.select(
+"id, nombre_completo, dni, domicilio, obra_social, estado, frecuencia_reposicion, egreso_informado_at, egreso_motivo_informado, profiles:egreso_informado_por(full_name)"
+)
+.order("nombre_completo"),
 supabase.from("products").select("id, descripcion").eq("active", true),
 supabase.from("patient_authorizations").select("id, patient_id, cantidad_autorizada, vigente_desde, vigente_hasta, products(descripcion)"),
 ]);
+
+const canConfirmEgreso = profile.role === "administracion";
+const egresosPendientes = (patients ?? []).filter((p) => p.egreso_informado_at && p.estado !== "dado_de_baja");
 
 return (
 <div className="space-y-8">
@@ -50,6 +64,39 @@ description="Lo que cada paciente tiene autorizado (equipo y descartables) dispa
 ¿Falta un paciente en la lista? El alta se hace desde <span className="font-medium">Internación</span> (Coordinación de Internación o Médico Coordinador), con el legajo completo. Acá solo aparecen los pacientes ya admitidos, para cargarles autorizaciones de stock.
 </p>
 </section>
+
+{canConfirmEgreso && egresosPendientes.length > 0 && (
+<section className="bg-red-50 border border-red-200 rounded-2xl p-5 animate-fade-slide-up">
+<div className="flex items-center gap-2 mb-3">
+<span className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600">
+<IconAlert className="w-4 h-4" />
+</span>
+<h2 className="text-sm font-medium text-red-800">Egresos informados — pendientes de confirmar (DF-C3 §11)</h2>
+</div>
+<div className="space-y-2">
+{egresosPendientes.map((p) => (
+<div key={p.id} className="flex items-center justify-between gap-3 text-sm border border-red-100 bg-white rounded-xl px-3.5 py-2.5 flex-wrap">
+<span>
+{p.nombre_completo}{" "}
+<span className="text-xs text-slate-400">
+— {MOTIVO_EGRESO_LABELS[p.egreso_motivo_informado ?? ""] ?? p.egreso_motivo_informado}, informado por{" "}
+{(p.profiles as unknown as { full_name: string } | null)?.full_name ?? "—"}
+</span>
+</span>
+<form action={confirmarEgresoAction}>
+<input type="hidden" name="patient_id" value={p.id} />
+<button className="rounded-lg bg-red-600 text-white text-xs font-medium px-3 py-1.5 hover:bg-red-700 transition-colors">
+Confirmar baja definitiva
+</button>
+</form>
+</div>
+))}
+</div>
+<p className="text-xs text-red-500 mt-3">
+El profesional o Coordinación solo informa el egreso — es Administración quien confirma la baja definitiva, y eso dispara la alerta de retiro de equipos a Depósito (DF-C5).
+</p>
+</section>
+)}
 
 <section className="space-y-3">
 {(patients ?? []).map((p, i) => {

@@ -77,6 +77,7 @@ coordinador_internacion: [
 profesional_asistencial: [
 { href: "/agenda", label: "Mi agenda", icon: "agenda", description: "Visitas asignadas" },
 { href: "/evoluciones", label: "Historia clínica", icon: "evoluciones", description: "Evoluciones por disciplina" },
+{ href: "/internacion", label: "Mis pacientes", icon: "internacion", description: "Informar egreso" },
 ],
 medico_coordinador: [
 { href: "/internacion", label: "Pacientes", icon: "internacion", description: "Admisión, legajo y egresos" },
