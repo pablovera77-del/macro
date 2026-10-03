@@ -47,6 +47,23 @@ export async function advanceBillingPeriodAction(formData: FormData) {
   const nuevo_estado = String(formData.get("nuevo_estado") || "") as Enums<"billing_period_status">;
   if (!billing_period_id || !nuevo_estado) throw new Error("Faltan datos.");
 
+  // DF-C4 §4, control de pre-validación #1 (el más crítico, según el cliente):
+  // no se puede cerrar un período con pacientes en rojo — cantidad de
+  // evoluciones cargadas por debajo de lo autorizado dentro del mes. Ver
+  // v_prevalidacion_facturacion/v_prevalidacion_resumen (DF-C4 §4).
+  if (nuevo_estado === "cerrado") {
+    const { data: resumen } = await supabase
+      .from("v_prevalidacion_resumen")
+      .select("rojos, bloqueado")
+      .eq("billing_period_id", billing_period_id)
+      .maybeSingle();
+    if (resumen?.bloqueado) {
+      throw new Error(
+        `No se puede cerrar el período: hay ${resumen.rojos} paciente(s) con menos evoluciones cargadas que las autorizadas para este mes. Revisá el detalle en "Pre-validación" antes de cerrar.`
+      );
+    }
+  }
+
   const patch: TablesUpdate<"billing_periods"> = { estado: nuevo_estado };
   if (nuevo_estado === "cerrado") {
     patch.fecha_cierre = new Date().toISOString();

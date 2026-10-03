@@ -15,13 +15,15 @@ export default function ActionDisclosure({
   children,
 }: {
   label: string;
-  tone?: "default" | "subtle";
+  tone?: "default" | "subtle" | "alert";
   className?: string;
   children: React.ReactNode;
 }) {
   const toneClass =
     tone === "subtle"
       ? "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200"
+      : tone === "alert"
+      ? "bg-red-50 text-red-700 hover:bg-red-100 border border-red-200"
       : "bg-slate-900 text-white hover:bg-slate-800";
   return (
     <details className={`group mt-3 ${className}`}>

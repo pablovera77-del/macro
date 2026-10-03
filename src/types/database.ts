@@ -95,6 +95,20 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "billing_debits_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["billing_period_id"]
+          },
+          {
+            foreignKeyName: "billing_debits_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_resumen"
+            referencedColumns: ["billing_period_id"]
+          },
+          {
             foreignKeyName: "billing_debits_gestionado_por_fkey"
             columns: ["gestionado_por"]
             isOneToOne: false
@@ -107,6 +121,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_debits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
           },
         ]
       }
@@ -197,6 +218,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discharge_alerts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
           },
         ]
       }
@@ -289,6 +317,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_asset_movements_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
           },
         ]
       }
@@ -433,6 +468,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evolutions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
           },
           {
             foreignKeyName: "evolutions_profesional_id_fkey"
@@ -713,6 +755,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+          {
             foreignKeyName: "orders_rechazado_por_fkey"
             columns: ["rechazado_por"]
             isOneToOne: false
@@ -768,6 +817,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "patient_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+          {
             foreignKeyName: "patient_authorizations_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
@@ -819,6 +875,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_care_team_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
           },
           {
             foreignKeyName: "patient_care_team_profesional_id_fkey"
@@ -877,6 +940,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_document_signatures_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
           },
           {
             foreignKeyName: "patient_document_signatures_profesional_id_fkey"
@@ -1844,6 +1914,13 @@ export type Database = {
             referencedRelation: "patients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "treatment_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
         ]
       }
       visits: {
@@ -1899,6 +1976,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "visits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+          {
             foreignKeyName: "visits_profesional_id_fkey"
             columns: ["profesional_id"]
             isOneToOne: false
@@ -1923,6 +2007,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
           },
         ]
       }
@@ -1956,6 +2047,13 @@ export type Database = {
             referencedRelation: "patients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "equipment_asset_movements_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
         ]
       }
       v_equipos_retirados_sin_confirmar: {
@@ -1977,6 +2075,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      v_prevalidacion_facturacion: {
+        Row: {
+          billing_period_id: string | null
+          cantidad_autorizada: number | null
+          especialidad: Database["public"]["Enums"]["specialty"] | null
+          estado_prevalidacion: string | null
+          evoluciones_cargadas_mes: number | null
+          evoluciones_esperadas_mes: number | null
+          nombre_completo: string | null
+          obra_social_id: string | null
+          overlap_desde: string | null
+          overlap_hasta: string | null
+          patient_id: string | null
+          periodo: string | null
+          periodo_desde: string | null
+          periodo_hasta: string | null
+          practica: string | null
+          treatment_authorization_id: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_periods_obra_social_id_fkey"
+            columns: ["obra_social_id"]
+            isOneToOne: false
+            referencedRelation: "obras_sociales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_prevalidacion_resumen: {
+        Row: {
+          amarillos: number | null
+          billing_period_id: string | null
+          bloqueado: boolean | null
+          rojos: number | null
+          verdes: number | null
+        }
+        Relationships: []
       }
       v_products_status: {
         Row: {
@@ -2120,6 +2257,13 @@ export type Database = {
             referencedRelation: "patients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "treatment_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
         ]
       }
       v_visit_evolution_discrepancies: {
@@ -2139,6 +2283,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
           },
           {
             foreignKeyName: "visits_profesional_id_fkey"

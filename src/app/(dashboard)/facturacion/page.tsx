@@ -5,6 +5,15 @@ import PageHeader from "@/components/PageHeader";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconCash, IconAlert } from "@/components/icons";
 import { SEMANTIC_TONE_BADGE_STYLES, SemanticTone } from "@/lib/semantic-status";
+import { SPECIALTY_LABELS } from "@/lib/auth";
+
+// DF-C4 §4, control de pre-validación #1: evoluciones cargadas vs. autorizadas
+// por paciente dentro del mes — mismo tono que el resto de los semáforos.
+const PREVALIDACION_TONE: Record<string, SemanticTone> = { verde: "verde", amarillo: "amarillo", rojo: "rojo" };
+const PREVALIDACION_STYLES: Record<string, string> = Object.fromEntries(
+  Object.entries(PREVALIDACION_TONE).map(([k, tone]) => [k, SEMANTIC_TONE_BADGE_STYLES[tone]])
+);
+const PREVALIDACION_LABELS: Record<string, string> = { verde: "Al día", amarillo: "Mes en curso", rojo: "Faltan evoluciones" };
 
 // Semáforo de cierre mensual (DF-C4 §9) — "abierto" y "facturado" son etapas de flujo,
 // no estados de alerta, así que mantienen su propio color de workflow; "en_revision" y
@@ -46,11 +55,17 @@ export default async function FacturacionPage() {
   const canManage = profile.role === "administracion";
   const supabase = await createClient();
 
-  const [{ data: periods }, { data: debits }, { data: obrasSociales }, { data: patients }] = await Promise.all([
+  const [{ data: periods }, { data: debits }, { data: obrasSociales }, { data: patients }, { data: prevalidacion }] = await Promise.all([
     supabase.from("billing_periods").select("id, obra_social_id, periodo, estado, total_facturado, fecha_cierre, obras_sociales(nombre)").order("periodo", { ascending: false }),
     supabase.from("billing_debits").select("id, billing_period_id, patient_id, motivo, monto, estado, patients(nombre_completo)").order("created_at", { ascending: false }),
     supabase.from("obras_sociales").select("id, nombre").eq("activa", true).order("nombre"),
     supabase.from("patients").select("id, nombre_completo").order("nombre_completo"),
+    // DF-C4 §4, control #1: evoluciones cargadas vs. autorizadas por paciente,
+    // dentro del mes de cada período — el control más crítico según el cliente.
+    supabase
+      .from("v_prevalidacion_facturacion")
+      .select("billing_period_id, patient_id, nombre_completo, practica, especialidad, evoluciones_esperadas_mes, evoluciones_cargadas_mes, estado_prevalidacion")
+      .neq("estado_prevalidacion", "verde"),
   ]);
 
   const abiertos = (periods ?? []).filter((p) => p.estado !== "facturado");
@@ -83,6 +98,8 @@ export default async function FacturacionPage() {
       <section className="space-y-3">
         {(periods ?? []).map((p, i) => {
           const periodDebits = (debits ?? []).filter((d) => d.billing_period_id === p.id);
+          const periodPrevalidacion = (prevalidacion ?? []).filter((v) => v.billing_period_id === p.id);
+          const rojos = periodPrevalidacion.filter((v) => v.estado_prevalidacion === "rojo").length;
           const next = NEXT_ESTADO[p.estado];
           return (
             <div key={p.id} className={`bg-white rounded-2xl border border-slate-200 p-5 card-hover animate-fade-slide-up stagger-${Math.min(i + 1, 8)}`}>
@@ -106,6 +123,27 @@ export default async function FacturacionPage() {
                   )}
                 </div>
               </div>
+
+              {periodPrevalidacion.length > 0 && (
+                <ActionDisclosure label={`Pre-validación — DF-C4 §4${rojos > 0 ? ` (${rojos} bloqueante${rojos > 1 ? "s" : ""})` : ""}`} tone={rojos > 0 ? "alert" : "subtle"}>
+                  <ul className="text-sm space-y-1.5">
+                    {periodPrevalidacion.map((v, idx) => (
+                      <li key={idx} className="flex items-center gap-2 flex-wrap">
+                        <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${PREVALIDACION_STYLES[v.estado_prevalidacion ?? "verde"]}`}>
+                          {PREVALIDACION_LABELS[v.estado_prevalidacion ?? "verde"]}
+                        </span>
+                        {v.nombre_completo} · {v.practica} ({SPECIALTY_LABELS[v.especialidad ?? ""] ?? v.especialidad})
+                        <span className="text-xs text-slate-400">
+                          — {v.evoluciones_cargadas_mes}/{v.evoluciones_esperadas_mes} evoluciones este mes
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-slate-400 mt-2">
+                    Esperadas = autorizado total prorrateado por los días del mes dentro de la ventana autorizada — no reemplaza una frecuencia estructurada (practica es texto libre hoy).
+                  </p>
+                </ActionDisclosure>
+              )}
 
               {periodDebits.length > 0 && (
                 <ul className="text-sm text-slate-600 mt-3 space-y-1.5">
