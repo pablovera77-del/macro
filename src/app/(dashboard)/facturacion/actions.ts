@@ -5,6 +5,13 @@ import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import type { Enums, TablesUpdate } from "@/types/database";
 
+// TODO(DF-C1 §4.3): este gate asume que "administracion" factura — DF-C4 §2
+// corrigió a DF-C1, que hablaba de un rol "Facturación" aparte. Pendiente de
+// que Vanina confirme si en la práctica Facturación va a ser un rol de
+// sistema propio (con su propio usuario) o sigue siendo una tarea más de
+// Administración. Si se confirma como rol aparte, agregarlo acá y en
+// facturacion/page.tsx (canManage) — y revisar si también debería poder
+// cargar débitos sin pasar por Administración.
 const BILLING_ROLES: Enums<"app_role">[] = ["administracion", "direccion"];
 
 // DF-C4 §4: abre el período de cierre mensual para una obra social.

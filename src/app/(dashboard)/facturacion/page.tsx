@@ -41,6 +41,8 @@ function formatARS(value: number | null) {
 
 export default async function FacturacionPage() {
   const { profile } = await requireProfile();
+  // TODO(DF-C1 §4.3): ver la misma nota en facturacion/actions.ts — pendiente
+  // de confirmar con Vanina si Facturación es un rol de sistema propio.
   const canManage = profile.role === "administracion";
   const supabase = await createClient();
 
