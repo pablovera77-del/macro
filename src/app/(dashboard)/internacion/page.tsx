@@ -71,10 +71,12 @@ export default async function InternacionPage() {
     supabase
       .from("patients")
       .select(
-        "id, nombre_completo, dni, domicilio, obra_social, estado, fecha_ingreso, fecha_egreso, motivo_egreso, diagnostico_principal, llegada_confirmada_at, egreso_informado_at, egreso_motivo_informado, profiles:egreso_informado_por(full_name), obras_sociales(nombre)"
+        "id, nombre_completo, dni, domicilio, obra_social, obra_social_id, estado, fecha_ingreso, fecha_egreso, motivo_egreso, diagnostico_principal, llegada_confirmada_at, egreso_informado_at, egreso_motivo_informado, profiles:egreso_informado_por(full_name), obras_sociales(nombre)"
       )
       .order("fecha_ingreso", { ascending: false }),
-    supabase.from("obras_sociales").select("id, nombre").eq("activa", true).order("nombre"),
+    // DF-C3 §2: responsable_id habilita rutear el semáforo de vencimientos (más
+    // abajo) hacia la persona de Administración a cargo de cada obra social.
+    supabase.from("obras_sociales").select("id, nombre, responsable_id, profiles:responsable_id(full_name)").eq("activa", true).order("nombre"),
     supabase.from("v_treatment_authorization_status").select("*").order("periodo_hasta"),
     supabase.from("patient_care_team").select("id, patient_id, profesional_id, especialidad, profiles(full_name)"),
     supabase.from("profiles").select("id, full_name, role").in("role", ["profesional_asistencial", "medico_coordinador"]).eq("active", true),
@@ -96,6 +98,11 @@ export default async function InternacionPage() {
   ]);
 
   const vencenPronto = (authorizations ?? []).filter((a) => a.estado_semaforo !== "vigente");
+  // DF-C3 §2: nombre del responsable de Administración por obra social, para
+  // saber a quién avisar cuando el semáforo de abajo marca por_vencer/vencida.
+  const responsableByObraSocial = new Map(
+    (obrasSociales ?? []).map((os) => [os.id, (os.profiles as unknown as { full_name: string } | null)?.full_name ?? null])
+  );
   // DF-C3 §11: un profesional asistencial solo informa el egreso de sus
   // propios pacientes (los de su equipo tratante), no de cualquiera.
   const misPacientesIds = new Set(
@@ -159,12 +166,14 @@ export default async function InternacionPage() {
           <ul className="text-sm text-amber-800 space-y-1.5">
             {vencenPronto.map((a) => {
               const patient = (patients ?? []).find((p) => p.id === a.patient_id);
+              const responsable = patient?.obra_social_id ? responsableByObraSocial.get(patient.obra_social_id) : null;
               return (
                 <li key={a.id} className="flex items-center gap-2 flex-wrap">
                   <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${SEMAFORO_STYLES[a.estado_semaforo ?? "vigente"]}`}>
                     {SEMAFORO_LABELS[a.estado_semaforo ?? "vigente"]}
                   </span>
                   {patient?.nombre_completo ?? "—"} · {a.practica} ({SPECIALTY_LABELS[a.especialidad ?? ""] ?? a.especialidad}) · vence {a.periodo_hasta}
+                  <span className="text-xs text-amber-500">— avisar a {responsable ?? "Administración (sin responsable asignado)"}</span>
                 </li>
               );
             })}

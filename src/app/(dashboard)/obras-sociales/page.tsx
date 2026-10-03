@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
-import { createObraSocialAction, addValueHistoryAction } from "./actions";
+import { createObraSocialAction, addValueHistoryAction, assignResponsableAction } from "./actions";
 import PageHeader from "@/components/PageHeader";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconBuilding } from "@/components/icons";
@@ -14,10 +14,16 @@ export default async function ObrasSocialesPage() {
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
-  const [{ data: obrasSociales }, { data: history }, { data: patientCounts }] = await Promise.all([
-    supabase.from("obras_sociales").select("id, nombre, cuit, dias_para_facturar, valor_modulo, activa").order("nombre"),
+  const [{ data: obrasSociales }, { data: history }, { data: patientCounts }, { data: responsables }] = await Promise.all([
+    supabase
+      .from("obras_sociales")
+      .select("id, nombre, cuit, dias_para_facturar, valor_modulo, activa, responsable_id, profiles:responsable_id(full_name)")
+      .order("nombre"),
     supabase.from("obra_social_value_history").select("id, obra_social_id, valor, vigente_desde").order("vigente_desde", { ascending: false }),
     supabase.from("patients").select("obra_social_id").eq("estado", "activo"),
+    // DF-C3 §2: cada una de las 3 personas de Administración es responsable de
+    // un grupo de obras sociales — este select arma el combo para asignarlas.
+    supabase.from("profiles").select("id, full_name").eq("role", "administracion").eq("active", true).order("full_name"),
   ]);
 
   const canManage = profile.role === "administracion" || profile.role === "direccion";
@@ -47,6 +53,9 @@ export default async function ObrasSocialesPage() {
                   <div className="text-xs text-slate-500 mt-0.5">
                     {os.cuit ? `CUIT ${os.cuit} · ` : ""}Plazo de facturación: {os.dias_para_facturar} días · {countByOs.get(os.id) ?? 0} pacientes activos
                   </div>
+                  <div className="text-xs text-slate-400 mt-0.5">
+                    Responsable: {(os.profiles as unknown as { full_name: string } | null)?.full_name ?? "sin asignar"}
+                  </div>
                 </div>
                 <div className="text-right">
                   <div className="text-lg font-semibold text-slate-900 tabular-nums">{formatARS(os.valor_modulo)}</div>
@@ -70,6 +79,21 @@ export default async function ObrasSocialesPage() {
                     <input type="hidden" name="obra_social_id" value={os.id} />
                     <input name="valor" type="number" step="0.01" placeholder="Nuevo valor" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs w-32" />
                     <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Actualizar</button>
+                  </form>
+                </ActionDisclosure>
+              )}
+
+              {canManage && (
+                <ActionDisclosure label="Asignar responsable" tone="subtle">
+                  <form action={assignResponsableAction} className="flex flex-wrap gap-2">
+                    <input type="hidden" name="obra_social_id" value={os.id} />
+                    <select name="responsable_id" defaultValue={os.responsable_id ?? ""} className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs flex-1 min-w-[180px]">
+                      <option value="">Sin asignar</option>
+                      {(responsables ?? []).map((r) => (
+                        <option key={r.id} value={r.id}>{r.full_name}</option>
+                      ))}
+                    </select>
+                    <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Guardar</button>
                   </form>
                 </ActionDisclosure>
               )}

@@ -39,6 +39,27 @@ export async function createObraSocialAction(formData: FormData) {
   return;
 }
 
+// DF-C3 §2, comentario cliente: cada una de las 3 personas de Administración
+// es responsable de un grupo de obras sociales — esto es lo que permite
+// rutear hacia esa persona las alertas de vencimiento que se muestran en
+// Internación (ver internacion/page.tsx).
+export async function assignResponsableAction(formData: FormData) {
+  const { profile } = await requireProfile();
+  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Administración asigna responsables de obra social.");
+
+  const supabase = await createClient();
+  const obra_social_id = String(formData.get("obra_social_id") || "");
+  const responsable_id = String(formData.get("responsable_id") || "") || null;
+  if (!obra_social_id) throw new Error("Falta la obra social.");
+
+  const { error } = await supabase.from("obras_sociales").update({ responsable_id }).eq("id", obra_social_id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/obras-sociales");
+  revalidatePath("/internacion");
+  return;
+}
+
 // DF-C4 §3: histórico de valores — cada carga actualiza el valor vigente sin
 // perder el registro anterior.
 export async function addValueHistoryAction(formData: FormData) {
