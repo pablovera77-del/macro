@@ -129,12 +129,13 @@ s.alert ? "bg-red-50 border-red-200" : "bg-white border-slate-200"
 }`;
 const content = (
 <>
-{s.alert && <span className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse-ring" />}
+{s.alert && <span aria-hidden="true" className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse-ring" />}
 <span className={`inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br ${s.tone} text-white mb-3 shadow-sm`}>
 <Icon className="w-5 h-5" />
 </span>
 <div className={`text-2xl font-semibold tabular-nums ${s.alert ? "text-red-700" : "text-slate-900"}`}>{s.value}</div>
 <div className={`text-xs mt-1 leading-snug ${s.alert ? "text-red-600" : "text-slate-500"}`}>{s.label}</div>
+{s.alert && <div className="mt-1.5 inline-block rounded-full bg-red-100 text-red-700 text-[11px] font-medium px-2 py-0.5">Requiere acción</div>}
 </>
 );
 return s.href ? (
@@ -258,6 +259,7 @@ const content = (
 </span>
 <div className={`text-2xl font-semibold tabular-nums ${s.alert ? "text-red-700" : "text-slate-900"}`}>{s.value}</div>
 <div className={`text-xs mt-1 leading-snug ${s.alert ? "text-red-600" : "text-slate-500"}`}>{s.label}</div>
+{s.alert && <div className="mt-1.5 inline-block rounded-full bg-red-100 text-red-700 text-[11px] font-medium px-2 py-0.5">Requiere acción</div>}
 </>
 );
 return s.href ? (

@@ -3,7 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfile, ROLE_LABELS, type AppRole } from "@/lib/auth";
 import { TASKS_BY_ROLE, ROLE_WELCOME } from "@/lib/home-tasks";
 import PageHeader from "@/components/PageHeader";
-import { IconGrid, IconArrowRight, IconAlert, IconCheck } from "@/components/icons";
+import StatusBadge from "@/components/StatusBadge";
+import { updateVisitStatusAction } from "../agenda/actions";
+import { SPECIALTY_LABELS } from "@/lib/auth";
+import { IconGrid, IconArrowRight, IconAlert, IconCheck, IconMapPin } from "@/components/icons";
 
 type Pendiente = { label: string; count: number; href: string; urgente?: boolean };
 
@@ -89,8 +92,127 @@ async function getPendientes(role: AppRole, userId: string): Promise<Pendiente[]
       await count(supabase.from("visits").select("id", { count: "exact", head: true }).eq("profesional_id", userId).in("estado", ["programada", "confirmada"])),
       "/agenda"
     );
+    push(
+      "visitas realizadas tuyas todavía sin evolución cargada",
+      await count(supabase.from("v_visit_evolution_discrepancies").select("*", { count: "exact", head: true }).eq("profesional_id", userId)),
+      "/evoluciones",
+      true
+    );
   }
   return out;
+}
+
+
+const TZ = "America/Argentina/San_Juan";
+
+// Inicio de día (00:00 en San Juan, UTC-3 sin horario de verano) como instante ISO.
+function inicioDeDia(offsetDias: number): string {
+  const ymd = new Intl.DateTimeFormat("sv-SE", { timeZone: TZ }).format(new Date(Date.now() + offsetDias * 86400000));
+  return new Date(`${ymd}T00:00:00-03:00`).toISOString();
+}
+
+type VisitaDia = {
+  id: string;
+  especialidad: string;
+  fecha_programada: string;
+  estado: string;
+  patients: { nombre_completo: string; domicilio: string | null; contacto_familiar_nombre: string | null; contacto_familiar_telefono: string | null } | null;
+};
+
+/**
+ * "Mi día" (C3): para el profesional, las visitas de hoy y mañana (más las atrasadas que
+ * siguen sin cerrarse), con domicilio, teléfono del familiar y botones táctiles de estado.
+ */
+async function MiDia({ userId }: { userId: string }) {
+  const supabase = await createClient();
+  const hoy = inicioDeDia(0);
+  const manana = inicioDeDia(1);
+  const pasadoManana = inicioDeDia(2);
+  const { data } = await supabase
+    .from("visits")
+    .select("id, especialidad, fecha_programada, estado, patients(nombre_completo, domicilio, contacto_familiar_nombre, contacto_familiar_telefono)")
+    .eq("profesional_id", userId)
+    .in("estado", ["programada", "confirmada"])
+    .lt("fecha_programada", pasadoManana)
+    .order("fecha_programada", { ascending: true });
+  const visitas = (data ?? []) as unknown as VisitaDia[];
+  const grupos = [
+    { titulo: "Atrasadas — cerralas como realizadas o no realizadas", items: visitas.filter((v) => v.fecha_programada < hoy), tone: "rojo" as const },
+    { titulo: "Hoy", items: visitas.filter((v) => v.fecha_programada >= hoy && v.fecha_programada < manana), tone: "verde" as const },
+    { titulo: "Mañana", items: visitas.filter((v) => v.fecha_programada >= manana), tone: "gris" as const },
+  ];
+  const hora = (iso: string) => new Date(iso).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: TZ });
+  const dia = (iso: string) => new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "short", timeZone: TZ });
+
+  return (
+    <section className="animate-fade-slide-up">
+      <h2 className="text-sm font-semibold text-slate-900 mb-3">Mi día</h2>
+      {visitas.length === 0 ? (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3 text-sm text-emerald-800">
+          <IconCheck className="w-4 h-4" /> No tenés visitas para hoy ni para mañana.
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {grupos.filter((g) => g.items.length > 0).map((g) => (
+            <div key={g.titulo}>
+              <div className="mb-2 flex items-center gap-2">
+                <StatusBadge tone={g.tone} label={`${g.items.length}`} />
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{g.titulo}</h3>
+              </div>
+              <ul className="space-y-3">
+                {g.items.map((v) => {
+                  const p = v.patients;
+                  const tel = p?.contacto_familiar_telefono?.replace(/[^\d+]/g, "");
+                  return (
+                    <li key={v.id} className="bg-white rounded-2xl border border-slate-200 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-medium text-slate-900">{p?.nombre_completo}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">
+                            {g.tone === "rojo" ? `${dia(v.fecha_programada)} · ` : ""}{hora(v.fecha_programada)} · {SPECIALTY_LABELS[v.especialidad] ?? v.especialidad}
+                          </div>
+                        </div>
+                        <StatusBadge tone={v.estado === "confirmada" ? "verde" : "amarillo"} label={v.estado === "confirmada" ? "Confirmada" : "Programada"} className="shrink-0" />
+                      </div>
+                      {p?.domicilio && (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.domicilio)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 flex items-center gap-1.5 text-sm text-slate-700 hover:underline"
+                        >
+                          <IconMapPin className="w-4 h-4 text-slate-400 shrink-0" /> {p.domicilio}
+                        </a>
+                      )}
+                      {tel && (
+                        <a href={`tel:${tel}`} className="mt-1 block text-sm text-slate-700 hover:underline">
+                          Familiar: {p?.contacto_familiar_nombre ?? "contacto"} · {p?.contacto_familiar_telefono}
+                        </a>
+                      )}
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <form action={updateVisitStatusAction}>
+                          <input type="hidden" name="visit_id" value={v.id} />
+                          <input type="hidden" name="estado" value="realizada" />
+                          <button className="w-full min-h-11 inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 transition-colors">
+                            <IconCheck className="w-4 h-4" /> Realizada
+                          </button>
+                        </form>
+                        <form action={updateVisitStatusAction}>
+                          <input type="hidden" name="visit_id" value={v.id} />
+                          <input type="hidden" name="estado" value="no_realizada" />
+                          <button className="w-full min-h-11 rounded-xl bg-red-100 text-red-700 text-sm font-medium hover:bg-red-200 transition-colors">No realizada</button>
+                        </form>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
 }
 
 export default async function InicioPage() {
@@ -107,6 +229,8 @@ export default async function InicioPage() {
         badge={ROLE_LABELS[profile.role]}
         purpose={`${ROLE_WELCOME[profile.role]} Elegí abajo qué querés hacer: cada tarjeta te lleva a la pantalla correcta y te explica los pasos.`}
       />
+
+      {profile.role === "profesional_asistencial" && <MiDia userId={profile.id} />}
 
       <section className="animate-fade-slide-up">
         <h2 className="text-sm font-semibold text-slate-900 mb-3">Para hacer hoy</h2>

@@ -16,6 +16,7 @@ fullName,
 roleLabel,
 accent,
 logout,
+search,
 children,
 }: {
 nav: NavItem[];
@@ -23,6 +24,7 @@ fullName: string;
 roleLabel: string;
 accent: Accent;
 logout: React.ReactNode;
+search?: React.ReactNode;
 children: React.ReactNode;
 }) {
 const [open, setOpen] = useState(false);
@@ -100,6 +102,7 @@ aria-label="Abrir menú"
 </header>
 
 <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+{search && <div className="mb-5 flex justify-end">{search}</div>}
 {children}
 </main>
 </div>

@@ -54,9 +54,11 @@ export async function updateVisitStatusAction(formData: FormData) {
   void profile;
   revalidatePath("/agenda");
   revalidatePath("/evoluciones");
+  revalidatePath("/inicio");
   // Cierre de visita: al marcarla realizada se lleva al profesional directo a
   // cargar su evolución (antes tenía que ir a buscarla a otra pantalla).
   if (estado === "realizada") redirect(`/evoluciones?visita=${visit_id}`);
+  if (estado === "no_realizada") await flash("Visita marcada como no realizada. Coordinación la va a ver para reprogramarla.");
   return;
 }
 

@@ -1,7 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, SPECIALTY_LABELS } from "@/lib/auth";
 import { createEvolutionAction } from "./actions";
+import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
 import { IconSignature, IconAlert, IconCheck, IconUser } from "@/components/icons";
 
 type Campo = { label: string; tipo: string; obligatorio?: boolean };
@@ -45,7 +47,7 @@ export default async function EvolucionesPage({
 
   let pendingQuery = supabase
     .from("visits")
-    .select("id, patient_id, especialidad, fecha_realizada, patients(nombre_completo)")
+    .select("id, patient_id, profesional_id, especialidad, fecha_realizada, patients(nombre_completo), profiles(full_name)")
     .eq("estado", "realizada")
     .order("fecha_realizada", { ascending: false });
   if (!isMedico) pendingQuery = pendingQuery.eq("profesional_id", profile.id);
@@ -57,11 +59,10 @@ export default async function EvolucionesPage({
     .limit(20);
   if (!isMedico) historyQuery = historyQuery.eq("profesional_id", profile.id);
 
-  const [{ data: visitsRealizadas }, { data: evolutions }, { data: templates }, { data: discrepancias }] = await Promise.all([
+  const [{ data: visitsRealizadas }, { data: evolutions }, { data: templates }] = await Promise.all([
     pendingQuery,
     historyQuery,
     supabase.from("discipline_form_templates").select("id, titulo, especialidad, campos").eq("activo", true),
-    isMedico ? supabase.from("v_visit_evolution_discrepancies").select("*") : Promise.resolve({ data: null }),
   ]);
 
   const evolutionVisitIds = new Set((evolutions ?? []).map((e) => e.id));
@@ -72,6 +73,20 @@ export default async function EvolucionesPage({
   const { data: evoVisitLinks } = await supabase.from("evolutions").select("visit_id");
   const linkedVisitIds = new Set((evoVisitLinks ?? []).map((e) => e.visit_id));
   const pendientes = (visitsRealizadas ?? []).filter((v) => !linkedVisitIds.has(v.id));
+
+  // Control (C2): visitas realizadas sin evolución, agrupadas por profesional, la más antigua primero.
+  const hoy = Date.now();
+  const diasDesde = (iso: string | null) => (iso ? Math.max(0, Math.floor((hoy - new Date(iso).getTime()) / 86400000)) : 0);
+  const porProfesional = new Map<string, { nombre: string; items: typeof pendientes }>();
+  for (const v of pendientes) {
+    const nombre = (v.profiles as unknown as { full_name: string } | null)?.full_name ?? "Sin profesional asignado";
+    const key = v.profesional_id ?? "sin-asignar";
+    if (!porProfesional.has(key)) porProfesional.set(key, { nombre, items: [] });
+    porProfesional.get(key)!.items.push(v);
+  }
+  const grupos = [...porProfesional.values()]
+    .map((g) => ({ ...g, items: [...g.items].sort((a, b) => (a.fecha_realizada ?? "").localeCompare(b.fecha_realizada ?? "")) }))
+    .sort((a, b) => diasDesde(b.items[0]?.fecha_realizada ?? null) - diasDesde(a.items[0]?.fecha_realizada ?? null));
 
   return (
     <div className="space-y-8">
@@ -98,22 +113,40 @@ export default async function EvolucionesPage({
         </section>
       )}
 
-      {isMedico && (discrepancias ?? []).length > 0 && (
-        <section className="bg-red-50 border border-red-200 rounded-2xl p-5 animate-fade-slide-up">
+      {isMedico && (
+        <section className={`rounded-2xl border p-5 animate-fade-slide-up ${grupos.length > 0 ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
           <div className="flex items-center gap-2 mb-3">
-            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600">
-              <IconAlert className="w-4 h-4" />
+            <span className={`flex items-center justify-center w-8 h-8 rounded-lg ${grupos.length > 0 ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600"}`}>
+              {grupos.length > 0 ? <IconAlert className="w-4 h-4" /> : <IconCheck className="w-4 h-4" />}
             </span>
-            <h2 className="text-sm font-medium text-red-800">Visitas realizadas sin evolución cargada</h2>
+            <h2 className={`text-sm font-medium ${grupos.length > 0 ? "text-red-800" : "text-emerald-800"}`}>
+              {grupos.length > 0 ? `Evoluciones pendientes: ${pendientes.length} visita${pendientes.length === 1 ? "" : "s"} de ${grupos.length} profesional${grupos.length === 1 ? "" : "es"}` : "Todas las visitas realizadas tienen su evolución"}
+            </h2>
           </div>
-          <ul className="text-sm text-red-700 space-y-1">
-            {(discrepancias ?? []).map((d) => (
-              <li key={d.visit_id} className="flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                {SPECIALTY_LABELS[d.especialidad ?? ""] ?? d.especialidad} · {new Date(d.fecha_programada ?? "").toLocaleDateString("es-AR")}
-              </li>
+          <div className="space-y-4">
+            {grupos.map((g) => (
+              <div key={g.nombre} className="bg-white/70 rounded-xl border border-red-100 p-3">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <span className="text-sm font-medium text-slate-900">{g.nombre}</span>
+                  <span className="text-xs text-red-700 font-medium">{g.items.length} sin evolución</span>
+                </div>
+                <ul className="text-sm text-slate-700 divide-y divide-slate-100">
+                  {g.items.map((v) => {
+                    const d = diasDesde(v.fecha_realizada);
+                    return (
+                      <li key={v.id} className="flex items-center justify-between gap-3 py-1.5 flex-wrap">
+                        <Link href={`/paciente/${v.patient_id}?tab=agenda`} className="hover:underline">
+                          {(v.patients as unknown as { nombre_completo: string } | null)?.nombre_completo}
+                          <span className="text-xs text-slate-400"> · {SPECIALTY_LABELS[v.especialidad] ?? v.especialidad}</span>
+                        </Link>
+                        <StatusBadge tone={d >= 3 ? "rojo" : d >= 1 ? "amarillo" : "gris"} label={d === 0 ? "Visita de hoy" : `Hace ${d} día${d === 1 ? "" : "s"}`} />
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         </section>
       )}
 
