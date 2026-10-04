@@ -69,8 +69,34 @@ export async function advanceBillingPeriodAction(formData: FormData) {
     patch.fecha_cierre = new Date().toISOString();
     patch.cerrado_por = profile.id;
   }
+  // DF-C4 §11: Cobrada/Debitada/En gestión, continuación de "facturado"
+  // (= Presentada) — se registra cuándo se actualizó el estado de cobro.
+  if (nuevo_estado === "cobrada" || nuevo_estado === "debitada" || nuevo_estado === "en_gestion") {
+    patch.fecha_cobro = new Date().toISOString().slice(0, 10);
+    patch.cobro_actualizado_por = profile.id;
+  }
 
   const { error } = await supabase.from("billing_periods").update(patch).eq("id", billing_period_id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/facturacion");
+  return;
+}
+
+// DF-C4 §11: registra el monto efectivamente cobrado cuando difiere del
+// total facturado (ej. cobro parcial tras un débito).
+export async function registerMontoCobradoAction(formData: FormData) {
+  const { profile } = await requireProfile();
+  if (!BILLING_ROLES.includes(profile.role)) throw new Error("No autorizado.");
+
+  const supabase = await createClient();
+  const billing_period_id = String(formData.get("billing_period_id") || "");
+  const monto_cobrado = Number(formData.get("monto_cobrado") || 0);
+  if (!billing_period_id || !monto_cobrado) throw new Error("Faltan datos del cobro.");
+
+  const { error } = await supabase
+    .from("billing_periods")
+    .update({ monto_cobrado, fecha_cobro: new Date().toISOString().slice(0, 10), cobro_actualizado_por: profile.id })
+    .eq("id", billing_period_id);
   if (error) throw new Error(error.message);
   revalidatePath("/facturacion");
   return;

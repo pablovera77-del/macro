@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
-import { createBillingPeriodAction, advanceBillingPeriodAction, addBillingDebitAction, updateDebitStatusAction } from "./actions";
+import { createBillingPeriodAction, advanceBillingPeriodAction, addBillingDebitAction, updateDebitStatusAction, registerMontoCobradoAction } from "./actions";
 import PageHeader from "@/components/PageHeader";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconCash, IconAlert } from "@/components/icons";
@@ -19,15 +19,29 @@ const PREVALIDACION_LABELS: Record<string, string> = { verde: "Al día", amarill
 // no estados de alerta, así que mantienen su propio color de workflow; "en_revision" y
 // "cerrado" sí son semánticos (amarillo = requiere atención, verde = al día) y usan la
 // paleta única de DF-C1 §10, igual que el resto de los semáforos de la plataforma.
-const ESTADO_LABELS: Record<string, string> = { abierto: "Abierto", en_revision: "En revisión", cerrado: "Cerrado", facturado: "Facturado" };
+// DF-C4 §11, dashboard de cobros: "facturado" (= Presentada, ya se le mandó
+// el cierre a la obra social) se extiende con Cobrada/Debitada/En gestión —
+// no son lineales entre sí, por eso van aparte de NEXT_ESTADO/NEXT_LABEL.
+const ESTADO_LABELS: Record<string, string> = {
+  abierto: "Abierto",
+  en_revision: "En revisión",
+  cerrado: "Cerrado",
+  facturado: "Presentada",
+  cobrada: "Cobrada",
+  debitada: "Debitada",
+  en_gestion: "En gestión",
+};
 const ESTADO_STYLES: Record<string, string> = {
   abierto: "bg-blue-100 text-blue-700",
   en_revision: SEMANTIC_TONE_BADGE_STYLES.amarillo,
   cerrado: SEMANTIC_TONE_BADGE_STYLES.verde,
   facturado: "bg-slate-800 text-white",
+  cobrada: SEMANTIC_TONE_BADGE_STYLES.verde,
+  debitada: SEMANTIC_TONE_BADGE_STYLES.rojo,
+  en_gestion: SEMANTIC_TONE_BADGE_STYLES.amarillo,
 };
 const NEXT_ESTADO: Record<string, string> = { abierto: "en_revision", en_revision: "cerrado", cerrado: "facturado" };
-const NEXT_LABEL: Record<string, string> = { abierto: "Pasar a revisión", en_revision: "Cerrar período", cerrado: "Marcar facturado" };
+const NEXT_LABEL: Record<string, string> = { abierto: "Pasar a revisión", en_revision: "Cerrar período", cerrado: "Marcar presentada" };
 
 const DEBIT_LABELS: Record<string, string> = { pendiente: "Pendiente", en_gestion: "En gestión", resuelto: "Resuelto", perdido: "Perdido" };
 // Color semántico único (DF-C1 §10): mismo Verde/Amarillo/Rojo/Gris que el resto de los
@@ -56,7 +70,7 @@ export default async function FacturacionPage() {
   const supabase = await createClient();
 
   const [{ data: periods }, { data: debits }, { data: obrasSociales }, { data: patients }, { data: prevalidacion }] = await Promise.all([
-    supabase.from("billing_periods").select("id, obra_social_id, periodo, estado, total_facturado, fecha_cierre, obras_sociales(nombre)").order("periodo", { ascending: false }),
+    supabase.from("billing_periods").select("id, obra_social_id, periodo, estado, total_facturado, fecha_cierre, monto_cobrado, fecha_cobro, obras_sociales(nombre)").order("periodo", { ascending: false }),
     supabase.from("billing_debits").select("id, billing_period_id, patient_id, motivo, monto, estado, patients(nombre_completo)").order("created_at", { ascending: false }),
     supabase.from("obras_sociales").select("id, nombre").eq("activa", true).order("nombre"),
     supabase.from("patients").select("id, nombre_completo").order("nombre_completo"),
@@ -112,7 +126,9 @@ export default async function FacturacionPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap justify-end">
-                  <span className="text-sm font-semibold text-slate-900 tabular-nums">{formatARS(p.total_facturado)}</span>
+                  <span className="text-sm font-semibold text-slate-900 tabular-nums">
+                    {p.monto_cobrado != null ? formatARS(p.monto_cobrado) : formatARS(p.total_facturado)}
+                  </span>
                   <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${ESTADO_STYLES[p.estado]}`}>{ESTADO_LABELS[p.estado]}</span>
                   {next && canManage && (
                     <form action={advanceBillingPeriodAction}>
@@ -121,8 +137,43 @@ export default async function FacturacionPage() {
                       <button className="rounded-full bg-slate-900 text-white text-xs font-medium px-3 py-1 hover:bg-slate-800 transition-colors">{NEXT_LABEL[p.estado]}</button>
                     </form>
                   )}
+                  {canManage && p.estado === "facturado" && (
+                    <>
+                      <form action={advanceBillingPeriodAction}>
+                        <input type="hidden" name="billing_period_id" value={p.id} />
+                        <input type="hidden" name="nuevo_estado" value="cobrada" />
+                        <button className="rounded-full bg-emerald-600 text-white text-xs font-medium px-3 py-1 hover:bg-emerald-700 transition-colors">Marcar cobrada</button>
+                      </form>
+                      <form action={advanceBillingPeriodAction}>
+                        <input type="hidden" name="billing_period_id" value={p.id} />
+                        <input type="hidden" name="nuevo_estado" value="debitada" />
+                        <button className="rounded-full bg-red-600 text-white text-xs font-medium px-3 py-1 hover:bg-red-700 transition-colors">Marcar debitada</button>
+                      </form>
+                    </>
+                  )}
+                  {canManage && p.estado === "debitada" && (
+                    <form action={advanceBillingPeriodAction}>
+                      <input type="hidden" name="billing_period_id" value={p.id} />
+                      <input type="hidden" name="nuevo_estado" value="en_gestion" />
+                      <button className="rounded-full bg-amber-500 text-white text-xs font-medium px-3 py-1 hover:bg-amber-600 transition-colors">Poner en gestión</button>
+                    </form>
+                  )}
+                  {canManage && p.estado === "en_gestion" && (
+                    <form action={advanceBillingPeriodAction}>
+                      <input type="hidden" name="billing_period_id" value={p.id} />
+                      <input type="hidden" name="nuevo_estado" value="cobrada" />
+                      <button className="rounded-full bg-emerald-600 text-white text-xs font-medium px-3 py-1 hover:bg-emerald-700 transition-colors">Marcar cobrada</button>
+                    </form>
+                  )}
                 </div>
               </div>
+
+              {(p.estado === "cobrada" || p.estado === "debitada" || p.estado === "en_gestion") && (
+                <div className="text-xs text-slate-400 mt-1">
+                  {p.fecha_cobro && <>Actualizado el {new Date(p.fecha_cobro).toLocaleDateString("es-AR")} · </>}
+                  {p.monto_cobrado != null ? `Cobrado: ${formatARS(p.monto_cobrado)}` : "Monto cobrado sin registrar todavía"}
+                </div>
+              )}
 
               {periodPrevalidacion.length > 0 && (
                 <ActionDisclosure label={`Pre-validación — DF-C4 §4${rojos > 0 ? ` (${rojos} bloqueante${rojos > 1 ? "s" : ""})` : ""}`} tone={rojos > 0 ? "alert" : "subtle"}>
@@ -179,6 +230,24 @@ export default async function FacturacionPage() {
                     <input name="motivo" placeholder="Motivo del débito" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs flex-1 min-w-[160px]" />
                     <input name="monto" type="number" step="0.01" placeholder="Monto" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs w-28" />
                     <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Cargar</button>
+                  </form>
+                </ActionDisclosure>
+              )}
+
+              {canManage && (p.estado === "cobrada" || p.estado === "debitada" || p.estado === "en_gestion") && (
+                <ActionDisclosure label="Registrar monto cobrado" tone="subtle">
+                  <form action={registerMontoCobradoAction} className="flex flex-wrap gap-2">
+                    <input type="hidden" name="billing_period_id" value={p.id} />
+                    <input
+                      name="monto_cobrado"
+                      type="number"
+                      step="0.01"
+                      placeholder="Monto efectivamente cobrado"
+                      defaultValue={p.monto_cobrado ?? p.total_facturado ?? ""}
+                      required
+                      className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs w-48"
+                    />
+                    <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Guardar</button>
                   </form>
                 </ActionDisclosure>
               )}

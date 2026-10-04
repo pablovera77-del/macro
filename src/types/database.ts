@@ -134,30 +134,39 @@ export type Database = {
       billing_periods: {
         Row: {
           cerrado_por: string | null
+          cobro_actualizado_por: string | null
           created_at: string
           estado: Database["public"]["Enums"]["billing_period_status"]
           fecha_cierre: string | null
+          fecha_cobro: string | null
           id: string
+          monto_cobrado: number | null
           obra_social_id: string
           periodo: string
           total_facturado: number | null
         }
         Insert: {
           cerrado_por?: string | null
+          cobro_actualizado_por?: string | null
           created_at?: string
           estado?: Database["public"]["Enums"]["billing_period_status"]
           fecha_cierre?: string | null
+          fecha_cobro?: string | null
           id?: string
+          monto_cobrado?: number | null
           obra_social_id: string
           periodo: string
           total_facturado?: number | null
         }
         Update: {
           cerrado_por?: string | null
+          cobro_actualizado_por?: string | null
           created_at?: string
           estado?: Database["public"]["Enums"]["billing_period_status"]
           fecha_cierre?: string | null
+          fecha_cobro?: string | null
           id?: string
+          monto_cobrado?: number | null
           obra_social_id?: string
           periodo?: string
           total_facturado?: number | null
@@ -166,6 +175,13 @@ export type Database = {
           {
             foreignKeyName: "billing_periods_cerrado_por_fkey"
             columns: ["cerrado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_periods_cobro_actualizado_por_fkey"
+            columns: ["cobro_actualizado_por"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -2325,7 +2341,14 @@ export type Database = {
         | "baja"
       asset_status: "disponible" | "asignado" | "mantenimiento" | "baja"
       authorization_status: "vigente" | "por_vencer" | "vencida"
-      billing_period_status: "abierto" | "en_revision" | "cerrado" | "facturado"
+      billing_period_status:
+        | "abierto"
+        | "en_revision"
+        | "cerrado"
+        | "facturado"
+        | "cobrada"
+        | "debitada"
+        | "en_gestion"
       debit_status: "pendiente" | "en_gestion" | "resuelto" | "perdido"
       discharge_reason: "alta" | "fallecimiento" | "fin_internacion"
       discharge_status: "pendiente_retiro" | "retiro_informado" | "cerrado"
@@ -2522,7 +2545,15 @@ export const Constants = {
       ],
       asset_status: ["disponible", "asignado", "mantenimiento", "baja"],
       authorization_status: ["vigente", "por_vencer", "vencida"],
-      billing_period_status: ["abierto", "en_revision", "cerrado", "facturado"],
+      billing_period_status: [
+        "abierto",
+        "en_revision",
+        "cerrado",
+        "facturado",
+        "cobrada",
+        "debitada",
+        "en_gestion",
+      ],
       debit_status: ["pendiente", "en_gestion", "resuelto", "perdido"],
       discharge_reason: ["alta", "fallecimiento", "fin_internacion"],
       discharge_status: ["pendiente_retiro", "retiro_informado", "cerrado"],
