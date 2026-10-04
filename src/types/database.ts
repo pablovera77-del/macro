@@ -2010,6 +2010,30 @@ export type Database = {
           },
         ]
       }
+      family_visit_confirmations: {
+        Row: {
+          access_id: string
+          confirmed_at: string
+          id: string
+          nombre: string
+          visit_id: string
+        }
+        Insert: {
+          access_id: string
+          confirmed_at?: string
+          id?: string
+          nombre: string
+          visit_id: string
+        }
+        Update: {
+          access_id?: string
+          confirmed_at?: string
+          id?: string
+          nombre?: string
+          visit_id?: string
+        }
+        Relationships: []
+      }
       treatment_plans: {
         Row: {
           id: string
@@ -2540,6 +2564,26 @@ export type Database = {
       }
     }
     Functions: {
+      fn_family_access_create: {
+        Args: { p_patient: string }
+        Returns: Json
+      }
+      fn_family_access_list: {
+        Args: { p_patient: string }
+        Returns: Json
+      }
+      fn_family_access_revoke: {
+        Args: { p_access: string }
+        Returns: undefined
+      }
+      fn_family_portal_view: {
+        Args: { p_token: string; p_pin: string }
+        Returns: Json
+      }
+      fn_family_confirm_visit: {
+        Args: { p_token: string; p_pin: string; p_visit: string; p_nombre: string }
+        Returns: Json
+      }
       get_current_app_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]

@@ -18,6 +18,8 @@ const ENTIDADES: Record<string, string> = {
   patient_medications: "Medicación",
   patient_document_signatures: "Consentimientos firmados",
   evolutions: "Evoluciones (sin contenido clínico)",
+  family_access: "Accesos de familiares",
+  family_visit_confirmations: "Confirmaciones de familiares",
 };
 const ACCIONES: Record<string, string> = { insert: "Alta", update: "Modificación", delete: "Baja" };
 const ACCION_STYLE: Record<string, string> = {

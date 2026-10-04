@@ -33,8 +33,10 @@ export async function updateSession(request: NextRequest) {
   const isLoginPage = request.nextUrl.pathname.startsWith("/login");
   // El link del mail de recuperación pasa por acá antes de tener sesión.
   const isAuthCallback = request.nextUrl.pathname.startsWith("/auth/callback");
+  // Portal de familiares: público, con link + PIN (sin cuenta).
+  const isFamilyPortal = request.nextUrl.pathname.startsWith("/familia/");
 
-  if (!user && !isLoginPage && !isAuthCallback) {
+  if (!user && !isLoginPage && !isAuthCallback && !isFamilyPortal) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

@@ -123,3 +123,21 @@ scrollbar-color: #cbd5e1 transparent;
 .side-panel-body form.grid > * {
   grid-column: auto !important;
 }
+
+/* Tarjeta de acceso para familias: al imprimir sale solo la tarjeta. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-card,
+  .print-card * {
+    visibility: visible;
+  }
+  .print-card {
+    position: absolute;
+    left: 50%;
+    top: 24px;
+    transform: translateX(-50%);
+    width: 340px;
+  }
+}

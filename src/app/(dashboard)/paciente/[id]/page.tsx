@@ -8,6 +8,8 @@ import ConsentDocumentRow from "@/components/ConsentDocumentRow";
 import { IconUser, IconMapPin, IconCheck, IconAlert } from "@/components/icons";
 import { type SemanticTone } from "@/lib/semantic-status";
 import { calcularCumplimiento, describirPlan, DIAS_CORTOS, DISCIPLINAS_PLAN, semanaActual, type Plan } from "@/lib/plan";
+import FamilyAccessPanel from "@/components/FamilyAccessPanel";
+import { familyPortalEnabled, type FamilyAccessInfo } from "@/lib/family";
 import { signLegalDocumentAction } from "../../internacion/actions";
 import {
   savePlanAction,
@@ -18,6 +20,7 @@ import {
   confirmNoMedicationAction,
   toggleChecklistItemAction,
   toggleRequiredDocAction,
+  revokeFamilyAccessAction,
 } from "./actions";
 
 const ESTADO_LABELS: Record<string, string> = {
@@ -33,7 +36,7 @@ const ORDER_TONE: Record<string, SemanticTone> = { borrador: "amarillo", autoriz
 const SEMAFORO_LABELS: Record<string, string> = { vigente: "Vigente", por_vencer: "Por vencer", vencida: "Vencida" };
 const SEMAFORO_TONE: Record<string, SemanticTone> = { vigente: "verde", por_vencer: "amarillo", vencida: "rojo" };
 
-type Tab = "resumen" | "plan" | "agenda" | "clinica" | "insumos" | "ingreso" | "mensajes";
+type Tab = "resumen" | "plan" | "agenda" | "clinica" | "insumos" | "ingreso" | "mensajes" | "familia";
 
 function fecha(iso: string | null | undefined) {
   return iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Argentina/San_Juan" }) : "—";
@@ -76,6 +79,7 @@ export default async function FichaPacientePage({
     ...(verInsumos ? [{ id: "insumos" as Tab, label: "Insumos y equipos" }] : []),
     { id: "ingreso", label: "Ingreso y egreso" },
     { id: "mensajes", label: "Mensajes del equipo" },
+    ...(puedeEditarPlan ? [{ id: "familia" as Tab, label: "Familia" }] : []),
   ];
   const tab: Tab = tabs.some((t) => t.id === tabParam) ? (tabParam as Tab) : "resumen";
 
@@ -114,6 +118,17 @@ export default async function FichaPacientePage({
   const { data: mensajes } = tab === "mensajes"
     ? await supabase.from("patient_messages").select("id, mensaje, created_at, autor_id, profiles(full_name)").eq("patient_id", id).order("created_at", { ascending: false }).limit(50)
     : { data: null };
+
+  // Familia (G1): accesos emitidos y confirmaciones recibidas.
+  const [{ data: accesosRaw }, { data: confirmacionesFam }] = tab === "familia"
+    ? await Promise.all([
+        supabase.rpc("fn_family_access_list", { p_patient: id }),
+        supabase.from("family_visit_confirmations").select("id, nombre, confirmed_at, visit_id").order("confirmed_at", { ascending: false }).limit(200),
+      ])
+    : [{ data: null }, { data: null }];
+  const accesos = (accesosRaw ?? []) as unknown as FamilyAccessInfo[];
+  const visitasPorId = new Map((visits ?? []).map((v) => [v.id, v]));
+  const confirmacionesDelPaciente = (confirmacionesFam ?? []).filter((c) => visitasPorId.has(c.visit_id));
 
   const ingresoData = tab === "ingreso"
     ? await Promise.all([
@@ -616,6 +631,69 @@ export default async function FichaPacientePage({
                 </li>
               ))}
             </ul>
+          )}
+        </section>
+      )}
+
+      {tab === "familia" && (
+        <section className={card}>
+          <h2 className="text-sm font-semibold text-slate-900">Acceso de la familia</h2>
+          <p className="text-xs text-slate-500 mt-1 mb-4">
+            La familia escanea un código QR, ingresa un PIN y ve las fechas de las visitas programadas y realizadas. Puede confirmar que una visita se hizo.
+            No ve diagnósticos, evoluciones ni datos clínicos. El acceso vence a los 90 días y se puede dar de baja cuando quieras.
+          </p>
+          {!familyPortalEnabled() ? (
+            <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+              El portal está apagado hasta contar con la validación legal. Para habilitarlo, definir la variable <code>FAMILY_PORTAL_ENABLED=1</code> en Vercel.
+            </p>
+          ) : (
+            <>
+              <FamilyAccessPanel patientId={id} patientName={p.nombre_completo} hayActivo={accesos.some((a) => !a.revoked_at && new Date(a.expires_at) > new Date())} />
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mt-6 mb-2">Tarjetas emitidas</h3>
+              {accesos.length === 0 ? (
+                <p className="text-sm text-slate-400">Todavía no se emitió ninguna tarjeta.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {accesos.map((a) => {
+                    const vigente = !a.revoked_at && new Date(a.expires_at) > new Date();
+                    return (
+                      <li key={a.id} className="flex items-center justify-between gap-3 flex-wrap rounded-xl bg-slate-50 px-3 py-2 text-sm">
+                        <span>
+                          <span className="text-slate-800">Emitida el {fechaHora(a.created_at)}{a.creado_por ? ` por ${a.creado_por}` : ""}</span>
+                          <span className="block text-xs text-slate-500">
+                            {a.revoked_at ? `Dada de baja el ${fechaHora(a.revoked_at)}` : vigente ? `Vence el ${fechaHora(a.expires_at)}` : "Vencida"}
+                            {" · "}
+                            {a.last_access_at ? `Último ingreso: ${fechaHora(a.last_access_at)}` : "Nunca se usó"}
+                          </span>
+                        </span>
+                        {vigente && (
+                          <form action={revokeFamilyAccessAction}>
+                            <input type="hidden" name="patient_id" value={id} />
+                            <input type="hidden" name="access_id" value={a.id} />
+                            <button className="rounded-lg border border-red-200 text-red-700 text-xs font-medium px-3 py-1.5 hover:bg-red-50">Dar de baja</button>
+                          </form>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-400 mt-6 mb-2">Confirmaciones de la familia</h3>
+              {confirmacionesDelPaciente.length === 0 ? (
+                <p className="text-sm text-slate-400">La familia todavía no confirmó ninguna visita.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {confirmacionesDelPaciente.map((c) => {
+                    const v = visitasPorId.get(c.visit_id);
+                    return (
+                      <li key={c.id} className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                        {v ? `${SPECIALTY_LABELS[v.especialidad] ?? v.especialidad} del ${fechaHora(v.fecha_programada)}` : "Visita"} — confirmada por {c.nombre} el {fechaHora(c.confirmed_at)}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </>
           )}
         </section>
       )}

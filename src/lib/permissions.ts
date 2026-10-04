@@ -51,6 +51,7 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Ficha", accion: "Confirmar «sin medicación»", roles: [A], guard: { file: PAC, message: "Solo Administración confirma el paso de medicación." } },
   { modulo: "Ficha", accion: "Tildar el checklist de información al paciente", roles: [A], guard: { file: PAC, message: "Solo Administración completa el checklist de información al paciente." } },
   { modulo: "Ficha", accion: "Registrar documentación de la obra social recibida", roles: [A], guard: { file: PAC, message: "Solo Administración registra la documentación recibida." } },
+  { modulo: "Ficha", accion: "Generar o dar de baja el acceso de la familia", roles: [A, C], guard: { file: PAC, message: "Solo Administración o Coordinación generan el acceso de la familia." } },
   // Agenda y evoluciones
   { modulo: "Agenda", accion: "Programar visitas", roles: [C], guard: { file: AG, message: "Solo Coordinación programa visitas." } },
   { modulo: "Agenda", accion: "Reprogramar visitas", roles: [C], guard: { file: AG, message: "Solo Coordinación reprograma visitas." } },

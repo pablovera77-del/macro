@@ -80,6 +80,21 @@ const RECORDATORIOS: HomeTask = {
   doc: "DF-C2 §4",
 };
 
+const ACCESO_FAMILIA: HomeTask = {
+  id: "acceso-familia",
+  title: "Darle a la familia acceso a las visitas",
+  summary: "Imprimir una tarjeta con código QR y PIN para que la familia vea las fechas de las visitas y confirme las realizadas. Solo disponible cuando el portal está habilitado.",
+  steps: [
+    "Abrí la ficha del paciente y entrá a la solapa «Familia».",
+    "Tocá «Generar tarjeta de acceso» e imprimila: el PIN se muestra una sola vez.",
+    "Entregásela al familiar. Si se pierde, generá una tarjeta nueva (la anterior deja de funcionar) o dala de baja.",
+    "En la misma solapa ves cuándo se usó y qué visitas confirmó la familia.",
+  ],
+  href: "/internacion",
+  cta: "Ir a Pacientes",
+  doc: "DF-C2 §6",
+};
+
 const AUDITORIA: HomeTask = {
   id: "auditoria",
   title: "Ver quién cambió qué",
@@ -367,11 +382,12 @@ const DASHBOARD: HomeTask = {
 };
 
 export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
-  coordinador_internacion: [CONFIRMAR_LLEGADA, PLAN_TRATAMIENTO, ARMAR_AGENDA, RECORDATORIOS, MENSAJES_EQUIPO, CONTROL_EVOLUCIONES, INFORMAR_EGRESO],
+  coordinador_internacion: [CONFIRMAR_LLEGADA, PLAN_TRATAMIENTO, ARMAR_AGENDA, RECORDATORIOS, ACCESO_FAMILIA, MENSAJES_EQUIPO, CONTROL_EVOLUCIONES, INFORMAR_EGRESO],
   profesional_asistencial: [MI_AGENDA, CARGAR_EVOLUCION, MENSAJES_EQUIPO, INFORMAR_EGRESO],
   administracion: [
     ALTA_PACIENTE,
     PLAN_TRATAMIENTO,
+    ACCESO_FAMILIA,
     CONSENTIMIENTOS,
     AUTORIZAR_PRACTICAS,
     CONFIRMAR_LLEGADA,

@@ -4,6 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import type { AppRole } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import QRCode from "qrcode";
+import { familyPortalEnabled } from "@/lib/family";
 import { flash } from "@/lib/flash";
 import { DISCIPLINAS_PLAN } from "@/lib/plan";
 import type { Enums } from "@/types/database";
@@ -161,4 +164,51 @@ export async function toggleRequiredDocAction(formData: FormData) {
     if (error && error.code !== "23505") throw new Error(error.message);
   }
   refresh(patient_id);
+}
+
+// ===== Portal de familiares (G1) =====
+export type FamilyAccessResult = {
+  error?: string;
+  url?: string;
+  pin?: string;
+  expires_at?: string;
+  qr?: string;
+};
+
+async function siteOrigin(): Promise<string> {
+  const fromEnv = process.env.NEXT_PUBLIC_SITE_URL;
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+// Genera un acceso nuevo (el anterior queda sin efecto). El PIN se muestra una sola vez:
+// en la base solo se guarda su versión cifrada.
+export async function createFamilyAccessAction(_prev: FamilyAccessResult, formData: FormData): Promise<FamilyAccessResult> {
+  const { profile } = await requireProfile();
+  if (!PLAN_ROLES.includes(profile.role)) return { error: "Solo Administración o Coordinación generan el acceso de la familia." };
+  if (!familyPortalEnabled()) return { error: "El portal de familiares todavía no está habilitado." };
+  const patient_id = String(formData.get("patient_id") || "");
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_family_access_create", { p_patient: patient_id });
+  if (error || !data) return { error: error?.message ?? "No se pudo generar el acceso." };
+  const r = data as { token: string; pin: string; expires_at: string };
+  const url = `${await siteOrigin()}/familia/${r.token}`;
+  const qr = await QRCode.toDataURL(url, { margin: 1, width: 360, errorCorrectionLevel: "M" });
+  revalidatePath(`/paciente/${patient_id}`);
+  return { url, pin: r.pin, expires_at: r.expires_at, qr };
+}
+
+export async function revokeFamilyAccessAction(formData: FormData) {
+  const { profile } = await requireProfile();
+  if (!PLAN_ROLES.includes(profile.role)) throw new Error("Solo Administración o Coordinación revocan el acceso de la familia.");
+  const supabase = await createClient();
+  const patient_id = String(formData.get("patient_id") || "");
+  const access_id = String(formData.get("access_id") || "");
+  const { error } = await supabase.rpc("fn_family_access_revoke", { p_access: access_id });
+  if (error) throw new Error(error.message);
+  await flash("Acceso de la familia dado de baja.");
+  revalidatePath(`/paciente/${patient_id}`);
 }
