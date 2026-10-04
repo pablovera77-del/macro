@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { flash } from "@/lib/flash";
 import type { Enums } from "@/types/database";
 
 const BILLING_ROLES: Enums<"app_role">[] = ["administracion", "direccion"];
@@ -36,6 +37,7 @@ export async function createObraSocialAction(formData: FormData) {
   }
 
   revalidatePath("/obras-sociales");
+  await flash("Obra social creada.");
   return;
 }
 

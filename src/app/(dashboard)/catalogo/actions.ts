@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { flash } from "@/lib/flash";
 import type { Enums } from "@/types/database";
 
 // DF-C5 §3, comentario cliente 25/09: alta manual del producto. El código de
@@ -101,6 +102,7 @@ export async function createProductAction(formData: FormData) {
   }
 
   revalidatePath("/catalogo");
+  await flash("Producto agregado al catálogo.");
   return;
 }
 
@@ -129,6 +131,7 @@ export async function createAssetAction(formData: FormData) {
   }
 
   revalidatePath("/catalogo");
+  await flash("Equipo agregado.");
   return;
 }
 

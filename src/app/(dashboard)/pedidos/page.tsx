@@ -104,7 +104,7 @@ return (
 {order.autorizacion_automatica && order.estado !== "borrador" && (
 <div className="mt-2 flex items-center gap-1.5 text-[11px] text-emerald-600 bg-emerald-50 rounded-lg px-2.5 py-1.5 w-fit">
 <IconRefresh className="w-3 h-3" />
-Autorización automática — ítems ya cubiertos por la autorización estándar del paciente, sin revalidar (DF-C5 §4).
+Autorización automática — ítems ya cubiertos por la autorización estándar del paciente, sin revalidar.
 </div>
 )}
 {order.estado === "cancelado" && order.motivo_rechazo && (

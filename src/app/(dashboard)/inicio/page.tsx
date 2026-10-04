@@ -27,20 +27,25 @@ async function getPendientes(role: AppRole, userId: string): Promise<Pendiente[]
     if (c && c > 0) out.push({ label, count: c, href, urgente });
   };
 
-  if (role === "coordinador_internacion" || role === "medico_coordinador") {
+  if (role === "coordinador_internacion") {
     push(
       "pacientes admitidos esperan que confirmes su llegada al domicilio",
       await count(supabase.from("patients").select("id", { count: "exact", head: true }).eq("estado", "admitido_pendiente_llegada")),
       "/internacion"
     );
     push(
-      "autorizaciones por vencer o vencidas",
-      await count(supabase.from("v_treatment_authorization_status").select("*", { count: "exact", head: true }).neq("estado_semaforo", "vigente")),
-      "/internacion",
+      "visitas realizadas todavía sin evolución cargada",
+      await count(supabase.from("v_visit_evolution_discrepancies").select("*", { count: "exact", head: true })),
+      "/evoluciones",
       true
     );
   }
   if (role === "administracion") {
+    push(
+      "pacientes admitidos esperan que confirmes su llegada o completes su ingreso",
+      await count(supabase.from("patients").select("id", { count: "exact", head: true }).eq("estado", "admitido_pendiente_llegada")),
+      "/internacion"
+    );
     push(
       "pedidos esperan tu autorización",
       await count(supabase.from("orders").select("id", { count: "exact", head: true }).eq("estado", "borrador")),
@@ -54,7 +59,7 @@ async function getPendientes(role: AppRole, userId: string): Promise<Pendiente[]
     push(
       "autorizaciones por vencer o vencidas",
       await count(supabase.from("v_treatment_authorization_status").select("*", { count: "exact", head: true }).neq("estado_semaforo", "vigente")),
-      "/pacientes",
+      "/internacion",
       true
     );
   }
@@ -99,7 +104,7 @@ export default async function InicioPage() {
       <PageHeader
         icon={<IconGrid className="w-5 h-5" />}
         title={`Hola, ${firstName}`}
-        section={ROLE_LABELS[profile.role]}
+        badge={ROLE_LABELS[profile.role]}
         purpose={`${ROLE_WELCOME[profile.role]} Elegí abajo qué querés hacer: cada tarjeta te lleva a la pantalla correcta y te explica los pasos.`}
       />
 
@@ -162,7 +167,7 @@ export default async function InicioPage() {
                     <li key={s}>{s}</li>
                   ))}
                 </ol>
-                <p className="text-[11px] text-slate-400 mt-2">Relevado en {t.doc}</p>
+                {process.env.NEXT_PUBLIC_SHOW_TRACE === "1" && <p className="text-[11px] text-slate-400 mt-2">Relevado en {t.doc}</p>}
               </details>
               <Link
                 href={t.href}

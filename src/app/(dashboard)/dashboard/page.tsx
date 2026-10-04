@@ -210,7 +210,7 @@ Total: {formatARS(costoTotalEstimado)}
 </table>
 </div>
 <p className="text-xs text-slate-400 px-5 py-3 border-t border-slate-100">
-Estimado a partir del último precio de compra cargado × cantidad autorizada — no reemplaza el cálculo real de facturación (DF-C4).
+Estimado a partir del último precio de compra cargado × cantidad autorizada — no reemplaza el cálculo real de facturación.
 </p>
 </section>
 
@@ -235,7 +235,7 @@ Estimado a partir del último precio de compra cargado × cantidad autorizada �
 
 <section className="animate-fade-slide-up">
 <h2 className="text-sm font-medium text-slate-900 mb-3 flex items-center gap-2">
-<span className="w-1.5 h-1.5 rounded-full bg-slate-900" /> Vista unificada de la plataforma — DF-C1 §1, indicadores cruzados C2-C4
+<span className="w-1.5 h-1.5 rounded-full bg-slate-900" /> Vista unificada de la plataforma
 </h2>
 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
 {[
@@ -268,13 +268,13 @@ return s.href ? (
 })}
 </div>
 <p className="text-xs text-slate-400 mt-3">
-Consolida C2 (visitas/evoluciones), C3 (pacientes/autorizaciones) y C4 (facturación) en una sola vista para Dirección — DF-C1 §1: &ldquo;vista unificada del negocio&rdquo;.
+Reúne visitas y evoluciones, pacientes y autorizaciones, y facturación en una sola vista para Dirección.
 </p>
 </section>
 
 <section className="animate-fade-slide-up">
 <h2 className="text-sm font-medium text-slate-900 mb-3 flex items-center gap-2">
-<span className="w-1.5 h-1.5 rounded-full bg-slate-900" /> Dashboard gerencial de pacientes — DF-C3 §13
+<span className="w-1.5 h-1.5 rounded-full bg-slate-900" /> Altas y bajas de pacientes
 </h2>
 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
 {[
@@ -320,7 +320,7 @@ Cantidad de pacientes admitidos por mes, últimos 12 meses — para detectar pic
 
 <section className="animate-fade-slide-up">
 <h2 className="text-sm font-medium text-slate-900 mb-3 flex items-center gap-2">
-<span className="w-1.5 h-1.5 rounded-full bg-slate-900" /> Proyección y compras — DF-C5 §6
+<span className="w-1.5 h-1.5 rounded-full bg-slate-900" /> Proyección y compras
 </h2>
 <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
 {[

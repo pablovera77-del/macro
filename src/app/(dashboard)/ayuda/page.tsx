@@ -13,7 +13,7 @@ export default async function AyudaPage() {
       <PageHeader
         icon={<IconStethoscope className="w-5 h-5" />}
         title="Guía de uso"
-        section={ROLE_LABELS[profile.role]}
+        badge={ROLE_LABELS[profile.role]}
         purpose="Acá está, paso a paso, cómo hacer cada tarea que te corresponde en el sistema. Tocá una tarea para ver los pasos y el botón que te lleva directo a la pantalla."
       />
 
@@ -48,7 +48,7 @@ export default async function AyudaPage() {
               >
                 {t.cta} <IconArrowRight className="w-3.5 h-3.5" />
               </Link>
-              <span className="text-[11px] text-slate-400">Relevado en {t.doc}</span>
+              {process.env.NEXT_PUBLIC_SHOW_TRACE === "1" && <span className="text-[11px] text-slate-400">Relevado en {t.doc}</span>}
             </div>
           </details>
         ))}

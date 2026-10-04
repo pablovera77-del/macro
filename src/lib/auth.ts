@@ -1,8 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import type { Enums } from "@/types/database";
+import { ROLE_LABELS, type AppRole, type DbRole } from "@/lib/roles";
 
-export type AppRole = Enums<"app_role">;
+export { ROLE_LABELS };
+export type { AppRole, DbRole };
+
+// Quién hace qué en el ingreso de pacientes (DF-C3 §2 y §3):
+// Administración da de alta, gestiona el legajo, las firmas, el equipo y las prórrogas.
+export const ROLES_ALTA: AppRole[] = ["administracion"];
+// Coordinación arma la agenda y confirma la llegada al domicilio para coordinar la primera visita.
+export const ROLES_AGENDA: AppRole[] = ["coordinador_internacion"];
 
 export async function requireProfile() {
 const supabase = await createClient();
@@ -20,22 +27,12 @@ const { data: profile } = await supabase
 .eq("id", user.id)
 .single();
 
-if (!profile || !profile.active) {
+if (!profile || !profile.active || profile.role === "medico_coordinador") {
 redirect("/login?error=cuenta_inactiva");
 }
 
-return { user, profile };
+return { user, profile: { ...profile, role: profile.role as AppRole } };
 }
-
-export const ROLE_LABELS: Record<AppRole, string> = {
-deposito: "Depósito",
-administracion: "Administración",
-transporte: "Transporte",
-direccion: "Dirección",
-coordinador_internacion: "Coordinador de Internación",
-profesional_asistencial: "Profesional Asistencial",
-medico_coordinador: "Médico Coordinador",
-};
 
 export type NavIconId =
 | "catalogo"
@@ -63,6 +60,7 @@ deposito: [
 ],
 administracion: [
 { href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
+{ href: "/internacion", label: "Pacientes", icon: "internacion", description: "Alta, legajo y egresos" },
 { href: "/pacientes", label: "Autorizaciones de stock", icon: "pacientes", description: "Stock por paciente y bajas" },
 { href: "/pedidos", label: "Pedidos", icon: "pedidos", description: "Entregas a domicilio" },
 { href: "/seguimiento", label: "Seguimiento", icon: "seguimiento", description: "Equipos en tránsito" },
@@ -84,8 +82,9 @@ direccion: [
 ],
 coordinador_internacion: [
 { href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
-{ href: "/internacion", label: "Pacientes", icon: "internacion", description: "Alta, legajo y egresos" },
+{ href: "/internacion", label: "Pacientes", icon: "internacion", description: "Consulta y llegada al domicilio" },
 { href: "/agenda", label: "Agenda", icon: "agenda", description: "Visitas domiciliarias" },
+{ href: "/evoluciones", label: "Control de evoluciones", icon: "evoluciones", description: "Visitas sin historia clínica" },
 { href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
 profesional_asistencial: [
@@ -93,13 +92,6 @@ profesional_asistencial: [
 { href: "/agenda", label: "Mi agenda", icon: "agenda", description: "Visitas asignadas" },
 { href: "/evoluciones", label: "Historia clínica", icon: "evoluciones", description: "Evoluciones por disciplina" },
 { href: "/internacion", label: "Mis pacientes", icon: "internacion", description: "Informar egreso" },
-{ href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
-],
-medico_coordinador: [
-{ href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
-{ href: "/internacion", label: "Pacientes", icon: "internacion", description: "Alta, legajo y egresos" },
-{ href: "/agenda", label: "Agenda", icon: "agenda", description: "Visitas domiciliarias" },
-{ href: "/evoluciones", label: "Historia clínica", icon: "evoluciones", description: "Evoluciones por disciplina" },
 { href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
 };
@@ -111,7 +103,6 @@ transporte: { bg: "bg-amber-500/15", text: "text-amber-300", ring: "ring-amber-4
 direccion: { bg: "bg-emerald-500/15", text: "text-emerald-300", ring: "ring-emerald-400/30", dot: "bg-emerald-400" },
 coordinador_internacion: { bg: "bg-rose-500/15", text: "text-rose-300", ring: "ring-rose-400/30", dot: "bg-rose-400" },
 profesional_asistencial: { bg: "bg-teal-500/15", text: "text-teal-300", ring: "ring-teal-400/30", dot: "bg-teal-400" },
-medico_coordinador: { bg: "bg-indigo-500/15", text: "text-indigo-300", ring: "ring-indigo-400/30", dot: "bg-indigo-400" },
 };
 
 // Disciplinas clínicas (DF-C2 §5)

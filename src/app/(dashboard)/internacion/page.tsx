@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { requireProfile, SPECIALTY_LABELS } from "@/lib/auth";
+import { requireProfile, SPECIALTY_LABELS, ROLES_ALTA } from "@/lib/auth";
 import {
   confirmArrivalAction,
   reportarEgresoAction,
@@ -58,10 +59,14 @@ export default async function InternacionPage({
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
-  const canManage = profile.role === "coordinador_internacion" || profile.role === "medico_coordinador";
+  // DF-C3 §2/§3: Administración da de alta y gestiona el legajo (firmas, autorizaciones, equipo).
+  // Coordinación consulta y confirma la llegada al domicilio. El rol "Médico coordinador" se retiró.
+  const canAdmit = ROLES_ALTA.includes(profile.role);
+  const isCoord = profile.role === "coordinador_internacion";
+  const canArrival = canAdmit || isCoord;
   // DF-C3 §11: cualquier profesional asistencial puede informar un egreso,
-  // aunque no tenga el resto de los permisos de gestión de Coordinación.
-  const canReportEgreso = canManage || profile.role === "profesional_asistencial";
+  // aunque no tenga el resto de los permisos de gestión.
+  const canReportEgreso = canArrival || profile.role === "profesional_asistencial";
 
   const [
     { data: patients },
@@ -84,8 +89,8 @@ export default async function InternacionPage({
     supabase.from("obras_sociales").select("id, nombre, responsable_id, profiles:responsable_id(full_name)").eq("activa", true).order("nombre"),
     supabase.from("v_treatment_authorization_status").select("*").order("periodo_hasta"),
     supabase.from("patient_care_team").select("id, patient_id, profesional_id, especialidad, profiles(full_name)"),
-    supabase.from("profiles").select("id, full_name, role").in("role", ["profesional_asistencial", "medico_coordinador"]).eq("active", true),
-    canManage
+    supabase.from("profiles").select("id, full_name, role").in("role", ["profesional_asistencial"]).eq("active", true),
+    isCoord
       ? supabase
           .from("orders")
           .select(
@@ -118,10 +123,24 @@ export default async function InternacionPage({
   const profesionalesLivianos = (profesionales ?? []).map((p) => ({ id: p.id, full_name: p.full_name }));
   // Notificación de vuelta al coordinador (autorizado / no autorizado) tras la
   // validación manual de Administración — DF-C5 §4, comentario cliente 25/09.
-  const misNovedades = (orderNews ?? []).filter((o) => {
-    const patient = o.patients as unknown as { coordinador_id: string | null } | null;
-    return profile.role === "medico_coordinador" || patient?.coordinador_id === profile.id;
-  });
+  const misNovedades = orderNews ?? [];
+
+  // Ingresos en curso: pacientes admitidos a los que todavía les falta algún paso
+  // (consentimientos, prácticas autorizadas, equipo o llegada confirmada).
+  const totalDocs = (legalDocuments ?? []).length;
+  const ingresosEnCurso = (patients ?? [])
+    .filter((p) => p.estado !== "dado_de_baja")
+    .map((p) => {
+      const firmados = (legalDocuments ?? []).filter((d) => signaturesByKey.has(signatureKey(p.id, d.id))).length;
+      const faltan: string[] = [];
+      if (!(totalDocs > 0 && firmados === totalDocs)) faltan.push(`Consentimientos (${firmados}/${totalDocs})`);
+      if ((authorizations ?? []).filter((a) => a.patient_id === p.id).length === 0) faltan.push("Prácticas autorizadas");
+      if ((careTeam ?? []).filter((t) => t.patient_id === p.id).length === 0) faltan.push("Equipo asistencial");
+      if (p.estado === "admitido_pendiente_llegada" && !p.llegada_confirmada_at) faltan.push("Llegada al domicilio");
+      return { p, faltan };
+    })
+    .filter((x) => x.faltan.length > 0)
+    .sort((a, b) => (a.p.fecha_ingreso ?? "").localeCompare(b.p.fecha_ingreso ?? ""));
 
   const admitidoPaciente = admitido ? (patients ?? []).find((p) => p.id === admitido) ?? null : null;
 
@@ -129,14 +148,20 @@ export default async function InternacionPage({
     <div className="space-y-8">
       <PageHeader
         icon={<IconClipboard className="w-5 h-5" />}
-        title="Pacientes e internaciones"
+        title={canAdmit ? "Pacientes e ingresos" : "Pacientes"}
         section="DF-C3"
-        action={canManage ? { label: "+ Nuevo paciente", href: "/internacion?nuevo=1" } : undefined}
-        purpose="Para dar de alta un paciente tocá «+ Nuevo paciente» (arriba a la derecha): te guiamos en 3 pasos. Después, en la tarjeta de cada paciente, firmás los consentimientos, autorizás prácticas, armás su equipo, confirmás su llegada e informás el egreso. Este es el único lugar donde se da de alta un paciente."
+        action={canAdmit ? { label: "+ Nuevo paciente", href: "/internacion?nuevo=1" } : undefined}
+        purpose={
+          canAdmit
+            ? "Dá de alta un paciente con «+ Nuevo paciente» y completá su ingreso: consentimientos, autorizaciones, equipo y llegada."
+            : isCoord
+            ? "Consultá los pacientes y confirmá cuándo llega cada uno a su domicilio."
+            : "Tus pacientes. Desde acá podés informar un egreso."
+        }
         description="Contrasta con informe-tecnico §4 (el sistema viejo solo tenía nombre/domicilio/obra social en texto libre)."
       />
 
-      {canManage && admitidoPaciente && (
+      {canAdmit && admitidoPaciente && (
         <section className="bg-emerald-50 border border-emerald-300 rounded-2xl p-5 animate-fade-slide-up">
           <div className="flex items-center gap-2 mb-2">
             <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600">
@@ -156,15 +181,44 @@ export default async function InternacionPage({
         </section>
       )}
 
-      {canManage && <AdmissionWizard obrasSociales={(obrasSociales ?? []).map((o) => ({ id: o.id, nombre: o.nombre }))} defaultOpen={nuevo === "1"} />}
+      {(canAdmit || isCoord) && ingresosEnCurso.length > 0 && (
+        <section id="ingresos" className="scroll-mt-6 bg-white border border-amber-300 rounded-2xl p-5 animate-fade-slide-up">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-100 text-amber-600">
+              <IconClock className="w-4 h-4" />
+            </span>
+            <h2 className="text-sm font-semibold text-slate-900">Ingresos en curso ({ingresosEnCurso.length})</h2>
+            <span className="text-xs text-slate-400">Pacientes a los que todavía les falta algo</span>
+          </div>
+          <ul className="divide-y divide-slate-100">
+            {ingresosEnCurso.map(({ p, faltan }) => (
+              <li key={p.id} className="py-2.5 flex items-center justify-between gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-slate-900">{p.nombre_completo} <span className="text-xs font-normal text-slate-400">· ingresó el {p.fecha_ingreso}</span></div>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {faltan.map((f) => (
+                      <span key={f} className="rounded-full bg-amber-50 text-amber-700 text-[11px] font-medium px-2 py-0.5">○ {f}</span>
+                    ))}
+                  </div>
+                </div>
+                <a href={`#paciente-${p.id}`} className="shrink-0 rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">
+                  {canAdmit ? "Completar" : "Ver"}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
-      {canManage && misNovedades.length > 0 && (
+      {canAdmit && <AdmissionWizard obrasSociales={(obrasSociales ?? []).map((o) => ({ id: o.id, nombre: o.nombre }))} defaultOpen={nuevo === "1"} />}
+
+      {isCoord && misNovedades.length > 0 && (
         <section className="bg-white border border-slate-200 rounded-2xl p-5 animate-fade-slide-up card-hover">
           <div className="flex items-center gap-2 mb-3">
             <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-500">
               <IconCheck className="w-4 h-4" />
             </span>
-            <h2 className="text-sm font-medium text-slate-900">Novedades de pedidos — validación de Administración (DF-C5 §4)</h2>
+            <h2 className="text-sm font-medium text-slate-900">Novedades de pedidos: lo que Administración autorizó o rechazó</h2>
           </div>
           <ul className="text-sm space-y-1.5">
             {misNovedades.map((o) => {
@@ -191,7 +245,7 @@ export default async function InternacionPage({
             <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-100 text-amber-600">
               <IconAlert className="w-4 h-4" />
             </span>
-            <h2 className="text-sm font-medium text-amber-800">Semáforo de vencimientos de autorizaciones — DF-C3 §7 / DF-C4 §3</h2>
+            <h2 className="text-sm font-medium text-amber-800">Autorizaciones por vencer o vencidas</h2>
           </div>
           <ul className="text-sm text-amber-800 space-y-1.5">
             {vencenPronto.map((a) => {
@@ -214,7 +268,7 @@ export default async function InternacionPage({
       <section className="space-y-3">
         {(patients ?? []).length === 0 && (
           <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-8 text-center text-sm text-slate-500">
-            Todavía no hay pacientes cargados. {canManage ? "Tocá «+ Nuevo paciente» para dar de alta el primero." : ""}
+            Todavía no hay pacientes cargados. {canAdmit ? "Tocá «+ Nuevo paciente» para dar de alta el primero." : ""}
           </div>
         )}
         {(patients ?? []).map((p, i) => {
@@ -231,7 +285,8 @@ export default async function InternacionPage({
                     {initials || <IconUser className="w-4 h-4" />}
                   </span>
                   <div>
-                    <div className="font-medium text-slate-900">{p.nombre_completo}</div>
+                    <Link href={`/paciente/${p.id}`} className="font-medium text-slate-900 hover:underline underline-offset-2">{p.nombre_completo}</Link>
+                    <span className="ml-2 text-xs text-slate-400">Ver ficha →</span>
                     <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                       <IconMapPin className="w-3 h-3" /> {p.domicilio} · {obraSocial ?? "sin obra social"}
                       {p.dni && <span className="text-slate-400">· DNI {p.dni}</span>}
@@ -241,7 +296,7 @@ export default async function InternacionPage({
                 </div>
                 <div className="flex items-center gap-2 flex-wrap justify-end">
                   <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${ESTADO_STYLES[p.estado]}`}>{ESTADO_LABELS[p.estado]}</span>
-                  {p.estado === "admitido_pendiente_llegada" && !p.llegada_confirmada_at && canManage && (
+                  {p.estado === "admitido_pendiente_llegada" && !p.llegada_confirmada_at && canArrival && (
                     <form action={confirmArrivalAction}>
                       <input type="hidden" name="patient_id" value={p.id} />
                       <button className="inline-flex items-center gap-1 rounded-full bg-emerald-600 text-white text-xs font-medium px-3 py-1 hover:bg-emerald-700 transition-colors">
@@ -300,7 +355,7 @@ export default async function InternacionPage({
               {p.estado !== "dado_de_baja" && (
                 <div className="mt-3 bg-slate-50 rounded-xl px-3 py-2">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500 mb-1">
-                    <IconSignature className="w-3.5 h-3.5" /> Consentimientos de ingreso — DF-C2 §6
+                    <IconSignature className="w-3.5 h-3.5" /> Consentimientos de ingreso
                   </div>
                   {(legalDocuments ?? []).map((doc) => {
                     const sig = signaturesByKey.get(signatureKey(p.id, doc.id));
@@ -315,7 +370,7 @@ export default async function InternacionPage({
                         requiereFirmaProfesional={doc.requiere_firma_profesional}
                         profesionales={profesionalesLivianos}
                         firmado={sig ? { firmante_nombre: sig.firmante_nombre, firmado_at: sig.firmado_at, profesional_id: sig.profesional_id } : null}
-                        canSign={canManage}
+                        canSign={canAdmit}
                       />
                     );
                   })}
@@ -339,7 +394,7 @@ export default async function InternacionPage({
                 </div>
               )}
 
-              {p.estado === "activo" && !p.egreso_informado_at && canReportEgreso && (canManage || misPacientesIds.has(p.id)) && (
+              {p.estado === "activo" && !p.egreso_informado_at && canReportEgreso && (canArrival || misPacientesIds.has(p.id)) && (
                 <form action={reportarEgresoAction} className="flex flex-wrap gap-2 mt-3">
                   <input type="hidden" name="patient_id" value={p.id} />
                   <select name="motivo" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
@@ -354,7 +409,7 @@ export default async function InternacionPage({
                 </form>
               )}
 
-              {canManage && p.estado !== "dado_de_baja" && (
+              {canAdmit && p.estado !== "dado_de_baja" && (
                 <ActionDisclosure label="Gestionar" tone="subtle">
                   <div className="space-y-3">
                     <form action={addTreatmentAuthorizationAction} className="flex flex-wrap gap-2">

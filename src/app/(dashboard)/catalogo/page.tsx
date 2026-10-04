@@ -142,7 +142,7 @@ export default async function CatalogoPage({
 
       <section className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 flex-wrap animate-fade-slide-up card-hover">
         <form className="flex items-center gap-2 text-sm">
-          <label htmlFor="fecha" className="text-slate-500 text-xs">Consultar stock a una fecha pasada (DF-C5 §6.1):</label>
+          <label htmlFor="fecha" className="text-slate-500 text-xs">Consultar stock a una fecha pasada:</label>
           <input id="fecha" name="fecha" type="date" defaultValue={fechaConsulta ?? ""} max={new Date().toISOString().slice(0, 10)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
           <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Consultar</button>
           {fechaConsulta && (
@@ -345,7 +345,7 @@ export default async function CatalogoPage({
           </h2>
           <p className="text-xs text-slate-400 -mt-2 mb-3">
             El &ldquo;Código de producto&rdquo; es el identificador interno (SKU); el EAN/UPC es el código de barras de fábrica —
-            son campos distintos porque no todo proveedor trae uno (DF-C5 §3, pendiente de definir cuál usa cada uno como estándar).
+            son campos distintos porque no todo proveedor trae uno (pendiente de definir cuál usa cada uno como estándar).
           </p>
           <form action={createProductAction} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <input name="codigo" placeholder="Código de producto (SKU interno)" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-slate-300" />
@@ -375,7 +375,7 @@ export default async function CatalogoPage({
       <div className="animate-fade-slide-up">
         <h2 className="text-lg font-semibold text-slate-900">Unidades físicas de equipos</h2>
         <p className="text-sm text-slate-500 mt-1">
-          Separación tipo / unidad (nota técnica DF-C5 §3): cada fila es un equipo real, identificado por número de serie único, con su propio estado y trazabilidad.
+          Cada fila es un equipo real, identificado por número de serie único, con su propio estado y trazabilidad.
         </p>
       </div>
 

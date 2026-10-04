@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { flash } from "@/lib/flash";
 
 const COMPRAS_ROLES = ["deposito", "administracion"] as const;
 
@@ -45,6 +46,7 @@ export async function generateQuoteRequestAction(formData: FormData) {
   await supabase.from("quote_requests").update({ estado: "enviada" }).eq("id", quoteRequest.id);
 
   revalidatePath("/compras");
+  await flash("Solicitud de cotización generada.");
   return;
 }
 
@@ -78,6 +80,7 @@ export async function logSupplierQuoteAction(formData: FormData) {
   await supabase.from("quote_requests").update({ estado: "respondida" }).eq("id", quote_request_id).eq("estado", "enviada");
 
   revalidatePath("/compras");
+  await flash("Cotización registrada.");
   return;
 }
 
@@ -153,6 +156,7 @@ export async function generatePurchaseOrdersAction(formData: FormData) {
   await supabase.from("quote_requests").update({ estado: "cerrada" }).eq("id", quote_request_id);
 
   revalidatePath("/compras");
+  await flash("Órdenes de compra generadas.");
   return;
 }
 
@@ -212,6 +216,7 @@ export async function loadPurchaseOrderInvoiceAction(formData: FormData) {
   }
 
   revalidatePath("/compras");
+  await flash("Factura cargada y comparada con la orden.");
   return;
 }
 
@@ -253,5 +258,6 @@ export async function advancePurchaseOrderAction(formData: FormData) {
   }
 
   revalidatePath("/compras");
+  await flash("Orden de compra actualizada.");
   return;
 }

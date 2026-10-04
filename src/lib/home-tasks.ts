@@ -37,6 +37,20 @@ const ALTA_PACIENTE: HomeTask = {
   doc: "DF-C3 §3",
 };
 
+const CONTROL_EVOLUCIONES: HomeTask = {
+  id: "control-evoluciones",
+  title: "Controlar que cada visita tenga su evolución",
+  summary: "Ver qué visitas realizadas todavía no tienen la historia clínica cargada.",
+  steps: [
+    "Entrá a Control de evoluciones.",
+    "En el recuadro rojo aparecen las visitas realizadas sin evolución.",
+    "Reclamale la carga al profesional correspondiente.",
+  ],
+  href: "/evoluciones",
+  cta: "Ir a Control de evoluciones",
+  doc: "DF-C2 §8",
+};
+
 const CONSENTIMIENTOS: HomeTask = {
   id: "consentimientos",
   title: "Firmar los consentimientos de ingreso",
@@ -58,7 +72,7 @@ const AUTORIZAR_PRACTICAS: HomeTask = {
   steps: [
     "En Pacientes, abrí la tarjeta del paciente y tocá «Gestionar».",
     "Para autorizar: escribí la práctica, elegí la especialidad, la cantidad y hasta cuándo vale, y tocá «Autorizar».",
-    "Para el equipo: elegí el profesional y su especialidad, y tocá «Asignar al equipo».",
+    "Para el equipo asistencial: elegí el profesional y su especialidad, y tocá «Asignar al equipo».",
     "El semáforo de vencimientos arriba te avisa cuándo una autorización está por vencer.",
   ],
   href: "/internacion",
@@ -101,7 +115,7 @@ const ARMAR_AGENDA: HomeTask = {
   steps: [
     "Entrá a Agenda y tocá el botón verde «+ Programar visita» (arriba a la derecha).",
     "Elegí paciente, profesional, fecha y hora, y tocá «Programar».",
-    "Cuando el profesional marca la visita como «realizada», queda lista para cargar la evolución.",
+    "Cuando el profesional marca la visita como «Realizada», el sistema lo lleva solo a cargar la evolución.",
   ],
   href: "/agenda",
   cta: "Ir a Agenda",
@@ -115,7 +129,7 @@ const MI_AGENDA: HomeTask = {
   steps: [
     "Entrá a Mi agenda.",
     "Tocá «Confirmar» cuando salís hacia el domicilio.",
-    "Al terminar la visita, tocá «Realizada» (o «No realizada» si no se pudo).",
+    "Al terminar la visita, tocá «Realizada»: te llevamos a cargar la evolución (o «No realizada» si no se pudo).",
   ],
   href: "/agenda",
   cta: "Ir a Mi agenda",
@@ -127,10 +141,9 @@ const CARGAR_EVOLUCION: HomeTask = {
   title: "Cargar la evolución de una visita",
   summary: "Registrar la historia clínica de la visita con el formulario de mi disciplina.",
   steps: [
-    "Entrá a Historia clínica.",
-    "Elegí la visita que marcaste como realizada.",
-    "Completá el formulario de tu disciplina y firmá.",
-    "Una visita realizada sin evolución queda marcada en la auditoría hasta que se cargue.",
+    "En Mi agenda, tocá «Realizada» al terminar la visita: el sistema te lleva solo al formulario.",
+    "Completá el formulario de tu disciplina y tocá «Guardar evolución».",
+    "Si te olvidás, en Mi agenda aparece el aviso «Te falta cargar una evolución» con el botón «Cargar evolución».",
   ],
   href: "/evoluciones",
   cta: "Ir a Historia clínica",
@@ -296,25 +309,13 @@ const DASHBOARD: HomeTask = {
 };
 
 export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
-  coordinador_internacion: [
-    ALTA_PACIENTE,
-    CONSENTIMIENTOS,
-    AUTORIZAR_PRACTICAS,
-    CONFIRMAR_LLEGADA,
-    ARMAR_AGENDA,
-    INFORMAR_EGRESO,
-  ],
-  medico_coordinador: [
-    ALTA_PACIENTE,
-    CONSENTIMIENTOS,
-    AUTORIZAR_PRACTICAS,
-    CONFIRMAR_LLEGADA,
-    ARMAR_AGENDA,
-    CARGAR_EVOLUCION,
-    INFORMAR_EGRESO,
-  ],
+  coordinador_internacion: [CONFIRMAR_LLEGADA, ARMAR_AGENDA, CONTROL_EVOLUCIONES, INFORMAR_EGRESO],
   profesional_asistencial: [MI_AGENDA, CARGAR_EVOLUCION, INFORMAR_EGRESO],
   administracion: [
+    ALTA_PACIENTE,
+    CONSENTIMIENTOS,
+    AUTORIZAR_PRACTICAS,
+    CONFIRMAR_LLEGADA,
     CONFIRMAR_EGRESOS,
     AUTORIZACIONES_STOCK,
     AUTORIZAR_PEDIDOS,
@@ -329,10 +330,9 @@ export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
 };
 
 export const ROLE_WELCOME: Record<AppRole, string> = {
-  coordinador_internacion: "Desde acá das de alta pacientes, armás su equipo y organizás las visitas.",
-  medico_coordinador: "Desde acá admitís pacientes, armás el equipo asistencial y seguís la historia clínica.",
+  coordinador_internacion: "Desde acá armás la agenda de visitas, confirmás cuándo llega cada paciente y controlás las evoluciones.",
   profesional_asistencial: "Desde acá ves tus visitas, cargás la historia clínica e informás egresos.",
-  administracion: "Desde acá controlás autorizaciones, pedidos, compras y la facturación a obras sociales.",
+  administracion: "Desde acá das de alta a los pacientes, controlás autorizaciones, pedidos, compras y la facturación.",
   deposito: "Desde acá gestionás el catálogo, armás pedidos y seguís los equipos.",
   transporte: "Desde acá ves las entregas y retiros que tenés que hacer.",
   direccion: "Desde acá ves el estado general de la operación.",

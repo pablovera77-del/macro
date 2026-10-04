@@ -83,7 +83,7 @@ description="Doble check retirado / llegó a depósito — cada movimiento queda
 ))}
 </ul>
 <p className="text-xs text-red-500 mt-3">
-Pasadas 48hs desde la notificación de cierre de la internación sin confirmar la llegada a depósito, el equipo queda marcado “+48hs” — plazo confirmado por Administración (DF-C5 §8).
+Pasadas 48hs desde la notificación de cierre de la internación sin confirmar la llegada a depósito, el equipo queda marcado “+48hs” — plazo confirmado por Administración.
 </p>
 </section>
 )}
@@ -160,7 +160,7 @@ Marcar retirado
 <IconApple className="w-4 h-4 text-slate-400" /> Reportar devolución de descartable/alimento
 </h2>
 <p className="text-xs text-slate-400 mb-3">
-DF-C5 §4.3: lo que sobró sin usar en el egreso de un paciente, con foto obligatoria — se acredita al stock cuando Depósito confirma la llegada.
+Lo que sobró sin usar en el egreso de un paciente, con foto obligatoria — se acredita al stock cuando Depósito confirma la llegada.
 </p>
 <form action={reportDiscardableReturnAction} className="flex flex-wrap gap-2">
 <select name="discharge_alert_id" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs flex-1 min-w-[160px]">

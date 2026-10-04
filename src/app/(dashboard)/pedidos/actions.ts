@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { flash } from "@/lib/flash";
 import type { Enums } from "@/types/database";
 
 // Depósito arma el pedido (DF-C5 §4, paso 3). Si ya existe un pedido en
@@ -61,6 +62,7 @@ export async function addOrderItemAction(formData: FormData) {
   await tryAutoAuthorize(supabase, orderId, patient_id);
 
   revalidatePath("/pedidos");
+  await flash("Ítem agregado al pedido.");
   return;
 }
 
@@ -129,6 +131,7 @@ export async function authorizeOrderAction(formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath("/pedidos");
   revalidatePath("/internacion");
+  await flash("Pedido autorizado. Siguiente paso: Depósito lo despacha.");
   return;
 }
 
@@ -152,6 +155,7 @@ export async function rejectOrderAction(formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath("/pedidos");
   revalidatePath("/internacion");
+  await flash("Pedido rechazado. Coordinación ve el motivo.");
   return;
 }
 
@@ -178,6 +182,7 @@ export async function dispatchOrderAction(formData: FormData) {
   if (remitoError) throw new Error(remitoError.message);
 
   revalidatePath("/pedidos");
+  await flash("Pedido despachado con remito. Siguiente paso: Transporte lo entrega.");
   return;
 }
 
@@ -269,5 +274,6 @@ export async function deliverOrderAction(formData: FormData) {
 
   revalidatePath("/pedidos");
   revalidatePath("/seguimiento");
+  await flash("Entrega confirmada y firmada.");
   return;
 }

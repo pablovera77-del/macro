@@ -3,12 +3,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { flash } from "@/lib/flash";
+import { redirect } from "next/navigation";
 import type { Enums, TablesUpdate } from "@/types/database";
 
-// DF-C2 §4: el coordinador (o médico coordinador) programa la visita.
+// DF-C2 §4: Coordinación programa la visita.
 export async function createVisitAction(formData: FormData) {
   const { profile } = await requireProfile();
-  const allowed: Enums<"app_role">[] = ["coordinador_internacion", "medico_coordinador"];
+  const allowed: Enums<"app_role">[] = ["coordinador_internacion"];
   if (!allowed.includes(profile.role)) throw new Error("Solo Coordinación programa visitas.");
 
   const supabase = await createClient();
@@ -31,6 +33,7 @@ export async function createVisitAction(formData: FormData) {
 
   if (error) throw new Error(error.message);
   revalidatePath("/agenda");
+  await flash("Visita programada. El profesional la ve en «Mi agenda».");
   return;
 }
 
@@ -50,12 +53,16 @@ export async function updateVisitStatusAction(formData: FormData) {
 
   void profile;
   revalidatePath("/agenda");
+  revalidatePath("/evoluciones");
+  // Cierre de visita: al marcarla realizada se lleva al profesional directo a
+  // cargar su evolución (antes tenía que ir a buscarla a otra pantalla).
+  if (estado === "realizada") redirect(`/evoluciones?visita=${visit_id}`);
   return;
 }
 
 export async function cancelVisitAction(formData: FormData) {
   const { profile } = await requireProfile();
-  const allowed: Enums<"app_role">[] = ["coordinador_internacion", "medico_coordinador"];
+  const allowed: Enums<"app_role">[] = ["coordinador_internacion"];
   if (!allowed.includes(profile.role)) throw new Error("Solo Coordinación cancela visitas.");
 
   const supabase = await createClient();
@@ -63,5 +70,6 @@ export async function cancelVisitAction(formData: FormData) {
   const { error } = await supabase.from("visits").update({ estado: "cancelada" }).eq("id", visit_id);
   if (error) throw new Error(error.message);
   revalidatePath("/agenda");
+  await flash("Visita cancelada.");
   return;
 }

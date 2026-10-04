@@ -1,7 +1,13 @@
+// Las referencias al documento funcional (section/description) son para el equipo
+// de desarrollo: se muestran solo si NEXT_PUBLIC_SHOW_TRACE=1. El personal de la
+// clínica ve únicamente el título, el propósito y la acción principal.
+const SHOW_TRACE = process.env.NEXT_PUBLIC_SHOW_TRACE === "1";
+
 export default function PageHeader({
   icon,
   title,
   section,
+  badge,
   purpose,
   description,
   action,
@@ -9,6 +15,8 @@ export default function PageHeader({
   icon: React.ReactNode;
   title: string;
   section?: string;
+  /** Etiqueta corta siempre visible (ej. el nombre del rol). */
+  badge?: string;
   /** Una frase en criollo: para qué sirve esta pantalla y qué acción dispara. */
   purpose: string;
   /** Nota técnica/trazabilidad al DF-Cx — se muestra más chica, debajo. */
@@ -29,14 +37,17 @@ export default function PageHeader({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
           <h1 className="text-lg font-semibold text-slate-900 tracking-tight">{title}</h1>
-          {section && (
+          {badge && (
+            <span className="text-[11px] font-medium text-slate-500 bg-slate-100 rounded-full px-2 py-0.5">{badge}</span>
+          )}
+          {SHOW_TRACE && section && (
             <span className="text-[11px] font-medium text-slate-400 bg-slate-100 rounded-full px-2 py-0.5">
               {section}
             </span>
           )}
         </div>
         <p className="text-sm text-slate-700 mt-1.5 max-w-2xl font-medium">{purpose}</p>
-        {description && <p className="text-xs text-slate-400 mt-1 max-w-2xl">{description}</p>}
+        {SHOW_TRACE && description && <p className="text-xs text-slate-400 mt-1 max-w-2xl">{description}</p>}
       </div>
       {action && (
         <a

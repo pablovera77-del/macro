@@ -1,12 +1,18 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { requireProfile } from "@/lib/auth";
+import { requireProfile, ROLES_ALTA } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { flash } from "@/lib/flash";
 import { redirect } from "next/navigation";
 import type { Enums } from "@/types/database";
+import type { AppRole } from "@/lib/auth";
 
-const COORDINACION_ROLES: Enums<"app_role">[] = ["coordinador_internacion", "medico_coordinador"];
+// DF-C3 §2 y §3: el alta, el legajo, las firmas de ingreso y las autorizaciones
+// los gestiona Administración. Coordinación confirma la llegada al domicilio
+// para coordinar la primera visita. El rol "Médico coordinador" se retiró.
+const LLEGADA_ROLES: AppRole[] = ["administracion", "coordinador_internacion"];
+const EQUIPO_ROLES: AppRole[] = ["administracion", "coordinador_internacion"];
 
 const ESTADO_LABEL: Record<string, string> = {
   admitido_pendiente_llegada: "admitido, pendiente de llegada",
@@ -24,8 +30,8 @@ export async function createAdmissionAction(_prev: AdmissionState, formData: For
   // Los errores de negocio se DEVUELVEN (no se lanzan): en producción Next.js
   // oculta el texto de los errores lanzados desde una server action y el
   // usuario veía una pantalla genérica en vez de "ya existe ese DNI".
-  if (!COORDINACION_ROLES.includes(profile.role)) {
-    return { error: "Solo Coordinación de Internación o Médico Coordinador dan de alta pacientes." };
+  if (!ROLES_ALTA.includes(profile.role)) {
+    return { error: "Solo Administración da de alta pacientes." };
   }
 
   const supabase = await createClient();
@@ -76,7 +82,9 @@ export async function createAdmissionAction(_prev: AdmissionState, formData: For
       numero_afiliado,
       medico_derivante,
       fecha_ingreso,
-      coordinador_id: profile.id,
+      // El alta la hace Administración; el médico a cargo se asigna después en el
+      // equipo asistencial (no es quien carga el alta).
+      coordinador_id: null,
       estado: "admitido_pendiente_llegada",
     })
     .select("id")
@@ -107,7 +115,7 @@ export async function createAdmissionAction(_prev: AdmissionState, formData: For
 // descubrirlos al final.
 export async function checkDniAction(dniRaw: string): Promise<{ existe: boolean; nombre?: string; estado?: string; valido: boolean }> {
   const { profile } = await requireProfile();
-  if (!COORDINACION_ROLES.includes(profile.role)) return { existe: false, valido: false };
+  if (!ROLES_ALTA.includes(profile.role)) return { existe: false, valido: false };
   const dni = String(dniRaw || "").replace(/\D/g, "");
   if (dni.length < 6 || dni.length > 9) return { existe: false, valido: false };
   const supabase = await createClient();
@@ -121,7 +129,7 @@ export async function checkDniAction(dniRaw: string): Promise<{ existe: boolean;
 // control "no facturar días de más" (DF-C4 §5).
 export async function confirmArrivalAction(formData: FormData) {
   const { profile } = await requireProfile();
-  if (!COORDINACION_ROLES.includes(profile.role)) throw new Error("Solo Coordinación confirma la llegada.");
+  if (!LLEGADA_ROLES.includes(profile.role)) throw new Error("Solo Administración o Coordinación confirman la llegada.");
 
   const supabase = await createClient();
   const patient_id = String(formData.get("patient_id") || "");
@@ -134,6 +142,7 @@ export async function confirmArrivalAction(formData: FormData) {
 
   if (error) throw new Error(error.message);
   revalidatePath("/internacion");
+  await flash("Llegada confirmada. El paciente pasó a «Activo» y Coordinación ya puede programar su primera visita.");
   return;
 }
 
@@ -143,12 +152,12 @@ export async function confirmArrivalAction(formData: FormData) {
 // deja constancia de que se informó el egreso y por qué. El cierre
 // definitivo (estado, discharge_alerts) lo hace Administración por separado
 // con confirmarEgresoAction (pacientes/actions.ts).
-const EGRESO_INFORMANTE_ROLES: Enums<"app_role">[] = [...COORDINACION_ROLES, "profesional_asistencial"];
+const EGRESO_INFORMANTE_ROLES: AppRole[] = ["administracion", "coordinador_internacion", "profesional_asistencial"];
 
 export async function reportarEgresoAction(formData: FormData) {
   const { profile } = await requireProfile();
   if (!EGRESO_INFORMANTE_ROLES.includes(profile.role)) {
-    throw new Error("Solo un profesional asistencial, Coordinación o Médico Coordinador pueden informar un egreso.");
+    throw new Error("Solo un profesional asistencial, Coordinación o Administración pueden informar un egreso.");
   }
 
   const supabase = await createClient();
@@ -168,6 +177,7 @@ export async function reportarEgresoAction(formData: FormData) {
 
   revalidatePath("/internacion");
   revalidatePath("/pacientes");
+  await flash("Egreso informado. Administración debe confirmar la baja definitiva.");
   return;
 }
 
@@ -175,8 +185,7 @@ export async function reportarEgresoAction(formData: FormData) {
 // del semáforo de vencimientos.
 export async function addTreatmentAuthorizationAction(formData: FormData) {
   const { profile } = await requireProfile();
-  const allowed: Enums<"app_role">[] = ["coordinador_internacion", "medico_coordinador", "administracion"];
-  if (!allowed.includes(profile.role)) throw new Error("No autorizado.");
+  if (!ROLES_ALTA.includes(profile.role)) throw new Error("Solo Administración carga las autorizaciones de práctica.");
 
   const supabase = await createClient();
   const patient_id = String(formData.get("patient_id") || "");
@@ -198,6 +207,7 @@ export async function addTreatmentAuthorizationAction(formData: FormData) {
 
   if (error) throw new Error(error.message);
   revalidatePath("/internacion");
+  await flash("Práctica autorizada.");
   return;
 }
 
@@ -208,7 +218,7 @@ export async function addTreatmentAuthorizationAction(formData: FormData) {
 // profesional actuante en el mismo paso.
 export async function signLegalDocumentAction(formData: FormData) {
   const { profile } = await requireProfile();
-  if (!COORDINACION_ROLES.includes(profile.role)) throw new Error("Solo Coordinación de Internación registra las firmas de ingreso.");
+  if (!ROLES_ALTA.includes(profile.role)) throw new Error("Solo Administración registra las firmas de ingreso.");
 
   const supabase = await createClient();
   const patient_id = String(formData.get("patient_id") || "");
@@ -238,13 +248,14 @@ export async function signLegalDocumentAction(formData: FormData) {
     throw new Error(error.message);
   }
   revalidatePath("/internacion");
+  await flash("Firma registrada.");
   return;
 }
 
 // Arma el equipo de atención de un paciente (DF-C3 §5).
 export async function assignCareTeamAction(formData: FormData) {
   const { profile } = await requireProfile();
-  if (!COORDINACION_ROLES.includes(profile.role)) throw new Error("No autorizado.");
+  if (!EQUIPO_ROLES.includes(profile.role)) throw new Error("Solo Administración o Coordinación arman el equipo asistencial.");
 
   const supabase = await createClient();
   const patient_id = String(formData.get("patient_id") || "");
@@ -256,5 +267,6 @@ export async function assignCareTeamAction(formData: FormData) {
   const { error } = await supabase.from("patient_care_team").insert({ patient_id, profesional_id, especialidad });
   if (error) throw new Error(error.message);
   revalidatePath("/internacion");
+  await flash("Profesional asignado al equipo.");
   return;
 }

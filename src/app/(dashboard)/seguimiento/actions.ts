@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { flash } from "@/lib/flash";
 import type { Enums } from "@/types/database";
 
 // Administración genera la alerta de egreso (DF-C5 §4, paso 6 / DF-C3 §11)
@@ -90,6 +91,7 @@ export async function markRetiradoAction(formData: FormData) {
   }
 
   revalidatePath("/seguimiento");
+  await flash("Retiro registrado.");
   return;
 }
 
@@ -188,5 +190,6 @@ export async function confirmLlegadaAction(formData: FormData) {
   }
 
   revalidatePath("/seguimiento");
+  await flash("Llegada a depósito confirmada.");
   return;
 }

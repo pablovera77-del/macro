@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { flash } from "@/lib/flash";
 import type { Enums } from "@/types/database";
 
 // El alta de pacientes se hace desde Internación (createAdmissionAction,
@@ -35,6 +36,7 @@ export async function addAuthorizationAction(formData: FormData) {
 
   if (error) throw new Error(error.message);
   revalidatePath("/pacientes");
+  await flash("Autorización de stock cargada. Depósito ya puede armar el pedido.");
   return;
 }
 
@@ -90,5 +92,6 @@ export async function confirmarEgresoAction(formData: FormData) {
   revalidatePath("/pacientes");
   revalidatePath("/internacion");
   revalidatePath("/seguimiento");
+  await flash("Baja confirmada. Depósito recibió la alerta para retirar los equipos.");
   return;
 }

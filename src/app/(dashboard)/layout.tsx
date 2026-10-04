@@ -1,6 +1,7 @@
 import { requireProfile, ROLE_LABELS, ROLE_ACCENT, NAV_BY_ROLE } from "@/lib/auth";
 import { logoutAction } from "./actions";
 import AppShell, { LogoutButton } from "@/components/AppShell";
+import FlashToast from "@/components/FlashToast";
 
 export default async function DashboardLayout({
 children,
@@ -20,6 +21,7 @@ accent={accent}
 logout={<LogoutButton action={logoutAction} />}
 >
 {children}
+<FlashToast />
 </AppShell>
 );
 }

@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { flash } from "@/lib/flash";
 import type { Enums, TablesUpdate } from "@/types/database";
 
 // TODO(DF-C1 §4.3): este gate asume que "administracion" factura — DF-C4 §2
@@ -34,6 +35,7 @@ export async function createBillingPeriodAction(formData: FormData) {
 
   if (error) throw new Error(error.message);
   revalidatePath("/facturacion");
+  await flash("Período abierto. Avanzalo con los botones de su fila.");
   return;
 }
 
@@ -79,6 +81,7 @@ export async function advanceBillingPeriodAction(formData: FormData) {
   const { error } = await supabase.from("billing_periods").update(patch).eq("id", billing_period_id);
   if (error) throw new Error(error.message);
   revalidatePath("/facturacion");
+  await flash("Período actualizado.");
   return;
 }
 
@@ -99,6 +102,7 @@ export async function registerMontoCobradoAction(formData: FormData) {
     .eq("id", billing_period_id);
   if (error) throw new Error(error.message);
   revalidatePath("/facturacion");
+  await flash("Monto cobrado registrado.");
   return;
 }
 
@@ -118,6 +122,7 @@ export async function addBillingDebitAction(formData: FormData) {
   const { error } = await supabase.from("billing_debits").insert({ billing_period_id, patient_id, motivo, monto, gestionado_por: profile.id });
   if (error) throw new Error(error.message);
   revalidatePath("/facturacion");
+  await flash("Débito registrado.");
   return;
 }
 
@@ -133,5 +138,6 @@ export async function updateDebitStatusAction(formData: FormData) {
   const { error } = await supabase.from("billing_debits").update({ estado, gestionado_por: profile.id }).eq("id", debit_id);
   if (error) throw new Error(error.message);
   revalidatePath("/facturacion");
+  await flash("Débito actualizado.");
   return;
 }

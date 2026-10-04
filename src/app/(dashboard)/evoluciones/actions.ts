@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { flash } from "@/lib/flash";
 import type { Enums } from "@/types/database";
 
 // DF-C2 §5: registro de evolución clínica, motor de formulario dinámico
@@ -12,7 +13,7 @@ import type { Enums } from "@/types/database";
 // la Escala Nova 5, calculamos el riesgo de UPP automáticamente.
 export async function createEvolutionAction(formData: FormData) {
   const { profile } = await requireProfile();
-  const allowed: Enums<"app_role">[] = ["profesional_asistencial", "medico_coordinador"];
+  const allowed: Enums<"app_role">[] = ["profesional_asistencial"];
   if (!allowed.includes(profile.role)) throw new Error("Solo el profesional asistencial carga evoluciones.");
 
   const supabase = await createClient();
@@ -66,5 +67,6 @@ export async function createEvolutionAction(formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath("/evoluciones");
   revalidatePath("/agenda");
+  await flash("Evolución guardada. La visita quedó cerrada.");
   return;
 }

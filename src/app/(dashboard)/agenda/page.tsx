@@ -2,7 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfile, SPECIALTY_LABELS } from "@/lib/auth";
 import { createVisitAction, updateVisitStatusAction, cancelVisitAction } from "./actions";
 import PageHeader from "@/components/PageHeader";
-import { IconCalendar, IconMapPin, IconCheck } from "@/components/icons";
+import Link from "next/link";
+import { IconCalendar, IconMapPin, IconCheck, IconAlert } from "@/components/icons";
 
 const ESTADO_STYLES: Record<string, string> = {
   programada: "bg-blue-100 text-blue-700",
@@ -27,7 +28,7 @@ export default async function AgendaPage() {
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
-  const isCoordinador = profile.role === "coordinador_internacion" || profile.role === "medico_coordinador";
+  const isCoordinador = profile.role === "coordinador_internacion";
 
   let visitsQuery = supabase
     .from("visits")
@@ -38,13 +39,17 @@ export default async function AgendaPage() {
     visitsQuery = visitsQuery.eq("profesional_id", profile.id);
   }
 
-  const [{ data: visits }, { data: patients }, { data: profesionales }] = await Promise.all([
+  const [{ data: visits }, { data: patients }, { data: profesionales }, { data: evoLinks }] = await Promise.all([
     visitsQuery,
     isCoordinador ? supabase.from("patients").select("id, nombre_completo").eq("estado", "activo").order("nombre_completo") : Promise.resolve({ data: null }),
     isCoordinador
       ? supabase.from("profiles").select("id, full_name").eq("role", "profesional_asistencial").eq("active", true).order("full_name")
       : Promise.resolve({ data: null }),
+    supabase.from("evolutions").select("visit_id"),
   ]);
+  const conEvolucion = new Set((evoLinks ?? []).map((e) => e.visit_id));
+  const esProfesional = profile.role === "profesional_asistencial";
+  const sinEvolucion = (visits ?? []).filter((v) => v.estado === "realizada" && !conEvolucion.has(v.id));
 
   const now = new Date().getTime();
   const proximas = (visits ?? []).filter((v) => v.estado !== "realizada" && v.estado !== "cancelada" && v.estado !== "no_realizada");
@@ -59,11 +64,35 @@ export default async function AgendaPage() {
         section="DF-C2 §4"
         purpose={
           isCoordinador
-            ? "Acá programás la visita de cada profesional a cada paciente. Cuando el profesional la marca 'realizada', queda pendiente de evolución — si pasa mucho tiempo sin cargarse, aparece en la auditoría de Historia clínica."
-            : "Acá ves tus visitas asignadas. Confirmá cuando estés en camino y marcá 'realizada' al terminar — eso habilita cargar la evolución en Historia clínica."
+            ? "Programá la visita de cada profesional a cada paciente y seguí cuáles ya se hicieron."
+            : "Tus visitas asignadas. Al terminar una, tocá «Realizada» y te llevamos a cargar su evolución."
         }
         description="Toda visita marcada 'realizada' debe tener una evolución asociada (control DF-C2 §8)."
       />
+
+      {esProfesional && sinEvolucion.length > 0 && (
+        <section className="bg-amber-50 border border-amber-300 rounded-2xl p-5 animate-fade-slide-up">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-100 text-amber-600">
+              <IconAlert className="w-4 h-4" />
+            </span>
+            <h2 className="text-sm font-semibold text-amber-900">Te falta cargar {sinEvolucion.length === 1 ? "1 evolución" : `${sinEvolucion.length} evoluciones`}</h2>
+          </div>
+          <ul className="space-y-2">
+            {sinEvolucion.map((v) => (
+              <li key={v.id} className="flex items-center justify-between gap-3 flex-wrap bg-white border border-amber-200 rounded-xl px-3.5 py-2.5 text-sm">
+                <span>
+                  <span className="font-medium text-slate-900">{(v.patients as unknown as { nombre_completo: string } | null)?.nombre_completo}</span>
+                  <span className="text-xs text-slate-500 ml-2">{SPECIALTY_LABELS[v.especialidad] ?? v.especialidad} · {formatFecha(v.fecha_programada)}</span>
+                </span>
+                <Link href={`/evoluciones?visita=${v.id}`} className="rounded-lg bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 hover:bg-emerald-700 transition-colors">
+                  Cargar evolución
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="space-y-3">
         {proximas.length === 0 && (
@@ -77,7 +106,7 @@ export default async function AgendaPage() {
             <div key={v.id} className={`bg-white rounded-2xl border p-5 card-hover animate-fade-slide-up stagger-${Math.min(i + 1, 8)} ${atrasada ? "border-amber-300 bg-amber-50/40" : "border-slate-200"}`}>
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div>
-                  <div className="font-medium text-slate-900">{(v.patients as unknown as { nombre_completo: string } | null)?.nombre_completo}</div>
+                  <Link href={`/paciente/${v.patient_id}`} className="font-medium text-slate-900 hover:underline underline-offset-2">{(v.patients as unknown as { nombre_completo: string } | null)?.nombre_completo}</Link>
                   <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                     <IconMapPin className="w-3 h-3" /> {(v.patients as unknown as { domicilio: string } | null)?.domicilio}
                   </div>
@@ -169,6 +198,7 @@ export default async function AgendaPage() {
                   <th className="text-left px-5 py-2.5 font-medium">Disciplina</th>
                   <th className="text-left px-5 py-2.5 font-medium">Fecha</th>
                   <th className="text-left px-5 py-2.5 font-medium">Estado</th>
+                  <th className="text-left px-5 py-2.5 font-medium">Evolución</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -179,6 +209,17 @@ export default async function AgendaPage() {
                     <td className="px-5 py-2.5 text-slate-500 text-xs">{formatFecha(v.fecha_programada)}</td>
                     <td className="px-5 py-2.5">
                       <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${ESTADO_STYLES[v.estado]}`}>{ESTADO_LABELS[v.estado]}</span>
+                    </td>
+                    <td className="px-5 py-2.5 text-xs">
+                      {v.estado !== "realizada" ? (
+                        <span className="text-slate-300">—</span>
+                      ) : conEvolucion.has(v.id) ? (
+                        <span className="inline-flex items-center gap-1 text-emerald-700"><IconCheck className="w-3 h-3" /> Cargada</span>
+                      ) : esProfesional ? (
+                        <Link href={`/evoluciones?visita=${v.id}`} className="font-medium text-amber-700 underline underline-offset-2">Pendiente · cargar</Link>
+                      ) : (
+                        <span className="text-amber-700">Pendiente</span>
+                      )}
                     </td>
                   </tr>
                 ))}

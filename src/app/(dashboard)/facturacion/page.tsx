@@ -92,7 +92,7 @@ export default async function FacturacionPage() {
         icon={<IconCash className="w-5 h-5" />}
         title="Facturación inteligente a obras sociales"
         section="DF-C4"
-        purpose="Acá abrís el mes de cada obra social, cargás un débito cuando te rechazan algo, y vas avanzando el período (en revisión → cerrado → facturado) hasta cerrarlo. Administración es quien factura — DF-C4 §2 corrige a DF-C1, que hablaba de un rol 'Facturación' aparte."
+        purpose="Abrí el mes de cada obra social, cargá los débitos cuando te rechazan algo y avanzá el período (en revisión → cerrado → presentado) hasta cobrarlo."
         description="Semáforo de cierre mensual por obra social y gestión de débitos."
       />
 
@@ -102,7 +102,7 @@ export default async function FacturacionPage() {
             <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600">
               <IconAlert className="w-4 h-4" />
             </span>
-            <h2 className="text-sm font-medium text-red-800">Débitos pendientes de gestión — DF-C4 §6</h2>
+            <h2 className="text-sm font-medium text-red-800">Débitos pendientes de gestión</h2>
           </div>
           <div className="text-sm text-red-700">
             {pendingDebits.length} débito(s) por un total de {formatARS(pendingDebits.reduce((acc, d) => acc + d.monto, 0))}
@@ -177,7 +177,7 @@ export default async function FacturacionPage() {
               )}
 
               {periodPrevalidacion.length > 0 && (
-                <ActionDisclosure label={`Pre-validación — DF-C4 §4${rojos > 0 ? ` (${rojos} bloqueante${rojos > 1 ? "s" : ""})` : ""}`} tone={rojos > 0 ? "alert" : "subtle"}>
+                <ActionDisclosure label={`Pre-validación${rojos > 0 ? ` (${rojos} bloqueante${rojos > 1 ? "s" : ""})` : ""}`} tone={rojos > 0 ? "alert" : "subtle"}>
                   <ul className="text-sm space-y-1.5">
                     {periodPrevalidacion.map((v, idx) => (
                       <li key={idx} className="flex items-center gap-2 flex-wrap">

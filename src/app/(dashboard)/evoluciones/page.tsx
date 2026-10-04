@@ -31,11 +31,17 @@ function inputFor(campo: Campo) {
   }
 }
 
-export default async function EvolucionesPage() {
+export default async function EvolucionesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ visita?: string }>;
+}) {
+  const { visita } = await searchParams;
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
-  const isMedico = profile.role === "medico_coordinador";
+  // Coordinación solo controla (ve todo, no carga evoluciones); quien carga es el profesional.
+  const isMedico = profile.role === "coordinador_internacion";
 
   let pendingQuery = supabase
     .from("visits")
@@ -71,11 +77,26 @@ export default async function EvolucionesPage() {
     <div className="space-y-8">
       <PageHeader
         icon={<IconSignature className="w-5 h-5" />}
-        title="Historia clínica digital"
+        title={isMedico ? "Control de evoluciones" : "Historia clínica digital"}
         section="DF-C2 §5"
-        purpose="Acá cargás la evolución de cada visita que ya marcaste como realizada, con el formulario que corresponde a tu disciplina (y la Escala Nova 5 de riesgo de UPP si es enfermería). Una visita realizada sin evolución queda visible en la auditoría de abajo hasta que se complete."
+        purpose={
+          isMedico
+            ? "Acá ves qué visitas realizadas todavía no tienen su evolución y las últimas evoluciones cargadas por el equipo."
+            : "Cargá la evolución de cada visita que ya realizaste. Abrí la visita pendiente y completá el formulario de tu disciplina."
+        }
         description="Formulario dinámico por disciplina — operacionaliza el motor config-driven del sistema viejo (informe-tecnico §3.2)."
       />
+
+      {!isMedico && visita && pendientes.some((v) => v.id === visita) && (
+        <section className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 flex items-start gap-3 animate-fade-slide-up">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 shrink-0">
+            <IconCheck className="w-4 h-4" />
+          </span>
+          <p className="text-sm text-emerald-900">
+            <span className="font-semibold">Visita marcada como realizada.</span> Último paso: completá la evolución de abajo (ya está abierta) y tocá «Guardar evolución».
+          </p>
+        </section>
+      )}
 
       {isMedico && (discrepancias ?? []).length > 0 && (
         <section className="bg-red-50 border border-red-200 rounded-2xl p-5 animate-fade-slide-up">
@@ -83,7 +104,7 @@ export default async function EvolucionesPage() {
             <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600">
               <IconAlert className="w-4 h-4" />
             </span>
-            <h2 className="text-sm font-medium text-red-800">Visitas realizadas sin evolución cargada — auditoría DF-C2 §8</h2>
+            <h2 className="text-sm font-medium text-red-800">Visitas realizadas sin evolución cargada</h2>
           </div>
           <ul className="text-sm text-red-700 space-y-1">
             {(discrepancias ?? []).map((d) => (
@@ -97,16 +118,16 @@ export default async function EvolucionesPage() {
       )}
 
       <section className="space-y-3">
-        {pendientes.length === 0 && (
+        {!isMedico && pendientes.length === 0 && (
           <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400 text-sm animate-fade-slide-up">
             No hay visitas realizadas pendientes de evolución.
           </div>
         )}
-        {pendientes.map((v, i) => {
+        {!isMedico && pendientes.map((v, i) => {
           const template = (templates ?? []).find((t) => t.especialidad === v.especialidad);
           const campos = ((template?.campos as unknown as Campo[]) ?? []);
           return (
-            <details key={v.id} className={`bg-white rounded-2xl border border-slate-200 p-5 card-hover animate-fade-slide-up stagger-${Math.min(i + 1, 8)}`}>
+            <details id={`visita-${v.id}`} open={visita === v.id} key={v.id} className={`scroll-mt-6 bg-white rounded-2xl border p-5 card-hover animate-fade-slide-up stagger-${Math.min(i + 1, 8)} ${visita === v.id ? "border-emerald-400 ring-2 ring-emerald-200" : "border-slate-200"}`}>
               <summary className="cursor-pointer flex items-center justify-between gap-3 flex-wrap">
                 <div>
                   <span className="font-medium text-slate-900">{(v.patients as unknown as { nombre_completo: string } | null)?.nombre_completo}</span>
@@ -135,7 +156,7 @@ export default async function EvolucionesPage() {
 
                 {v.especialidad === "enfermeria" && (
                   <div className="bg-slate-50 rounded-xl p-3">
-                    <div className="text-xs font-medium text-slate-700 mb-2">Escala Nova 5 — riesgo de UPP (DF-C2 §5.4)</div>
+                    <div className="text-xs font-medium text-slate-700 mb-2">Escala Nova 5 — riesgo de úlceras por presión</div>
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                       {[
                         ["estado_mental", "Estado mental"],

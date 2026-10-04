@@ -298,7 +298,7 @@ export default async function ComprasPage() {
                   {po.estado === "recibida" && !invoice && canManage && (
                     <form action={loadPurchaseOrderInvoiceAction} className="mt-3 border border-slate-100 rounded-xl p-3 bg-slate-50">
                       <input type="hidden" name="purchase_order_id" value={po.id} />
-                      <p className="text-xs font-medium text-slate-600 mb-2">DF-C5 §6.1 · Cargar factura del proveedor</p>
+                      <p className="text-xs font-medium text-slate-600 mb-2">Cargar factura del proveedor</p>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
                         <input name="numero_factura" placeholder="N° de factura" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
                         <input name="fecha_factura" type="date" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />

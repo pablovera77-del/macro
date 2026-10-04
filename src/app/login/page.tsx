@@ -3,18 +3,21 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { IconBox, IconTruck, IconRefresh, IconChart, IconClipboard, IconSignature, IconStethoscope } from "@/components/icons";
+import { IconBox, IconTruck, IconRefresh, IconChart, IconClipboard, IconStethoscope } from "@/components/icons";
+import { ROLE_LABELS } from "@/lib/roles";
 import { BrandMark, BrandWordmark } from "@/components/BrandLogo";
 
 const DEMO_ACCOUNTS = [
-{ label: "Depósito", email: "deposito.demo@profesionales-srl.test", icon: IconBox, tone: "from-teal-500 to-teal-600" },
-{ label: "Administración", email: "administracion.demo@profesionales-srl.test", icon: IconTruck, tone: "from-violet-500 to-violet-600" },
-{ label: "Transporte", email: "transporte.demo@profesionales-srl.test", icon: IconRefresh, tone: "from-amber-500 to-amber-600" },
-{ label: "Dirección", email: "direccion.demo@profesionales-srl.test", icon: IconChart, tone: "from-emerald-500 to-emerald-600" },
-{ label: "Coordinación Internación", email: "coordinador.demo@profesionales-srl.test", icon: IconClipboard, tone: "from-rose-500 to-rose-600" },
-{ label: "Profesional Asistencial", email: "profesional.demo@profesionales-srl.test", icon: IconSignature, tone: "from-teal-500 to-teal-600" },
-{ label: "Médico Coordinador", email: "medico.demo@profesionales-srl.test", icon: IconStethoscope, tone: "from-indigo-500 to-indigo-600" },
+{ role: "administracion" as const, hint: "Alta de pacientes y facturación", email: "administracion.demo@profesionales-srl.test", icon: IconTruck, tone: "from-violet-500 to-violet-600" },
+{ role: "coordinador_internacion" as const, hint: "Agenda y llegada de pacientes", email: "coordinador.demo@profesionales-srl.test", icon: IconClipboard, tone: "from-rose-500 to-rose-600" },
+{ role: "profesional_asistencial" as const, hint: "Mis visitas y evoluciones", email: "profesional.demo@profesionales-srl.test", icon: IconStethoscope, tone: "from-teal-500 to-teal-600" },
+{ role: "deposito" as const, hint: "Catálogo y pedidos", email: "deposito.demo@profesionales-srl.test", icon: IconBox, tone: "from-sky-500 to-sky-600" },
+{ role: "transporte" as const, hint: "Entregas y retiros", email: "transporte.demo@profesionales-srl.test", icon: IconRefresh, tone: "from-amber-500 to-amber-600" },
+{ role: "direccion" as const, hint: "Tablero general", email: "direccion.demo@profesionales-srl.test", icon: IconChart, tone: "from-emerald-500 to-emerald-600" },
 ];
+// Ingreso de un clic para demostraciones. Para apagarlo en una puesta en marcha
+// con datos reales: NEXT_PUBLIC_DEMO_LOGIN=0 (también oculta la contraseña).
+const DEMO_ENABLED = process.env.NEXT_PUBLIC_DEMO_LOGIN !== "0";
 const DEMO_PASSWORD = "DfC5Demo2026!";
 
 export default function LoginPage() {
@@ -24,6 +27,7 @@ const [email, setEmail] = useState("");
 const [password, setPassword] = useState("");
 const [error, setError] = useState<string | null>(null);
 const [loading, setLoading] = useState(false);
+const [loadingRole, setLoadingRole] = useState<string | null>(null);
 
 async function handleSubmit(e: React.FormEvent) {
 e.preventDefault();
@@ -39,9 +43,18 @@ router.push("/");
 router.refresh();
 }
 
-function fillDemo(demoEmail: string) {
-setEmail(demoEmail);
-setPassword(DEMO_PASSWORD);
+// Un clic: inicia sesión directo con la cuenta de demostración del rol elegido.
+async function loginAs(acc: (typeof DEMO_ACCOUNTS)[number]) {
+setLoadingRole(acc.role);
+setError(null);
+const { error } = await supabase.auth.signInWithPassword({ email: acc.email, password: DEMO_PASSWORD });
+if (error) {
+setLoadingRole(null);
+setError("No se pudo ingresar con la cuenta de demostración. Probá de nuevo en unos segundos.");
+return;
+}
+router.push("/");
+router.refresh();
 }
 
 return (
@@ -93,10 +106,10 @@ className="w-full rounded-xl bg-gradient-to-r from-[var(--brand-teal)] to-[var(-
 </button>
 </form>
 
+{DEMO_ENABLED && (
 <div className="bg-white/[0.06] backdrop-blur-xl rounded-2xl border border-white/10 p-4 animate-fade-slide-up stagger-2">
-<p className="text-xs font-medium text-slate-400 mb-3">
-Cuentas demo (mockup, no reales)
-</p>
+<p className="text-xs font-medium text-slate-300 mb-1">Entrar a la demostración</p>
+<p className="text-[11px] text-slate-500 mb-3">Elegí un rol: se ingresa con un solo clic. Son cuentas de demostración, no reales.</p>
 <div className="grid grid-cols-2 gap-2">
 {DEMO_ACCOUNTS.map((acc) => {
 const Icon = acc.icon;
@@ -104,21 +117,23 @@ return (
 <button
 key={acc.email}
 type="button"
-onClick={() => fillDemo(acc.email)}
-className="flex items-center gap-2 text-xs rounded-xl border border-white/10 px-2.5 py-2 hover:bg-white/10 text-slate-200 transition-colors text-left"
+disabled={loadingRole !== null}
+onClick={() => loginAs(acc)}
+className="flex items-center gap-2 text-xs rounded-xl border border-white/10 px-2.5 py-2 hover:bg-white/10 disabled:opacity-60 text-slate-200 transition-colors text-left"
 >
-<span className={`flex items-center justify-center w-6 h-6 rounded-lg bg-gradient-to-br ${acc.tone} text-white shrink-0`}>
+<span className={`flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br ${acc.tone} text-white shrink-0`}>
 <Icon className="w-3.5 h-3.5" />
 </span>
-{acc.label}
+<span className="min-w-0">
+<span className="block font-medium leading-tight">{loadingRole === acc.role ? "Ingresando..." : ROLE_LABELS[acc.role]}</span>
+<span className="block text-[10px] text-slate-400 leading-tight mt-0.5">{acc.hint}</span>
+</span>
 </button>
 );
 })}
 </div>
-<p className="text-[11px] text-slate-500 mt-3">
-Contraseña: <span className="font-mono text-slate-400">{DEMO_PASSWORD}</span>
-</p>
 </div>
+)}
 </div>
 </div>
 );
