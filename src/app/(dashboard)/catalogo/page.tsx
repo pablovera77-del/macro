@@ -46,7 +46,7 @@ export default async function CatalogoPage() {
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
-  const [{ data: products }, { data: assets }, { data: productSuppliers }, { data: suppliers }, { data: productStatus }] = await Promise.all([
+  const [{ data: products }, { data: assets }, { data: productSuppliers }, { data: suppliers }, { data: productStatus }, { data: historialPrecios }] = await Promise.all([
     supabase
       .from("products")
       .select(
@@ -66,6 +66,12 @@ export default async function CatalogoPage() {
     // consultan aparte para no heredar los tipos "todo nullable" que Supabase genera para
     // las vistas y así no tocar el resto de las columnas, ya tipadas desde `products`.
     supabase.from("v_products_status").select("id, estado_stock, estado_vencimiento"),
+    // DF-C5 §6.1, comentario cliente: comparativa de precio por proveedor en
+    // el tiempo (cotizaciones + facturas recibidas), para ver quién vendió
+    // más barato — hasta ahora solo existía el proveedor preferido.
+    supabase
+      .from("v_historial_precios_proveedor_resumen")
+      .select("product_id, supplier_id, cantidad_registros, precio_minimo, ultimo_precio, ultima_fecha"),
   ]);
 
   const equipoProducts = (products ?? []).filter((p) => p.tipo === "equipo");
@@ -82,6 +88,18 @@ export default async function CatalogoPage() {
     list.push(ps);
     suppliersByProduct.set(ps.product_id, list);
   });
+
+  // DF-C5 §6.1: historial comparativo de precios por proveedor, agrupado por
+  // producto y ordenado del más barato al más caro (último precio registrado).
+  const supplierNameById = new Map((suppliers ?? []).map((s) => [s.id, s.nombre]));
+  const historialByProduct = new Map<string, NonNullable<typeof historialPrecios>>();
+  (historialPrecios ?? []).forEach((h) => {
+    if (!h.product_id || !h.supplier_id) return;
+    const list = historialByProduct.get(h.product_id) ?? [];
+    list.push(h);
+    historialByProduct.set(h.product_id, list);
+  });
+  historialByProduct.forEach((list) => list.sort((a, b) => (a.ultimo_precio ?? 0) - (b.ultimo_precio ?? 0)));
 
   return (
     <div className="space-y-8">
@@ -133,6 +151,7 @@ export default async function CatalogoPage() {
                 const psList = suppliersByProduct.get(p.id) ?? [];
                 const preferido = psList.find((ps) => ps.preferido);
                 const otros = psList.filter((ps) => !ps.preferido);
+                const historial = historialByProduct.get(p.id) ?? [];
                 return (
                   <tr key={p.id} className="row-hover hover:bg-slate-50 align-top">
                     <td className="px-5 py-2.5 font-mono text-xs text-slate-500">{p.codigo}</td>
@@ -205,6 +224,25 @@ export default async function CatalogoPage() {
                               ))}
                             </div>
                           )}
+                        </details>
+                      )}
+                      {historial.length > 1 && (
+                        <details className="mt-1">
+                          <summary className="text-[11px] text-slate-400 cursor-pointer hover:text-slate-700">
+                            comparar precios ({historial.length} proveedores)
+                          </summary>
+                          <ul className="mt-1 space-y-0.5">
+                            {historial.map((h, idx) => (
+                              <li key={h.supplier_id ?? idx} className={`text-[11px] flex items-center gap-1 ${idx === 0 ? "text-emerald-700 font-medium" : "text-slate-400"}`}>
+                                {idx === 0 && <IconStar className="w-2.5 h-2.5 text-emerald-500" />}
+                                {supplierNameById.get(h.supplier_id ?? "") ?? "—"}: ${h.ultimo_precio}
+                                {h.precio_minimo != null && h.ultimo_precio != null && h.precio_minimo < h.ultimo_precio && (
+                                  <span>(mínimo histórico ${h.precio_minimo})</span>
+                                )}
+                                <span>· {h.cantidad_registros} registro{h.cantidad_registros === 1 ? "" : "s"}</span>
+                              </li>
+                            ))}
+                          </ul>
                         </details>
                       )}
                     </td>

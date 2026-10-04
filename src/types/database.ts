@@ -2092,6 +2092,27 @@ export type Database = {
           },
         ]
       }
+      v_historial_precios_proveedor: {
+        Row: {
+          fecha: string | null
+          origen: string | null
+          precio: number | null
+          product_id: string | null
+          supplier_id: string | null
+        }
+        Relationships: []
+      }
+      v_historial_precios_proveedor_resumen: {
+        Row: {
+          cantidad_registros: number | null
+          precio_minimo: number | null
+          product_id: string | null
+          supplier_id: string | null
+          ultima_fecha: string | null
+          ultimo_precio: number | null
+        }
+        Relationships: []
+      }
       v_prevalidacion_facturacion: {
         Row: {
           billing_period_id: string | null

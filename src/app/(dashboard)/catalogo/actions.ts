@@ -159,6 +159,22 @@ export async function addProductSupplierAction(formData: FormData) {
     );
 
   if (error) throw new Error(error.message);
+
+  // DF-C5 §6.1, comentario cliente: precio_referencia es un valor único que
+  // se pisa en cada actualización — para poder comparar la evolución de
+  // precio por proveedor en el tiempo (v_historial_precios_proveedor),
+  // registramos también el punto en supplier_price_quotes (sin cotización
+  // asociada: quote_request_id null identifica que vino de acá, no de un
+  // pedido de cotización formal).
+  if (precio_referencia != null && precio_referencia > 0) {
+    await supabase.from("supplier_price_quotes").insert({
+      quote_request_id: null,
+      product_id,
+      supplier_id,
+      precio: precio_referencia,
+    });
+  }
+
   revalidatePath("/catalogo");
   return;
 }
