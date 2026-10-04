@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { flash } from "@/lib/flash";
 import { redirect } from "next/navigation";
 import type { Enums } from "@/types/database";
+import { DISCIPLINAS_PLAN } from "@/lib/plan";
 import type { AppRole } from "@/lib/auth";
 
 // DF-C3 §2 y §3: el alta, el legajo, las firmas de ingreso y las autorizaciones
@@ -105,9 +106,33 @@ export async function createAdmissionAction(_prev: AdmissionState, formData: For
     return { error: error?.message ?? "No se pudo crear el paciente. Probá de nuevo." };
   }
 
+  // Paso 3 del DF-C3 §3: plan de tratamiento por disciplina y equipo asistencial.
+  const planRows: { patient_id: string; especialidad: Enums<"specialty">; cantidad: number; unidad: string; dias_semana: number[] | null; creado_por: string }[] = [];
+  const teamRows: { patient_id: string; especialidad: Enums<"specialty">; profesional_id: string }[] = [];
+  for (const esp of DISCIPLINAS_PLAN) {
+    const cantidad = Number(formData.get(`plan__${esp}__cantidad`) || 0);
+    if (Number.isInteger(cantidad) && cantidad >= 1 && cantidad <= 50) {
+      const unidad = String(formData.get(`plan__${esp}__unidad`) || "semana") === "dia" ? "dia" : "semana";
+      const dias = formData.getAll(`plan__${esp}__dias`).map(Number).filter((d) => d >= 1 && d <= 7);
+      planRows.push({ patient_id: creado.id, especialidad: esp, cantidad, unidad, dias_semana: dias.length > 0 ? dias : null, creado_por: profile.id });
+    }
+    const prof = String(formData.get(`equipo__${esp}`) || "");
+    if (prof) teamRows.push({ patient_id: creado.id, especialidad: esp, profesional_id: prof });
+  }
+  let aviso = "";
+  if (planRows.length > 0) {
+    const { error: e1 } = await supabase.from("treatment_plans").insert(planRows);
+    if (e1) aviso += " No se pudo guardar el plan de tratamiento: cargalo desde la ficha.";
+  }
+  if (teamRows.length > 0) {
+    const { error: e2 } = await supabase.from("patient_care_team").insert(teamRows);
+    if (e2) aviso += " No se pudo guardar el equipo: asignalo desde Pacientes.";
+  }
+
   revalidatePath("/internacion");
-  // Al terminar, la pantalla muestra los próximos pasos del paciente recién admitido.
-  redirect(`/internacion?admitido=${creado.id}`);
+  await flash(`Paciente admitido (${nombre_completo}). Siguiente paso: completar medicación, consentimientos y documentación de la obra social.${aviso}`);
+  // Al terminar, la ficha abre en el ingreso para completar los pasos 4 a 6.
+  redirect(`/paciente/${creado.id}?tab=ingreso`);
 }
 
 // Paso 1 del wizard: ¿ya existe un paciente con este DNI? Se consulta antes de
@@ -248,6 +273,7 @@ export async function signLegalDocumentAction(formData: FormData) {
     throw new Error(error.message);
   }
   revalidatePath("/internacion");
+  revalidatePath(`/paciente/${patient_id}`);
   await flash("Firma registrada.");
   return;
 }

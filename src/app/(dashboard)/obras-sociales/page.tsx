@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
-import { createObraSocialAction, addValueHistoryAction, assignResponsableAction } from "./actions";
+import { createObraSocialAction, addValueHistoryAction, assignResponsableAction, addRequiredDocAction, removeRequiredDocAction } from "./actions";
 import PageHeader from "@/components/PageHeader";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconBuilding } from "@/components/icons";
@@ -14,7 +14,7 @@ export default async function ObrasSocialesPage() {
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
-  const [{ data: obrasSociales }, { data: history }, { data: patientCounts }, { data: responsables }] = await Promise.all([
+  const [{ data: obrasSociales }, { data: history }, { data: patientCounts }, { data: responsables }, { data: docsReq }] = await Promise.all([
     supabase
       .from("obras_sociales")
       .select("id, nombre, cuit, dias_para_facturar, valor_modulo, activa, responsable_id, profiles:responsable_id(full_name)")
@@ -24,6 +24,7 @@ export default async function ObrasSocialesPage() {
     // DF-C3 §2: cada una de las 3 personas de Administración es responsable de
     // un grupo de obras sociales — este select arma el combo para asignarlas.
     supabase.from("profiles").select("id, full_name").eq("role", "administracion").eq("active", true).order("full_name"),
+    supabase.from("os_required_documents").select("id, obra_social_id, nombre, obligatorio").eq("activo", true).order("orden"),
   ]);
 
   const canManage = profile.role === "administracion" || profile.role === "direccion";
@@ -80,6 +81,41 @@ export default async function ObrasSocialesPage() {
                     <input type="hidden" name="obra_social_id" value={os.id} />
                     <input name="valor" type="number" step="0.01" placeholder="Nuevo valor" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs w-32" />
                     <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Actualizar</button>
+                  </form>
+                </ActionDisclosure>
+              )}
+
+              {(() => {
+                const docs = (docsReq ?? []).filter((d) => d.obra_social_id === os.id);
+                return (
+                  <div className="mt-3 text-xs text-slate-500">
+                    <span className="font-medium text-slate-700">Documentación requerida al ingreso:</span>{" "}
+                    {docs.length === 0 ? "todavía no configurada" : (
+                      <span className="inline-flex flex-wrap gap-1.5 align-middle">
+                        {docs.map((d) => (
+                          <span key={d.id} className="bg-slate-50 rounded-full pl-2.5 pr-1.5 py-1 inline-flex items-center gap-1">
+                            {d.nombre}{!d.obligatorio && " (opcional)"}
+                            {profile.role === "administracion" && (
+                              <form action={removeRequiredDocAction} className="inline">
+                                <input type="hidden" name="id" value={d.id} />
+                                <button aria-label={`Quitar ${d.nombre}`} className="text-slate-400 hover:text-red-600 px-1">×</button>
+                              </form>
+                            )}
+                          </span>
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {profile.role === "administracion" && (
+                <ActionDisclosure label="Agregar documento requerido" tone="subtle">
+                  <form action={addRequiredDocAction} className="flex flex-wrap gap-2 items-center">
+                    <input type="hidden" name="obra_social_id" value={os.id} />
+                    <input name="nombre" required placeholder="Ej. Orden médica con sello" className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs flex-1 min-w-[200px]" />
+                    <label className="flex items-center gap-1.5 text-xs text-slate-600"><input type="checkbox" name="obligatorio" defaultChecked className="rounded border-slate-300" /> Obligatorio</label>
+                    <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Agregar</button>
                   </form>
                 </ActionDisclosure>
               )}

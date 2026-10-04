@@ -994,6 +994,7 @@ export type Database = {
           frecuencia_reposicion: Database["public"]["Enums"]["replenishment_frequency"]
           id: string
           llegada_confirmada_at: string | null
+          medicacion_confirmada_at: string | null
           medico_derivante: string | null
           motivo_egreso: Database["public"]["Enums"]["discharge_reason"] | null
           nombre_completo: string
@@ -1022,6 +1023,7 @@ export type Database = {
           frecuencia_reposicion?: Database["public"]["Enums"]["replenishment_frequency"]
           id?: string
           llegada_confirmada_at?: string | null
+          medicacion_confirmada_at?: string | null
           medico_derivante?: string | null
           motivo_egreso?: Database["public"]["Enums"]["discharge_reason"] | null
           nombre_completo: string
@@ -1050,6 +1052,7 @@ export type Database = {
           frecuencia_reposicion?: Database["public"]["Enums"]["replenishment_frequency"]
           id?: string
           llegada_confirmada_at?: string | null
+          medicacion_confirmada_at?: string | null
           medico_derivante?: string | null
           motivo_egreso?: Database["public"]["Enums"]["discharge_reason"] | null
           nombre_completo?: string
@@ -2007,6 +2010,204 @@ export type Database = {
           },
         ]
       }
+      treatment_plans: {
+        Row: {
+          id: string
+          patient_id: string
+          especialidad: Database["public"]["Enums"]["specialty"]
+          cantidad: number
+          unidad: string
+          dias_semana: number[] | null
+          desde: string
+          hasta: string | null
+          activo: boolean
+          reemplaza_id: string | null
+          nota: string | null
+          creado_por: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          especialidad: Database["public"]["Enums"]["specialty"]
+          cantidad: number
+          unidad: string
+          dias_semana?: number[] | null
+          desde?: string
+          hasta?: string | null
+          activo?: boolean
+          reemplaza_id?: string | null
+          nota?: string | null
+          creado_por?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          especialidad?: Database["public"]["Enums"]["specialty"]
+          cantidad?: number
+          unidad?: string
+          dias_semana?: number[] | null
+          desde?: string
+          hasta?: string | null
+          activo?: boolean
+          reemplaza_id?: string | null
+          nota?: string | null
+          creado_por?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      patient_messages: {
+        Row: {
+          id: string
+          patient_id: string
+          autor_id: string
+          mensaje: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          autor_id?: string
+          mensaje: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          autor_id?: string
+          mensaje?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      patient_medications: {
+        Row: {
+          id: string
+          patient_id: string
+          medicamento: string
+          dosis: string | null
+          via: string | null
+          frecuencia: string | null
+          activo: boolean
+          creado_por: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          medicamento: string
+          dosis?: string | null
+          via?: string | null
+          frecuencia?: string | null
+          activo?: boolean
+          creado_por?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          medicamento?: string
+          dosis?: string | null
+          via?: string | null
+          frecuencia?: string | null
+          activo?: boolean
+          creado_por?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      info_checklist_items: {
+        Row: {
+          id: string
+          orden: number
+          texto: string
+          activo: boolean
+        }
+        Insert: {
+          id?: string
+          orden: number
+          texto: string
+          activo?: boolean
+        }
+        Update: {
+          id?: string
+          orden?: number
+          texto?: string
+          activo?: boolean
+        }
+        Relationships: []
+      }
+      patient_info_checklist: {
+        Row: {
+          patient_id: string
+          item_id: string
+          confirmado_at: string
+          confirmado_por: string | null
+        }
+        Insert: {
+          patient_id: string
+          item_id: string
+          confirmado_at?: string
+          confirmado_por?: string | null
+        }
+        Update: {
+          patient_id?: string
+          item_id?: string
+          confirmado_at?: string
+          confirmado_por?: string | null
+        }
+        Relationships: []
+      }
+      os_required_documents: {
+        Row: {
+          id: string
+          obra_social_id: string
+          nombre: string
+          obligatorio: boolean
+          orden: number
+          activo: boolean
+        }
+        Insert: {
+          id?: string
+          obra_social_id: string
+          nombre: string
+          obligatorio?: boolean
+          orden?: number
+          activo?: boolean
+        }
+        Update: {
+          id?: string
+          obra_social_id?: string
+          nombre?: string
+          obligatorio?: boolean
+          orden?: number
+          activo?: boolean
+        }
+        Relationships: []
+      }
+      patient_required_documents: {
+        Row: {
+          patient_id: string
+          doc_id: string
+          recibido_at: string
+          recibido_por: string | null
+        }
+        Insert: {
+          patient_id: string
+          doc_id: string
+          recibido_at?: string
+          recibido_por?: string | null
+        }
+        Update: {
+          patient_id?: string
+          doc_id?: string
+          recibido_at?: string
+          recibido_por?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       v_costos_por_paciente: {
@@ -2412,6 +2613,7 @@ export type Database = {
         | "nutricion"
         | "trabajo_social"
         | "otra"
+        | "psicologia"
       stock_level_status: "critico" | "bajo" | "normal"
       stock_movement_type: "ingreso_compra" | "egreso_entrega" | "ajuste"
       visit_status:
@@ -2621,6 +2823,7 @@ export const Constants = {
         "nutricion",
         "trabajo_social",
         "otra",
+        "psicologia",
       ],
       stock_level_status: ["critico", "bajo", "normal"],
       stock_movement_type: ["ingreso_compra", "egreso_entrega", "ajuste"],

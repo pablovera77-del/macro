@@ -81,3 +81,31 @@ export async function addValueHistoryAction(formData: FormData) {
   revalidatePath("/obras-sociales");
   return;
 }
+
+// Paso 6 del alta (DF-C3 §3 y §7): documentación que pide cada obra social. El catálogo es
+// configurable porque Administración todavía está relevando la lista completa de cada una.
+export async function addRequiredDocAction(formData: FormData) {
+  const { profile } = await requireProfile();
+  if (profile.role !== "administracion") throw new Error("Solo Administración configura la documentación requerida.");
+  const supabase = await createClient();
+  const obra_social_id = String(formData.get("obra_social_id") || "");
+  const nombre = String(formData.get("nombre") || "").trim();
+  const obligatorio = formData.get("obligatorio") === "on";
+  if (!obra_social_id || !nombre) throw new Error("Falta el nombre del documento.");
+  const { count } = await supabase.from("os_required_documents").select("id", { count: "exact", head: true }).eq("obra_social_id", obra_social_id);
+  const { error } = await supabase.from("os_required_documents").insert({ obra_social_id, nombre, obligatorio, orden: (count ?? 0) + 1 });
+  if (error) throw new Error(error.message);
+  revalidatePath("/obras-sociales");
+  await flash("Documento agregado. Se les pide a los pacientes nuevos de esta obra social en el paso 6 del ingreso.");
+}
+
+export async function removeRequiredDocAction(formData: FormData) {
+  const { profile } = await requireProfile();
+  if (profile.role !== "administracion") throw new Error("Solo Administración configura la documentación requerida.");
+  const supabase = await createClient();
+  const id = String(formData.get("id") || "");
+  const { error } = await supabase.from("os_required_documents").update({ activo: false }).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/obras-sociales");
+  await flash("Documento quitado de la lista requerida.");
+}

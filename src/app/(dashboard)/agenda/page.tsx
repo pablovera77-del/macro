@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, SPECIALTY_LABELS } from "@/lib/auth";
-import { createVisitAction, updateVisitStatusAction, cancelVisitAction } from "./actions";
+import { createVisitAction, updateVisitStatusAction, cancelVisitAction, rescheduleVisitAction } from "./actions";
+import { calcularCumplimiento, semanaActual, describirPlan, type Plan } from "@/lib/plan";
+import StatusBadge from "@/components/StatusBadge";
 import PageHeader from "@/components/PageHeader";
 import Link from "next/link";
 import { IconCalendar, IconMapPin, IconCheck, IconAlert } from "@/components/icons";
@@ -24,7 +26,12 @@ function formatFecha(iso: string) {
   return new Date(iso).toLocaleString("es-AR", { weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 
-export default async function AgendaPage() {
+export default async function AgendaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ paciente?: string; esp?: string }>;
+}) {
+  const { paciente: pacienteSel, esp: espSel } = await searchParams;
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
@@ -39,20 +46,35 @@ export default async function AgendaPage() {
     visitsQuery = visitsQuery.eq("profesional_id", profile.id);
   }
 
-  const [{ data: visits }, { data: patients }, { data: profesionales }, { data: evoLinks }] = await Promise.all([
+  const [{ data: visits }, { data: patients }, { data: profesionales }, { data: evoLinks }, { data: plansRaw }, { data: teamRaw }] = await Promise.all([
     visitsQuery,
     isCoordinador ? supabase.from("patients").select("id, nombre_completo").eq("estado", "activo").order("nombre_completo") : Promise.resolve({ data: null }),
     isCoordinador
       ? supabase.from("profiles").select("id, full_name").eq("role", "profesional_asistencial").eq("active", true).order("full_name")
       : Promise.resolve({ data: null }),
     supabase.from("evolutions").select("visit_id"),
+    isCoordinador ? supabase.from("treatment_plans").select("id, patient_id, especialidad, cantidad, unidad, dias_semana, desde, hasta, activo, nota").eq("activo", true) : Promise.resolve({ data: null }),
+    isCoordinador ? supabase.from("patient_care_team").select("patient_id, especialidad, profesional_id") : Promise.resolve({ data: null }),
   ]);
   const conEvolucion = new Set((evoLinks ?? []).map((e) => e.visit_id));
   const esProfesional = profile.role === "profesional_asistencial";
   const sinEvolucion = (visits ?? []).filter((v) => v.estado === "realizada" && !conEvolucion.has(v.id));
 
+  // E4: lo que el plan de tratamiento pide y todavía no está en la agenda de esta semana.
+  const nombresPaciente = new Map((patients ?? []).map((p) => [p.id, p.nombre_completo]));
+  const faltantes = isCoordinador
+    ? calcularCumplimiento(
+        ((plansRaw ?? []) as unknown as Plan[]).filter((pl) => nombresPaciente.has(pl.patient_id)),
+        (visits ?? []).map((v) => ({ patient_id: v.patient_id, especialidad: v.especialidad, fecha_programada: v.fecha_programada, estado: v.estado })),
+        semanaActual()
+      ).filter((c) => c.faltan > 0)
+    : [];
+  const equipoPorPaciente = new Map((teamRaw ?? []).map((t) => [`${t.patient_id}|${t.especialidad}`, t.profesional_id]));
+  const profesionalSugerido = pacienteSel && espSel ? equipoPorPaciente.get(`${pacienteSel}|${espSel}`) ?? "" : "";
+
   const now = new Date().getTime();
   const proximas = (visits ?? []).filter((v) => v.estado !== "realizada" && v.estado !== "cancelada" && v.estado !== "no_realizada");
+  const atrasadas = isCoordinador ? proximas.filter((v) => new Date(v.fecha_programada).getTime() < now) : [];
   const historial = (visits ?? []).filter((v) => v.estado === "realizada" || v.estado === "cancelada" || v.estado === "no_realizada");
 
   return (
@@ -88,6 +110,49 @@ export default async function AgendaPage() {
                 <Link href={`/evoluciones?visita=${v.id}`} className="rounded-lg bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 hover:bg-emerald-700 transition-colors">
                   Cargar evolución
                 </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {isCoordinador && faltantes.length > 0 && (
+        <section className="bg-blue-50 border border-blue-200 rounded-2xl p-5 animate-fade-slide-up">
+          <h2 className="text-sm font-semibold text-blue-900 mb-3">Faltan programar visitas esta semana según el plan de tratamiento</h2>
+          <ul className="space-y-2">
+            {faltantes.map((c) => (
+              <li key={c.plan.id} className="flex items-center justify-between gap-3 flex-wrap bg-white border border-blue-100 rounded-xl px-3.5 py-2.5 text-sm">
+                <span>
+                  <Link href={`/paciente/${c.plan.patient_id}?tab=plan`} className="font-medium text-slate-900 hover:underline underline-offset-2">{nombresPaciente.get(c.plan.patient_id)}</Link>
+                  <span className="text-xs text-slate-500 ml-2">{SPECIALTY_LABELS[c.plan.especialidad] ?? c.plan.especialidad} · plan {describirPlan(c.plan)} · hay {c.cubiertas} de {c.esperadas}</span>
+                </span>
+                <span className="flex items-center gap-2">
+                  <StatusBadge tone="amarillo" label={`Faltan ${c.faltan}`} />
+                  <Link href={`/agenda?paciente=${c.plan.patient_id}&esp=${c.plan.especialidad}#programar-visita`} className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800">Programar</Link>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {isCoordinador && atrasadas.length > 0 && (
+        <section className="bg-red-50 border border-red-200 rounded-2xl p-5 animate-fade-slide-up">
+          <h2 className="text-sm font-semibold text-red-900 mb-3">Visitas atrasadas: la fecha pasó y nadie las cerró ({atrasadas.length})</h2>
+          <ul className="space-y-2">
+            {atrasadas.map((v) => (
+              <li key={v.id} className="bg-white border border-red-100 rounded-xl px-3.5 py-2.5 text-sm">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <span>
+                    <span className="font-medium text-slate-900">{(v.patients as unknown as { nombre_completo: string } | null)?.nombre_completo}</span>
+                    <span className="text-xs text-slate-500 ml-2">{SPECIALTY_LABELS[v.especialidad] ?? v.especialidad} · {formatFecha(v.fecha_programada)} · {(v.profiles as unknown as { full_name: string } | null)?.full_name}</span>
+                  </span>
+                  <form action={rescheduleVisitAction} className="flex items-center gap-2">
+                    <input type="hidden" name="visit_id" value={v.id} />
+                    <input name="fecha_programada" type="datetime-local" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs" aria-label="Nueva fecha" />
+                    <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800">Reprogramar</button>
+                  </form>
+                </div>
               </li>
             ))}
           </ul>
@@ -161,19 +226,19 @@ export default async function AgendaPage() {
             Programar visita
           </h2>
           <form action={createVisitAction} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <select name="patient_id" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2">
+            <select name="patient_id" required defaultValue={pacienteSel ?? ""} className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2">
               <option value="">Paciente...</option>
               {(patients ?? []).map((p) => (
                 <option key={p.id} value={p.id}>{p.nombre_completo}</option>
               ))}
             </select>
-            <select name="profesional_id" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2">
+            <select name="profesional_id" required defaultValue={profesionalSugerido} className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2">
               <option value="">Profesional...</option>
               {(profesionales ?? []).map((p) => (
                 <option key={p.id} value={p.id}>{p.full_name}</option>
               ))}
             </select>
-            <select name="especialidad" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm">
+            <select name="especialidad" required defaultValue={espSel ?? "enfermeria"} className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm">
               {Object.entries(SPECIALTY_LABELS).map(([v, l]) => (
                 <option key={v} value={v}>{l}</option>
               ))}

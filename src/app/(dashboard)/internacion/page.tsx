@@ -81,7 +81,7 @@ export default async function InternacionPage({
     supabase
       .from("patients")
       .select(
-        "id, nombre_completo, dni, domicilio, obra_social, obra_social_id, estado, fecha_ingreso, fecha_egreso, motivo_egreso, diagnostico_principal, llegada_confirmada_at, egreso_informado_at, egreso_motivo_informado, profiles:egreso_informado_por(full_name), obras_sociales(nombre)"
+        "id, nombre_completo, dni, domicilio, obra_social, obra_social_id, estado, fecha_ingreso, fecha_egreso, motivo_egreso, diagnostico_principal, llegada_confirmada_at, medicacion_confirmada_at, egreso_informado_at, egreso_motivo_informado, profiles:egreso_informado_por(full_name), obras_sociales(nombre)"
       )
       .order("fecha_ingreso", { ascending: false }),
     // DF-C3 §2: responsable_id habilita rutear el semáforo de vencimientos (más
@@ -125,15 +125,43 @@ export default async function InternacionPage({
   // validación manual de Administración — DF-C5 §4, comentario cliente 25/09.
   const misNovedades = orderNews ?? [];
 
+  // Datos de los pasos 3 a 6 del ingreso (DF-C3 §3).
+  const [{ data: planesActivos }, { data: medsActivas }, { data: checkItems }, { data: checkHechos }, { data: docsOS }, { data: docsRec }] = await Promise.all([
+    supabase.from("treatment_plans").select("patient_id").eq("activo", true),
+    supabase.from("patient_medications").select("patient_id").eq("activo", true),
+    supabase.from("info_checklist_items").select("id").eq("activo", true),
+    supabase.from("patient_info_checklist").select("patient_id, item_id"),
+    supabase.from("os_required_documents").select("id, obra_social_id, obligatorio").eq("activo", true),
+    supabase.from("patient_required_documents").select("patient_id, doc_id"),
+  ]);
+  const conPlan = new Set((planesActivos ?? []).map((x) => x.patient_id));
+  const conMeds = new Set((medsActivas ?? []).map((x) => x.patient_id));
+  const totalChecklist = (checkItems ?? []).length;
+  const checkPorPaciente = new Map<string, number>();
+  for (const c of checkHechos ?? []) checkPorPaciente.set(c.patient_id, (checkPorPaciente.get(c.patient_id) ?? 0) + 1);
+  const recibidosPorPaciente = new Map<string, Set<string>>();
+  for (const d of docsRec ?? []) {
+    if (!recibidosPorPaciente.has(d.patient_id)) recibidosPorPaciente.set(d.patient_id, new Set());
+    recibidosPorPaciente.get(d.patient_id)!.add(d.doc_id);
+  }
+
   // Ingresos en curso: pacientes admitidos a los que todavía les falta algún paso
-  // (consentimientos, prácticas autorizadas, equipo o llegada confirmada).
+  // (plan, medicación, información, consentimientos, documentación, prácticas, equipo o llegada).
   const totalDocs = (legalDocuments ?? []).length;
   const ingresosEnCurso = (patients ?? [])
     .filter((p) => p.estado !== "dado_de_baja")
     .map((p) => {
       const firmados = (legalDocuments ?? []).filter((d) => signaturesByKey.has(signatureKey(p.id, d.id))).length;
       const faltan: string[] = [];
+      if (!conPlan.has(p.id)) faltan.push("Plan de tratamiento");
+      if (!conMeds.has(p.id) && !p.medicacion_confirmada_at) faltan.push("Medicación vigente");
+      const chk = checkPorPaciente.get(p.id) ?? 0;
+      if (totalChecklist > 0 && chk < totalChecklist) faltan.push(`Información al paciente (${chk}/${totalChecklist})`);
       if (!(totalDocs > 0 && firmados === totalDocs)) faltan.push(`Consentimientos (${firmados}/${totalDocs})`);
+      const reqOS = (docsOS ?? []).filter((d) => d.obra_social_id === p.obra_social_id && d.obligatorio);
+      const recOS = recibidosPorPaciente.get(p.id);
+      const faltanOS = reqOS.filter((d) => !recOS?.has(d.id)).length;
+      if (p.obra_social_id && faltanOS > 0) faltan.push(`Documentación de la obra social (faltan ${faltanOS})`);
       if ((authorizations ?? []).filter((a) => a.patient_id === p.id).length === 0) faltan.push("Prácticas autorizadas");
       if ((careTeam ?? []).filter((t) => t.patient_id === p.id).length === 0) faltan.push("Equipo asistencial");
       if (p.estado === "admitido_pendiente_llegada" && !p.llegada_confirmada_at) faltan.push("Llegada al domicilio");
@@ -201,16 +229,16 @@ export default async function InternacionPage({
                     ))}
                   </div>
                 </div>
-                <a href={`#paciente-${p.id}`} className="shrink-0 rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">
-                  {canAdmit ? "Completar" : "Ver"}
-                </a>
+                <Link href={`/paciente/${p.id}?tab=ingreso`} className="shrink-0 rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">
+                  {canAdmit ? "Completar ingreso" : "Ver ingreso"}
+                </Link>
               </li>
             ))}
           </ul>
         </section>
       )}
 
-      {canAdmit && <AdmissionWizard obrasSociales={(obrasSociales ?? []).map((o) => ({ id: o.id, nombre: o.nombre }))} defaultOpen={nuevo === "1"} />}
+      {canAdmit && <AdmissionWizard obrasSociales={(obrasSociales ?? []).map((o) => ({ id: o.id, nombre: o.nombre }))} profesionales={profesionalesLivianos} defaultOpen={nuevo === "1"} />}
 
       {isCoord && misNovedades.length > 0 && (
         <section className="bg-white border border-slate-200 rounded-2xl p-5 animate-fade-slide-up card-hover">

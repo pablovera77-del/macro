@@ -62,6 +62,25 @@ export async function updateVisitStatusAction(formData: FormData) {
   return;
 }
 
+// E4: Coordinación reprograma una visita atrasada sin tener que cancelarla y volver a crearla.
+export async function rescheduleVisitAction(formData: FormData) {
+  const { profile } = await requireProfile();
+  const allowed: Enums<"app_role">[] = ["coordinador_internacion"];
+  if (!allowed.includes(profile.role)) throw new Error("Solo Coordinación reprograma visitas.");
+  const supabase = await createClient();
+  const visit_id = String(formData.get("visit_id") || "");
+  const fecha = String(formData.get("fecha_programada") || "");
+  if (!visit_id || !fecha) throw new Error("Falta la nueva fecha.");
+  const nueva = new Date(fecha);
+  if (Number.isNaN(nueva.getTime())) throw new Error("La fecha no es válida.");
+  const { error } = await supabase.from("visits").update({ fecha_programada: nueva.toISOString(), estado: "programada" }).eq("id", visit_id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/agenda");
+  revalidatePath("/inicio");
+  await flash("Visita reprogramada. El profesional la ve con la nueva fecha en «Mi agenda».");
+  return;
+}
+
 export async function cancelVisitAction(formData: FormData) {
   const { profile } = await requireProfile();
   const allowed: Enums<"app_role">[] = ["coordinador_internacion"];

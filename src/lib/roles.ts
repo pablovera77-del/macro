@@ -15,3 +15,15 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   coordinador_internacion: "Coordinador de Internación",
   profesional_asistencial: "Profesional Asistencial",
 };
+
+// Disciplinas clínicas (DF-C2 §5)
+export const SPECIALTY_LABELS: Record<string, string> = {
+enfermeria: "Enfermería",
+medicina: "Medicina",
+kinesiologia: "Kinesiología",
+fonoaudiologia: "Fonoaudiología",
+nutricion: "Nutrición",
+trabajo_social: "Trabajo social",
+psicologia: "Psicología",
+otra: "Otra",
+};

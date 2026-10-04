@@ -2,14 +2,19 @@
 
 import { useActionState, useRef, useState, useTransition } from "react";
 import { createAdmissionAction, checkDniAction, type AdmissionState } from "@/app/(dashboard)/internacion/actions";
+import { DISCIPLINAS_PLAN, DIAS_CORTOS } from "@/lib/plan";
+import { SPECIALTY_LABELS } from "@/lib/roles";
 
 type ObraSocial = { id: string; nombre: string };
+type Profesional = { id: string; full_name: string };
 
 const STEPS = [
-  { n: 1, title: "Identificación", hint: "DNI y nombre" },
-  { n: 2, title: "Domicilio y familia", hint: "Dónde vive y a quién llamar" },
-  { n: 3, title: "Cobertura y diagnóstico", hint: "Obra social y motivo de internación" },
+  { n: 1, title: "Datos personales", hint: "DNI, nombre, domicilio y familiar responsable" },
+  { n: 2, title: "Obra social", hint: "Cobertura, afiliado y médico derivante" },
+  { n: 3, title: "Diagnóstico, plan y equipo", hint: "Motivo de la internación, visitas por disciplina y profesionales" },
 ];
+// Los pasos 4 a 6 del DF-C3 §3 se completan en la ficha, con el paciente ya admitido.
+const PASOS_POSTERIORES = ["Medicación vigente", "Información y consentimientos", "Documentación de la obra social"];
 
 const inputCls =
   "w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0095A8]/40 focus:border-[#0095A8]";
@@ -45,7 +50,7 @@ function Field({
  * entendía cómo empezar. Todos los campos quedan montados en el DOM (solo se
  * ocultan los de otros pasos) para que se envíen juntos al final.
  */
-export default function AdmissionWizard({ obrasSociales, defaultOpen = false }: { obrasSociales: ObraSocial[]; defaultOpen?: boolean }) {
+export default function AdmissionWizard({ obrasSociales, profesionales = [], defaultOpen = false }: { obrasSociales: ObraSocial[]; profesionales?: Profesional[]; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const [step, setStep] = useState(1);
   const [dniMsg, setDniMsg] = useState<{ tone: "error" | "ok"; text: string } | null>(null);
@@ -87,7 +92,7 @@ export default function AdmissionWizard({ obrasSociales, defaultOpen = false }: 
       <section id="nuevo-paciente" className="scroll-mt-6 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-5 flex items-center justify-between gap-4 flex-wrap animate-fade-slide-up">
         <div>
           <h2 className="font-semibold text-slate-900">¿Ingresa un paciente nuevo?</h2>
-          <p className="text-sm text-slate-600 mt-0.5">Te guiamos en 3 pasos cortos. Lo primero que pedimos es el DNI, para avisarte si ya existe.</p>
+          <p className="text-sm text-slate-600 mt-0.5">Te guiamos paso a paso. Lo primero que pedimos es el DNI, para avisarte si ya existe. El ingreso completo tiene 6 pasos: los 3 primeros acá y los otros 3 en la ficha del paciente.</p>
         </div>
         <button
           onClick={() => setOpen(true)}
@@ -103,7 +108,7 @@ export default function AdmissionWizard({ obrasSociales, defaultOpen = false }: 
     <section id="nuevo-paciente" className="scroll-mt-6 bg-white border-2 border-[#0095A8]/40 rounded-2xl p-5 animate-fade-slide-up">
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <h2 className="font-semibold text-slate-900">Nuevo paciente — paso {step} de 3</h2>
+          <h2 className="font-semibold text-slate-900">Nuevo paciente — paso {step} de 6</h2>
           <p className="text-sm text-slate-500">{STEPS[step - 1].title}: {STEPS[step - 1].hint}</p>
         </div>
         <button type="button" onClick={() => setOpen(false)} className="text-xs text-slate-400 hover:text-slate-600">Cancelar</button>
@@ -123,6 +128,9 @@ export default function AdmissionWizard({ obrasSociales, defaultOpen = false }: 
             {s.n < 3 && <span className="flex-1 h-px bg-slate-200" />}
           </li>
         ))}
+        <li className="hidden sm:flex items-center gap-2 text-[11px] text-slate-400 pl-2 border-l border-slate-200" title="Se completan en la ficha del paciente, después de admitirlo">
+          4 · 5 · 6 en la ficha: {PASOS_POSTERIORES.join(", ").toLowerCase()}
+        </li>
       </ol>
 
       <form
@@ -159,10 +167,7 @@ export default function AdmissionWizard({ obrasSociales, defaultOpen = false }: 
               {dniMsg.text}
             </p>
           )}
-        </div>
-
-        <div data-step="2" className={step === 2 ? "grid grid-cols-1 sm:grid-cols-2 gap-3" : "hidden"}>
-          <Field label="Domicilio del paciente" required className="sm:col-span-2">
+          <Field label="Domicilio del paciente" required className="sm:col-span-2" hint="Es el domicilio donde se agendan las visitas.">
             <input name="domicilio" required autoComplete="off" placeholder="Calle, número, localidad" className={inputCls} />
           </Field>
           <Field label="Teléfono del paciente">
@@ -177,7 +182,7 @@ export default function AdmissionWizard({ obrasSociales, defaultOpen = false }: 
           </Field>
         </div>
 
-        <div data-step="3" className={step === 3 ? "grid grid-cols-1 sm:grid-cols-2 gap-3" : "hidden"}>
+        <div data-step="2" className={step === 2 ? "grid grid-cols-1 sm:grid-cols-2 gap-3" : "hidden"}>
           <Field label="Obra social">
             <select name="obra_social_id" defaultValue="" className={inputCls}>
               <option value="">Sin obra social / particular</option>
@@ -195,11 +200,48 @@ export default function AdmissionWizard({ obrasSociales, defaultOpen = false }: 
           <Field label="Fecha de ingreso al servicio" hint="Por defecto, hoy.">
             <input name="fecha_ingreso" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className={inputCls} />
           </Field>
-          <Field label="Diagnóstico principal" className="sm:col-span-2">
+        </div>
+
+        <div data-step="3" className={step === 3 ? "space-y-3" : "hidden"}>
+          <Field label="Diagnóstico principal">
             <input name="diagnostico_principal" autoComplete="off" placeholder="Motivo de la internación domiciliaria" className={inputCls} />
           </Field>
-          <p className="sm:col-span-2 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
-            Al admitir, el paciente queda en «Admitido, pendiente de llegada». Después te mostramos los próximos pasos: consentimientos, autorizaciones, equipo y confirmación de llegada.
+          <div>
+            <p className="text-xs font-medium text-slate-700 mb-1">Plan de tratamiento y equipo asistencial</p>
+            <p className="text-[11px] text-slate-400 mb-2">Para cada disciplina que corresponda, indicá cuántas visitas necesita y qué profesional la atiende. Las que dejes vacías quedan fuera del plan; se pueden completar después en la ficha.</p>
+            <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
+              {DISCIPLINAS_PLAN.map((d) => (
+                <div key={d} className="p-3 grid grid-cols-2 sm:grid-cols-12 gap-2 items-end">
+                  <span className="col-span-2 sm:col-span-2 text-sm font-medium text-slate-800 self-center">{SPECIALTY_LABELS[d]}</span>
+                  <label className="col-span-2 sm:col-span-4 block text-[11px] text-slate-500">Profesional
+                    <select name={`equipo__${d}`} defaultValue="" className={`${inputCls} mt-0.5 py-2`}>
+                      <option value="">Sin asignar</option>
+                      {profesionales.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
+                    </select>
+                  </label>
+                  <label className="block text-[11px] text-slate-500 sm:col-span-2">Visitas
+                    <input name={`plan__${d}__cantidad`} type="number" min={1} max={50} placeholder="—" className={`${inputCls} mt-0.5 py-2`} />
+                  </label>
+                  <label className="block text-[11px] text-slate-500 sm:col-span-2">Cada
+                    <select name={`plan__${d}__unidad`} defaultValue="semana" className={`${inputCls} mt-0.5 py-2`}>
+                      <option value="semana">semana</option>
+                      <option value="dia">día</option>
+                    </select>
+                  </label>
+                  <details className="col-span-2 sm:col-span-2 text-[11px] text-slate-500">
+                    <summary className="cursor-pointer select-none">Días</summary>
+                    <div className="flex flex-wrap gap-x-2 gap-y-1 mt-1">
+                      {DIAS_CORTOS.map((dc, i) => (
+                        <label key={dc} className="flex items-center gap-1"><input type="checkbox" name={`plan__${d}__dias`} value={i + 1} className="rounded border-slate-300" />{dc}</label>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
+            Al admitir, el paciente queda en «Admitido, pendiente de llegada» y te llevamos a su ficha para completar los pasos 4 a 6: medicación, información y consentimientos, y documentación de la obra social.
           </p>
         </div>
 

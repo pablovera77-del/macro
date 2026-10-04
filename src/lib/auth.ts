@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { ROLE_LABELS, type AppRole, type DbRole } from "@/lib/roles";
+import { ROLE_LABELS, SPECIALTY_LABELS, type AppRole, type DbRole } from "@/lib/roles";
 
-export { ROLE_LABELS };
+export { ROLE_LABELS, SPECIALTY_LABELS };
 export type { AppRole, DbRole };
 
 // Quién hace qué en el ingreso de pacientes (DF-C3 §2 y §3):
@@ -103,15 +103,4 @@ transporte: { bg: "bg-amber-500/15", text: "text-amber-300", ring: "ring-amber-4
 direccion: { bg: "bg-emerald-500/15", text: "text-emerald-300", ring: "ring-emerald-400/30", dot: "bg-emerald-400" },
 coordinador_internacion: { bg: "bg-rose-500/15", text: "text-rose-300", ring: "ring-rose-400/30", dot: "bg-rose-400" },
 profesional_asistencial: { bg: "bg-teal-500/15", text: "text-teal-300", ring: "ring-teal-400/30", dot: "bg-teal-400" },
-};
-
-// Disciplinas clínicas (DF-C2 §5)
-export const SPECIALTY_LABELS: Record<string, string> = {
-enfermeria: "Enfermería",
-medicina: "Medicina",
-kinesiologia: "Kinesiología",
-fonoaudiologia: "Fonoaudiología",
-nutricion: "Nutrición",
-trabajo_social: "Trabajo social",
-otra: "Otra",
 };

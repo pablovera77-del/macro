@@ -3,8 +3,22 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, SPECIALTY_LABELS } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
+import StatusBadge from "@/components/StatusBadge";
+import ConsentDocumentRow from "@/components/ConsentDocumentRow";
 import { IconUser, IconMapPin, IconCheck, IconAlert } from "@/components/icons";
-import { SEMANTIC_TONE_BADGE_STYLES, type SemanticTone } from "@/lib/semantic-status";
+import { type SemanticTone } from "@/lib/semantic-status";
+import { calcularCumplimiento, describirPlan, DIAS_CORTOS, DISCIPLINAS_PLAN, semanaActual, type Plan } from "@/lib/plan";
+import { signLegalDocumentAction } from "../../internacion/actions";
+import {
+  savePlanAction,
+  endPlanAction,
+  postMessageAction,
+  addMedicationAction,
+  removeMedicationAction,
+  confirmNoMedicationAction,
+  toggleChecklistItemAction,
+  toggleRequiredDocAction,
+} from "./actions";
 
 const ESTADO_LABELS: Record<string, string> = {
   admitido_pendiente_llegada: "Admitido, pendiente de llegada",
@@ -13,21 +27,29 @@ const ESTADO_LABELS: Record<string, string> = {
 };
 const ESTADO_TONE: Record<string, SemanticTone> = { admitido_pendiente_llegada: "amarillo", activo: "verde", dado_de_baja: "gris" };
 const VISITA_LABELS: Record<string, string> = { programada: "Programada", confirmada: "Confirmada", realizada: "Realizada", no_realizada: "No realizada", cancelada: "Cancelada" };
+const VISITA_TONE: Record<string, SemanticTone> = { programada: "amarillo", confirmada: "verde", realizada: "verde", no_realizada: "rojo", cancelada: "gris" };
 const ORDER_LABELS: Record<string, string> = { borrador: "Esperando autorización", autorizado: "Autorizado", despachado: "Despachado", entregado: "Entregado", cancelado: "No autorizado" };
+const ORDER_TONE: Record<string, SemanticTone> = { borrador: "amarillo", autorizado: "amarillo", despachado: "amarillo", entregado: "verde", cancelado: "gris" };
 const SEMAFORO_LABELS: Record<string, string> = { vigente: "Vigente", por_vencer: "Por vencer", vencida: "Vencida" };
 const SEMAFORO_TONE: Record<string, SemanticTone> = { vigente: "verde", por_vencer: "amarillo", vencida: "rojo" };
 
-type Tab = "resumen" | "agenda" | "clinica" | "insumos" | "ingreso";
+type Tab = "resumen" | "plan" | "agenda" | "clinica" | "insumos" | "ingreso" | "mensajes";
 
 function fecha(iso: string | null | undefined) {
-  return iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+  return iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Argentina/San_Juan" }) : "—";
 }
+function fechaHora(iso: string) {
+  return new Date(iso).toLocaleString("es-AR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/San_Juan" });
+}
+
+const inputCls = "rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm w-full";
+const btnPrimary = "rounded-lg bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-800 transition-colors";
+const btnGhost = "rounded-lg border border-slate-300 text-slate-700 text-xs font-medium px-3 py-1.5 hover:bg-slate-50";
 
 /**
  * Ficha única del paciente: todo lo del paciente en un solo lugar, con pestañas
- * según el rol. Antes el mismo paciente aparecía en tres pantallas distintas
- * (Pacientes, Autorizaciones de stock, Historia clínica). Los permisos reales
- * siguen en la base de datos (RLS): las pestañas solo ordenan lo que se muestra.
+ * según el rol. Los permisos reales siguen en la base de datos (RLS): las
+ * pestañas solo ordenan lo que se muestra.
  */
 export default async function FichaPacientePage({
   params,
@@ -42,32 +64,41 @@ export default async function FichaPacientePage({
   const role = profile.role;
   if (!["administracion", "coordinador_internacion", "profesional_asistencial"].includes(role)) redirect("/inicio");
 
+  const esAdmin = role === "administracion";
+  const puedeEditarPlan = role === "administracion" || role === "coordinador_internacion";
   const verClinica = role === "profesional_asistencial" || role === "coordinador_internacion";
   const verInsumos = role === "administracion" || role === "coordinador_internacion";
   const tabs: { id: Tab; label: string }[] = [
     { id: "resumen", label: "Resumen" },
+    { id: "plan", label: "Plan de tratamiento" },
     { id: "agenda", label: "Agenda" },
     ...(verClinica ? [{ id: "clinica" as Tab, label: "Historia clínica" }] : []),
     ...(verInsumos ? [{ id: "insumos" as Tab, label: "Insumos y equipos" }] : []),
     { id: "ingreso", label: "Ingreso y egreso" },
+    { id: "mensajes", label: "Mensajes del equipo" },
   ];
   const tab: Tab = tabs.some((t) => t.id === tabParam) ? (tabParam as Tab) : "resumen";
 
   const supabase = await createClient();
   const { data: p } = await supabase
     .from("patients")
-    .select("id, nombre_completo, dni, fecha_nacimiento, domicilio, telefono_contacto, contacto_familiar_nombre, contacto_familiar_telefono, diagnostico_principal, obra_social, numero_afiliado, medico_derivante, estado, fecha_ingreso, fecha_egreso, motivo_egreso, llegada_confirmada_at, egreso_informado_at, obras_sociales(nombre)")
+    .select("id, nombre_completo, dni, fecha_nacimiento, domicilio, telefono_contacto, contacto_familiar_nombre, contacto_familiar_telefono, diagnostico_principal, obra_social, obra_social_id, numero_afiliado, medico_derivante, estado, fecha_ingreso, fecha_egreso, motivo_egreso, llegada_confirmada_at, egreso_informado_at, medicacion_confirmada_at, obras_sociales(nombre)")
     .eq("id", id)
     .maybeSingle();
   if (!p) notFound();
 
-  const [{ data: team }, { data: visits }, { data: auths }, { data: legalDocs }, { data: sigs }] = await Promise.all([
+  const [{ data: team }, { data: visits }, { data: auths }, { data: legalDocs }, { data: sigs }, { data: plansRaw }] = await Promise.all([
     supabase.from("patient_care_team").select("id, especialidad, profiles(full_name)").eq("patient_id", id),
-    supabase.from("visits").select("id, especialidad, fecha_programada, estado, profiles(full_name)").eq("patient_id", id).order("fecha_programada", { ascending: false }).limit(15),
+    supabase.from("visits").select("id, patient_id, especialidad, fecha_programada, estado, profiles(full_name)").eq("patient_id", id).order("fecha_programada", { ascending: false }).limit(80),
     supabase.from("v_treatment_authorization_status").select("*").eq("patient_id", id).order("periodo_hasta"),
-    supabase.from("legal_documents").select("id, titulo").eq("activo", true).order("orden"),
-    supabase.from("patient_document_signatures").select("legal_document_id, firmante_nombre, firmado_at").eq("patient_id", id),
+    supabase.from("legal_documents").select("id, codigo, titulo, resumen, requiere_firma_profesional").eq("activo", true).order("orden"),
+    supabase.from("patient_document_signatures").select("legal_document_id, firmante_nombre, firmado_at, profesional_id").eq("patient_id", id),
+    supabase.from("treatment_plans").select("id, patient_id, especialidad, cantidad, unidad, dias_semana, desde, hasta, activo, nota, created_at").eq("patient_id", id).order("created_at", { ascending: false }),
   ]);
+  const plans = (plansRaw ?? []) as unknown as (Plan & { created_at: string })[];
+  const planesActivos = plans.filter((x) => x.activo);
+  const historialPlanes = plans.filter((x) => !x.activo);
+
   const { data: evolutions } = verClinica
     ? await supabase.from("evolutions").select("id, especialidad, created_at, firma_profesional_at, conformidad_familiar, profiles(full_name)").eq("patient_id", id).order("created_at", { ascending: false }).limit(10)
     : { data: null };
@@ -79,10 +110,55 @@ export default async function FichaPacientePage({
       ])
     : [{ data: null }, { data: null }, { data: null }];
 
+  // Pestañas que necesitan datos extra: se piden solo cuando se abren.
+  const { data: mensajes } = tab === "mensajes"
+    ? await supabase.from("patient_messages").select("id, mensaje, created_at, autor_id, profiles(full_name)").eq("patient_id", id).order("created_at", { ascending: false }).limit(50)
+    : { data: null };
+
+  const ingresoData = tab === "ingreso"
+    ? await Promise.all([
+        supabase.from("patient_medications").select("id, medicamento, dosis, via, frecuencia").eq("patient_id", id).eq("activo", true).order("created_at"),
+        supabase.from("info_checklist_items").select("id, orden, texto").eq("activo", true).order("orden"),
+        supabase.from("patient_info_checklist").select("item_id").eq("patient_id", id),
+        p.obra_social_id ? supabase.from("os_required_documents").select("id, nombre, obligatorio").eq("obra_social_id", p.obra_social_id).eq("activo", true).order("orden") : Promise.resolve({ data: [] as { id: string; nombre: string; obligatorio: boolean }[] }),
+        supabase.from("patient_required_documents").select("doc_id").eq("patient_id", id),
+        esAdmin ? supabase.from("profiles").select("id, full_name").eq("role", "profesional_asistencial").eq("active", true).order("full_name") : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
+      ])
+    : null;
+  const medicacion = ingresoData?.[0].data ?? [];
+  const checkItems = ingresoData?.[1].data ?? [];
+  const checkHechos = new Set((ingresoData?.[2].data ?? []).map((x) => x.item_id));
+  const docsOS = ingresoData?.[3].data ?? [];
+  const docsRecibidos = new Set((ingresoData?.[4].data ?? []).map((x) => x.doc_id));
+  const profesionales = (ingresoData?.[5].data ?? []) as { id: string; full_name: string }[];
+
   const obraSocial = (p.obras_sociales as unknown as { nombre: string } | null)?.nombre ?? p.obra_social ?? "Sin obra social";
   const firmados = new Map((sigs ?? []).map((s) => [s.legal_document_id, s]));
   const nombreDe = (x: unknown) => (x as { full_name: string } | null)?.full_name ?? "—";
   const card = "bg-white rounded-2xl border border-slate-200 p-5";
+
+  const semana = semanaActual();
+  const cumplimiento = calcularCumplimiento(planesActivos, (visits ?? []).map((v) => ({ patient_id: id, especialidad: v.especialidad, fecha_programada: v.fecha_programada, estado: v.estado })), semana);
+
+  // Los 6 pasos del ingreso (DF-C3 §3). Los pasos 1 a 3 se completan al dar de alta.
+  const pasos = [
+    { n: 1, titulo: "Datos personales y de contacto", ok: true },
+    { n: 2, titulo: "Obra social y afiliado", ok: !!p.obra_social_id || !!p.obra_social },
+    { n: 3, titulo: "Diagnóstico, plan y equipo", ok: planesActivos.length > 0 && (team ?? []).length > 0 },
+    { n: 4, titulo: "Medicación vigente", ok: medicacion.length > 0 || !!p.medicacion_confirmada_at },
+    { n: 5, titulo: "Información y consentimientos", ok: checkItems.length > 0 && checkItems.every((i) => checkHechos.has(i.id)) && (legalDocs ?? []).every((d) => firmados.has(d.id)) },
+    { n: 6, titulo: "Documentación de la obra social", ok: docsOS.filter((d) => d.obligatorio).every((d) => docsRecibidos.has(d.id)) },
+  ];
+  const pasosHechos = pasos.filter((x) => x.ok).length;
+
+  // Cronología del Resumen: lo último que pasó con el paciente, de todas las fuentes que el rol puede ver.
+  type Evento = { fecha: string; texto: string };
+  const eventos: Evento[] = [
+    ...(visits ?? []).filter((v) => v.estado === "realizada" || v.estado === "no_realizada").map((v) => ({ fecha: v.fecha_programada, texto: `Visita de ${SPECIALTY_LABELS[v.especialidad] ?? v.especialidad} ${v.estado === "realizada" ? "realizada" : "no realizada"} · ${nombreDe(v.profiles)}` })),
+    ...(evolutions ?? []).map((e) => ({ fecha: e.created_at, texto: `Evolución de ${SPECIALTY_LABELS[e.especialidad] ?? e.especialidad} · ${nombreDe(e.profiles)}` })),
+    ...(orders ?? []).map((o) => ({ fecha: o.created_at, texto: `Pedido: ${ORDER_LABELS[o.estado] ?? o.estado}` })),
+    ...(p.llegada_confirmada_at ? [{ fecha: p.llegada_confirmada_at, texto: "Llegada al domicilio confirmada" }] : []),
+  ].sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 10);
 
   return (
     <div className="space-y-6">
@@ -93,9 +169,12 @@ export default async function FichaPacientePage({
         purpose={`DNI ${p.dni} · ${obraSocial}${p.numero_afiliado ? ` · afiliado ${p.numero_afiliado}` : ""}`}
       />
 
-      <div className="flex items-center gap-2 flex-wrap text-sm">
+      <div className="flex items-center gap-3 flex-wrap text-sm">
         <Link href="/internacion" className="text-slate-500 hover:text-slate-900 underline underline-offset-2">← Volver a Pacientes</Link>
-        <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${SEMANTIC_TONE_BADGE_STYLES[ESTADO_TONE[p.estado] ?? "gris"]}`}>{ESTADO_LABELS[p.estado]}</span>
+        <StatusBadge tone={ESTADO_TONE[p.estado] ?? "gris"} label={ESTADO_LABELS[p.estado]} />
+        {p.estado !== "dado_de_baja" && puedeEditarPlan && (
+          <Link href="/agenda#programar-visita" className={btnGhost}>Programar una visita</Link>
+        )}
       </div>
 
       <nav aria-label="Secciones de la ficha" className="flex gap-1 overflow-x-auto border-b border-slate-200">
@@ -140,12 +219,132 @@ export default async function FichaPacientePage({
             {(() => {
               const prox = [...(visits ?? [])].filter((v) => v.estado === "programada" || v.estado === "confirmada").sort((a, b) => a.fecha_programada.localeCompare(b.fecha_programada))[0];
               return prox ? (
-                <p className="text-sm">{fecha(prox.fecha_programada)} · {SPECIALTY_LABELS[prox.especialidad] ?? prox.especialidad} · {nombreDe(prox.profiles)}</p>
+                <p className="text-sm">{fechaHora(prox.fecha_programada)} · {SPECIALTY_LABELS[prox.especialidad] ?? prox.especialidad} · {nombreDe(prox.profiles)}</p>
               ) : (
                 <p className="text-sm text-slate-400">No hay visitas programadas.</p>
               );
             })()}
           </section>
+          <section className={card}>
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <h2 className="text-sm font-semibold text-slate-900">Plan de la semana</h2>
+              <Link href={`/paciente/${id}?tab=plan`} className="text-xs text-slate-500 underline underline-offset-2">Ver plan</Link>
+            </div>
+            {cumplimiento.length === 0 ? (
+              <p className="text-sm text-slate-400">Todavía no tiene plan de tratamiento cargado.</p>
+            ) : (
+              <ul className="text-sm space-y-2">
+                {cumplimiento.map((c) => (
+                  <li key={c.plan.id} className="flex items-center justify-between gap-3">
+                    <span>{SPECIALTY_LABELS[c.plan.especialidad] ?? c.plan.especialidad}: {c.cubiertas} de {c.esperadas}</span>
+                    <StatusBadge tone={c.faltan === 0 ? "verde" : "amarillo"} label={c.faltan === 0 ? "Completo" : `Faltan ${c.faltan}`} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <section className={card}>
+            <h2 className="text-sm font-semibold text-slate-900 mb-3">Lo último que pasó</h2>
+            {eventos.length === 0 ? (
+              <p className="text-sm text-slate-400">Todavía no hay actividad registrada.</p>
+            ) : (
+              <ol className="text-sm space-y-2 border-l border-slate-200 pl-4">
+                {eventos.map((e, i) => (
+                  <li key={i} className="relative">
+                    <span className="absolute -left-[21px] top-1.5 w-2 h-2 rounded-full bg-slate-300" />
+                    <span className="block text-xs text-slate-400">{fecha(e.fecha)}</span>
+                    {e.texto}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </div>
+      )}
+
+      {tab === "plan" && (
+        <div className="space-y-4">
+          <section className={card}>
+            <h2 className="text-sm font-semibold text-slate-900">Plan de tratamiento por disciplina</h2>
+            <p className="text-xs text-slate-500 mt-1 mb-4">Cuántas visitas necesita el paciente. Con el plan cargado, la Agenda avisa qué visitas faltan programar cada semana.</p>
+            {planesActivos.length === 0 ? (
+              <p className="text-sm text-slate-400">Todavía no hay disciplinas en el plan.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100 text-sm">
+                {planesActivos.map((pl) => {
+                  const c = cumplimiento.find((x) => x.plan.id === pl.id);
+                  return (
+                    <li key={pl.id} className="py-3 flex items-center justify-between gap-3 flex-wrap">
+                      <div>
+                        <span className="font-medium text-slate-900">{SPECIALTY_LABELS[pl.especialidad] ?? pl.especialidad}</span>
+                        <span className="text-slate-500"> · {describirPlan(pl)}</span>
+                        <span className="block text-xs text-slate-400">Desde {fecha(pl.desde)}{pl.nota ? ` · ${pl.nota}` : ""}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {c && <StatusBadge tone={c.faltan === 0 ? "verde" : "amarillo"} label={`Esta semana: ${c.cubiertas} de ${c.esperadas}${c.faltan > 0 ? ` · faltan ${c.faltan}` : ""}`} />}
+                        {puedeEditarPlan && (
+                          <form action={endPlanAction}>
+                            <input type="hidden" name="plan_id" value={pl.id} />
+                            <input type="hidden" name="patient_id" value={id} />
+                            <button className={btnGhost}>Quitar</button>
+                          </form>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          {puedeEditarPlan && p.estado !== "dado_de_baja" && (
+            <section className={card}>
+              <h2 className="text-sm font-semibold text-slate-900 mb-1">Agregar o cambiar una disciplina</h2>
+              <p className="text-xs text-slate-500 mb-4">Si la disciplina ya está en el plan, el plan anterior queda en el historial.</p>
+              <form action={savePlanAction} className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                <input type="hidden" name="patient_id" value={id} />
+                <label className="block text-xs text-slate-600">Disciplina
+                  <select name="especialidad" required className={`${inputCls} mt-1`}>
+                    {DISCIPLINAS_PLAN.map((d) => <option key={d} value={d}>{SPECIALTY_LABELS[d]}</option>)}
+                  </select>
+                </label>
+                <label className="block text-xs text-slate-600">Cantidad de visitas
+                  <input name="cantidad" type="number" min={1} max={50} required defaultValue={3} className={`${inputCls} mt-1`} />
+                </label>
+                <label className="block text-xs text-slate-600">Cada
+                  <select name="unidad" defaultValue="semana" className={`${inputCls} mt-1`}>
+                    <option value="semana">semana</option>
+                    <option value="dia">día</option>
+                  </select>
+                </label>
+                <label className="block text-xs text-slate-600">Nota (opcional)
+                  <input name="nota" placeholder="Ej. a la mañana" className={`${inputCls} mt-1`} />
+                </label>
+                <fieldset className="sm:col-span-4">
+                  <legend className="text-xs text-slate-600 mb-1">Días específicos (opcional; si no marcás ninguno, cualquier día)</legend>
+                  <div className="flex flex-wrap gap-3">
+                    {DIAS_CORTOS.map((d, i) => (
+                      <label key={d} className="flex items-center gap-1.5 text-xs text-slate-700">
+                        <input type="checkbox" name="dias" value={i + 1} className="rounded border-slate-300" /> {d}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <div className="sm:col-span-4"><button className={btnPrimary}>Guardar en el plan</button></div>
+              </form>
+            </section>
+          )}
+
+          {historialPlanes.length > 0 && (
+            <section className={card}>
+              <h2 className="text-sm font-semibold text-slate-900 mb-3">Historial del plan</h2>
+              <ul className="text-sm space-y-1.5 text-slate-600">
+                {historialPlanes.map((pl) => (
+                  <li key={pl.id}>{SPECIALTY_LABELS[pl.especialidad] ?? pl.especialidad} · {describirPlan(pl)} <span className="text-xs text-slate-400">({fecha(pl.desde)} a {fecha(pl.hasta)})</span></li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
       )}
 
@@ -156,10 +355,10 @@ export default async function FichaPacientePage({
             <p className="text-sm text-slate-400">Este paciente todavía no tiene visitas.</p>
           ) : (
             <ul className="divide-y divide-slate-100 text-sm">
-              {(visits ?? []).map((v) => (
+              {(visits ?? []).slice(0, 30).map((v) => (
                 <li key={v.id} className="py-2 flex items-center justify-between gap-3 flex-wrap">
-                  <span>{fecha(v.fecha_programada)} · {SPECIALTY_LABELS[v.especialidad] ?? v.especialidad} · {nombreDe(v.profiles)}</span>
-                  <span className="text-xs rounded-full bg-slate-100 text-slate-600 px-2.5 py-1">{VISITA_LABELS[v.estado] ?? v.estado}</span>
+                  <span>{fechaHora(v.fecha_programada)} · {SPECIALTY_LABELS[v.especialidad] ?? v.especialidad} · {nombreDe(v.profiles)}</span>
+                  <StatusBadge tone={VISITA_TONE[v.estado] ?? "gris"} label={VISITA_LABELS[v.estado] ?? v.estado} />
                 </li>
               ))}
             </ul>
@@ -221,32 +420,159 @@ export default async function FichaPacientePage({
                 {(orders ?? []).map((o) => (
                   <li key={o.id} className="flex items-center justify-between gap-3">
                     <span>{fecha(o.created_at)}</span>
-                    <span className="text-xs rounded-full bg-slate-100 text-slate-600 px-2.5 py-1">{ORDER_LABELS[o.estado] ?? o.estado}</span>
+                    <StatusBadge tone={ORDER_TONE[o.estado] ?? "gris"} label={ORDER_LABELS[o.estado] ?? o.estado} />
                   </li>
                 ))}
               </ul>
             )}
+            <Link href="/pedidos" className={`${btnGhost} inline-block mt-4`}>Ir a Pedidos para cargar uno nuevo</Link>
           </section>
         </div>
       )}
 
       {tab === "ingreso" && (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-4">
           <section className={card}>
-            <h2 className="text-sm font-semibold text-slate-900 mb-3">Consentimientos de ingreso</h2>
-            <ul className="text-sm space-y-1.5">
-              {(legalDocs ?? []).map((d) => {
-                const s = firmados.get(d.id);
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+              <h2 className="text-sm font-semibold text-slate-900">Ingreso del paciente: {pasosHechos} de 6 pasos completos</h2>
+              <StatusBadge tone={pasosHechos === 6 ? "verde" : "amarillo"} label={pasosHechos === 6 ? "Ingreso completo" : "Ingreso en curso"} />
+            </div>
+            <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+              {pasos.map((x) => (
+                <li key={x.n} className={`rounded-xl border px-3 py-2 flex items-center gap-2 ${x.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+                  <span className="font-semibold">{x.ok ? "✓" : x.n}</span> {x.titulo}{!x.ok && <span className="ml-auto text-[11px]">pendiente</span>}
+                </li>
+              ))}
+            </ol>
+            <p className="text-xs text-slate-500 mt-3">Los pasos 1 y 2 se completan al dar de alta; el 3 es el plan de tratamiento y el equipo; del 4 al 6 se completan acá abajo.</p>
+          </section>
+
+          <section className={card} id="paso-3">
+            <h2 className="text-sm font-semibold text-slate-900 mb-2">Paso 3 · Plan de tratamiento y equipo</h2>
+            <p className="text-sm text-slate-600">
+              {planesActivos.length > 0 ? `${planesActivos.length} disciplina${planesActivos.length === 1 ? "" : "s"} en el plan` : "Sin plan cargado"} · {(team ?? []).length > 0 ? `${(team ?? []).length} profesional${(team ?? []).length === 1 ? "" : "es"} en el equipo` : "sin equipo asignado"}.
+            </p>
+            <div className="flex gap-2 mt-3 flex-wrap">
+              <Link href={`/paciente/${id}?tab=plan`} className={btnGhost}>Ir al plan de tratamiento</Link>
+              <Link href="/internacion" className={btnGhost}>Asignar equipo en Pacientes</Link>
+            </div>
+          </section>
+
+          <section className={card} id="paso-4">
+            <h2 className="text-sm font-semibold text-slate-900 mb-3">Paso 4 · Medicación vigente y equipamiento</h2>
+            {medicacion.length === 0 ? (
+              <p className="text-sm text-slate-400">No hay medicación cargada{p.medicacion_confirmada_at ? ": se confirmó que no toma medicación" : ""}.</p>
+            ) : (
+              <ul className="divide-y divide-slate-100 text-sm">
+                {medicacion.map((m) => (
+                  <li key={m.id} className="py-2 flex items-center justify-between gap-3 flex-wrap">
+                    <span><span className="font-medium text-slate-900">{m.medicamento}</span> <span className="text-slate-500">{[m.dosis, m.via, m.frecuencia].filter(Boolean).join(" · ")}</span></span>
+                    {puedeEditarPlan && (
+                      <form action={removeMedicationAction}>
+                        <input type="hidden" name="id" value={m.id} />
+                        <input type="hidden" name="patient_id" value={id} />
+                        <button className={btnGhost}>Quitar</button>
+                      </form>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {puedeEditarPlan && (
+              <form action={addMedicationAction} className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-4 items-end">
+                <input type="hidden" name="patient_id" value={id} />
+                <input name="medicamento" required placeholder="Medicamento" className={`${inputCls} col-span-2`} />
+                <input name="dosis" placeholder="Dosis" className={inputCls} />
+                <input name="via" placeholder="Vía (oral, EV…)" className={inputCls} />
+                <input name="frecuencia" placeholder="Frecuencia" className={inputCls} />
+                <div className="col-span-2 sm:col-span-5 flex gap-2 flex-wrap">
+                  <button className={btnPrimary}>Agregar medicamento</button>
+                </div>
+              </form>
+            )}
+            {esAdmin && medicacion.length === 0 && !p.medicacion_confirmada_at && (
+              <form action={confirmNoMedicationAction} className="mt-3">
+                <input type="hidden" name="patient_id" value={id} />
+                <button className={btnGhost}>El paciente no toma medicación</button>
+              </form>
+            )}
+            <p className="text-xs text-slate-500 mt-4">El equipamiento (cama, oxígeno, etc.) se asigna cargando un pedido: <Link href="/pedidos" className="underline underline-offset-2">ir a Pedidos</Link>.</p>
+          </section>
+
+          <section className={card} id="paso-5">
+            <h2 className="text-sm font-semibold text-slate-900 mb-1">Paso 5 · Información al paciente y consentimientos</h2>
+            <p className="text-xs text-slate-500 mb-3">Checklist «Información al Paciente» (R PFS 01): se tilda cada punto que se le explicó al familiar responsable.</p>
+            <ul className="space-y-1.5 text-sm">
+              {checkItems.map((it) => {
+                const hecho = checkHechos.has(it.id);
                 return (
-                  <li key={d.id} className="flex items-start gap-2">
-                    <span className={s ? "text-emerald-600" : "text-amber-600"}>{s ? "✓" : "○"}</span>
-                    <span>{d.titulo}{s && <span className="block text-xs text-slate-400">Firmó {s.firmante_nombre} el {fecha(s.firmado_at)}</span>}</span>
+                  <li key={it.id} className="flex items-start gap-2">
+                    {esAdmin ? (
+                      <form action={toggleChecklistItemAction}>
+                        <input type="hidden" name="patient_id" value={id} />
+                        <input type="hidden" name="item_id" value={it.id} />
+                        <input type="hidden" name="marcado" value={hecho ? "1" : "0"} />
+                        <button aria-label={hecho ? "Quitar tilde" : "Tildar"} className={`w-5 h-5 mt-0.5 rounded border text-[11px] leading-none ${hecho ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-300 text-transparent hover:border-slate-500"}`}>✓</button>
+                      </form>
+                    ) : (
+                      <span className={`w-5 h-5 mt-0.5 rounded border text-[11px] leading-none flex items-center justify-center ${hecho ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-300"}`}>{hecho ? "✓" : ""}</span>
+                    )}
+                    <span className={hecho ? "text-slate-700" : "text-slate-600"}>{it.texto}</span>
                   </li>
                 );
               })}
-              {(legalDocs ?? []).length === 0 && <li className="text-slate-400">Sin documentos configurados.</li>}
             </ul>
+            <h3 className="text-sm font-semibold text-slate-900 mt-6 mb-2">Consentimientos</h3>
+            <div className="space-y-2">
+              {(legalDocs ?? []).map((d) => {
+                const s = firmados.get(d.id);
+                return (
+                  <ConsentDocumentRow
+                    key={d.id}
+                    signAction={signLegalDocumentAction}
+                    patientId={id}
+                    documentId={d.id}
+                    titulo={d.titulo}
+                    resumen={d.resumen}
+                    requiereFirmaProfesional={d.requiere_firma_profesional}
+                    profesionales={profesionales}
+                    firmado={s ? { firmante_nombre: s.firmante_nombre, firmado_at: s.firmado_at, profesional_id: s.profesional_id } : null}
+                    canSign={esAdmin}
+                  />
+                );
+              })}
+              {(legalDocs ?? []).length === 0 && <p className="text-sm text-slate-400">Sin documentos configurados.</p>}
+            </div>
           </section>
+
+          <section className={card} id="paso-6">
+            <h2 className="text-sm font-semibold text-slate-900 mb-1">Paso 6 · Documentación de la obra social</h2>
+            {docsOS.length === 0 ? (
+              <p className="text-sm text-slate-500">Esta obra social todavía no tiene documentación configurada. Administración puede cargarla en <Link href="/obras-sociales" className="underline underline-offset-2">Obras sociales</Link>.</p>
+            ) : (
+              <ul className="space-y-1.5 text-sm mt-2">
+                {docsOS.map((d) => {
+                  const hecho = docsRecibidos.has(d.id);
+                  return (
+                    <li key={d.id} className="flex items-start gap-2">
+                      {esAdmin ? (
+                        <form action={toggleRequiredDocAction}>
+                          <input type="hidden" name="patient_id" value={id} />
+                          <input type="hidden" name="doc_id" value={d.id} />
+                          <input type="hidden" name="marcado" value={hecho ? "1" : "0"} />
+                          <button aria-label={hecho ? "Marcar como no recibido" : "Marcar como recibido"} className={`w-5 h-5 mt-0.5 rounded border text-[11px] leading-none ${hecho ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-300 text-transparent hover:border-slate-500"}`}>✓</button>
+                        </form>
+                      ) : (
+                        <span className={`w-5 h-5 mt-0.5 rounded border text-[11px] leading-none flex items-center justify-center ${hecho ? "bg-emerald-500 border-emerald-500 text-white" : "border-slate-300"}`}>{hecho ? "✓" : ""}</span>
+                      )}
+                      <span>{d.nombre}{!d.obligatorio && <span className="text-xs text-slate-400"> · opcional</span>}{!hecho && d.obligatorio && <span className="text-xs text-amber-700"> · falta recibir</span>}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
           <section className={card}>
             <h2 className="text-sm font-semibold text-slate-900 mb-3">Prácticas autorizadas por la obra social</h2>
             {(auths ?? []).length === 0 ? (
@@ -255,7 +581,7 @@ export default async function FichaPacientePage({
               <ul className="text-sm space-y-1.5">
                 {(auths ?? []).map((a) => (
                   <li key={a.id} className="flex items-center gap-2 flex-wrap">
-                    <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${SEMANTIC_TONE_BADGE_STYLES[SEMAFORO_TONE[a.estado_semaforo ?? "vigente"] ?? "gris"]}`}>{SEMAFORO_LABELS[a.estado_semaforo ?? "vigente"]}</span>
+                    <StatusBadge tone={SEMAFORO_TONE[a.estado_semaforo ?? "vigente"] ?? "gris"} label={SEMAFORO_LABELS[a.estado_semaforo ?? "vigente"]} />
                     {a.practica} · {a.cantidad_autorizada}x {SPECIALTY_LABELS[a.especialidad ?? ""] ?? a.especialidad} <span className="text-xs text-slate-400">(hasta {fecha(a.periodo_hasta)})</span>
                   </li>
                 ))}
@@ -270,7 +596,29 @@ export default async function FichaPacientePage({
         </div>
       )}
 
-      <p className="text-xs text-slate-400">Para cargar o modificar datos del ingreso, usá la tarjeta del paciente en <Link href="/internacion" className="underline underline-offset-2">Pacientes</Link>.</p>
+      {tab === "mensajes" && (
+        <section className={card}>
+          <h2 className="text-sm font-semibold text-slate-900">Mensajes del equipo</h2>
+          <p className="text-xs text-slate-500 mt-1 mb-4">Para coordinar entre el equipo del paciente sin usar WhatsApp personal. Lo ven Administración, Coordinación y los profesionales asignados a este paciente.</p>
+          <form action={postMessageAction} className="flex gap-2 items-start mb-5">
+            <input type="hidden" name="patient_id" value={id} />
+            <textarea name="mensaje" required maxLength={1000} rows={2} placeholder="Escribí un mensaje para el equipo…" className={`${inputCls} flex-1`} />
+            <button className={btnPrimary}>Enviar</button>
+          </form>
+          {(mensajes ?? []).length === 0 ? (
+            <p className="text-sm text-slate-400">Todavía no hay mensajes.</p>
+          ) : (
+            <ul className="space-y-3">
+              {(mensajes ?? []).map((m) => (
+                <li key={m.id} className="rounded-xl bg-slate-50 px-3 py-2 text-sm">
+                  <span className="block text-xs text-slate-400">{nombreDe(m.profiles)} · {fechaHora(m.created_at)}</span>
+                  <span className="whitespace-pre-wrap">{m.mensaje}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
     </div>
   );
 }
