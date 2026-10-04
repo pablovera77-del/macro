@@ -42,9 +42,17 @@ const STOCK_LABEL: Record<string, string> = { critico: "Reponer ya", bajo: "Stoc
 const VENCIMIENTO_TONE: Record<string, SemanticTone> = { vencida: "rojo", por_vencer: "amarillo", vigente: "verde" };
 const VENCIMIENTO_LABEL: Record<string, string> = { vencida: "Vencido", por_vencer: "Por vencer", vigente: "Vigente" };
 
-export default async function CatalogoPage() {
+export default async function CatalogoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ fecha?: string }>;
+}) {
   const { profile } = await requireProfile();
   const supabase = await createClient();
+  // DF-C5 §6.1, comentario cliente: poder consultar cuál era la existencia
+  // de un producto en una fecha pasada — se reconstruye desde stock_movements
+  // (único lugar donde se mueve el stock) en vez de guardar una foto por día.
+  const { fecha: fechaConsulta } = await searchParams;
 
   const [{ data: products }, { data: assets }, { data: productSuppliers }, { data: suppliers }, { data: productStatus }, { data: historialPrecios }] = await Promise.all([
     supabase
@@ -101,6 +109,26 @@ export default async function CatalogoPage() {
   });
   historialByProduct.forEach((list) => list.sort((a, b) => (a.ultimo_precio ?? 0) - (b.ultimo_precio ?? 0)));
 
+  // Reconstrucción de existencia histórica: replica la misma lógica con la
+  // que apply_stock_movement (trigger) arma existencia_actual hoy —
+  // ingreso_compra/ajuste suman, egreso_entrega resta, nunca por debajo de 0
+  // — pero acumulando solo los movimientos hasta el final del día consultado.
+  let existenciaHistoricaByProduct: Map<string, number> | null = null;
+  if (fechaConsulta) {
+    const { data: movimientos } = await supabase
+      .from("stock_movements")
+      .select("product_id, tipo, cantidad, fecha")
+      .lte("fecha", `${fechaConsulta}T23:59:59.999Z`)
+      .order("fecha", { ascending: true });
+
+    existenciaHistoricaByProduct = new Map();
+    for (const m of movimientos ?? []) {
+      const actual = existenciaHistoricaByProduct.get(m.product_id) ?? 0;
+      const delta = m.tipo === "egreso_entrega" ? -m.cantidad : m.cantidad;
+      existenciaHistoricaByProduct.set(m.product_id, Math.max(0, actual + delta));
+    }
+  }
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -110,6 +138,24 @@ export default async function CatalogoPage() {
         purpose="Acá vive todo lo que se puede pedir: insumos, equipos y alimentos. Cargá un producto nuevo, sumale proveedores alternativos y marcá cuál es el preferido — de acá sale la lista que usan Pedidos y Compras."
         description="Cada producto admite varios proveedores (uno marcado como preferido) y un código de barras EAN/UPC opcional para carga por escaneo."
       />
+
+      <section className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 flex-wrap animate-fade-slide-up card-hover">
+        <form className="flex items-center gap-2 text-sm">
+          <label htmlFor="fecha" className="text-slate-500 text-xs">Consultar stock a una fecha pasada (DF-C5 §6.1):</label>
+          <input id="fecha" name="fecha" type="date" defaultValue={fechaConsulta ?? ""} max={new Date().toISOString().slice(0, 10)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
+          <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Consultar</button>
+          {fechaConsulta && (
+            <a href="/catalogo" className="text-xs text-slate-400 underline hover:text-slate-700">volver a stock actual</a>
+          )}
+        </form>
+      </section>
+
+      {fechaConsulta && (
+        <section className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800 animate-fade-slide-up">
+          Mostrando la existencia reconstruida a partir de los movimientos de stock hasta el{" "}
+          {new Date(fechaConsulta + "T00:00:00").toLocaleDateString("es-AR")} — no es lo que hay hoy en depósito.
+        </section>
+      )}
 
       <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-slide-up card-hover">
         <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
@@ -124,7 +170,7 @@ export default async function CatalogoPage() {
               ean: p.ean ?? "",
               descripcion: p.descripcion,
               tipo: p.tipo,
-              existencia: p.tipo === "equipo" ? "" : p.existencia_actual,
+              existencia: p.tipo === "equipo" ? "" : existenciaHistoricaByProduct ? existenciaHistoricaByProduct.get(p.id) ?? 0 : p.existencia_actual,
               se_factura_aparte: p.se_factura_aparte ? "si" : "no",
             }))}
           />
@@ -138,7 +184,7 @@ export default async function CatalogoPage() {
                 <th className="text-left px-5 py-2.5 font-medium">Descripción</th>
                 <th className="text-left px-5 py-2.5 font-medium">Tipo</th>
                 <th className="text-left px-5 py-2.5 font-medium">Proveedores</th>
-                <th className="text-right px-5 py-2.5 font-medium">Existencia</th>
+                <th className="text-right px-5 py-2.5 font-medium">{fechaConsulta ? `Existencia al ${fechaConsulta}` : "Existencia"}</th>
                 <th className="text-left px-5 py-2.5 font-medium">Stock</th>
                 <th className="text-left px-5 py-2.5 font-medium">Vencimiento</th>
                 <th className="text-left px-5 py-2.5 font-medium">¿Factura aparte?</th>
@@ -246,8 +292,8 @@ export default async function CatalogoPage() {
                         </details>
                       )}
                     </td>
-                    <td className="px-5 py-2.5 text-right text-slate-700 font-medium tabular-nums">
-                      {p.tipo === "equipo" ? "—" : p.existencia_actual}
+                    <td className={`px-5 py-2.5 text-right font-medium tabular-nums ${existenciaHistoricaByProduct ? "text-amber-700" : "text-slate-700"}`}>
+                      {p.tipo === "equipo" ? "—" : existenciaHistoricaByProduct ? existenciaHistoricaByProduct.get(p.id) ?? 0 : p.existencia_actual}
                     </td>
                     <td className="px-5 py-2.5">
                       {p.stock_minimo == null ? (
