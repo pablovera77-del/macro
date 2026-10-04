@@ -53,6 +53,7 @@ export default async function AgendaPage() {
   return (
     <div className="space-y-8">
       <PageHeader
+        action={isCoordinador ? { label: "+ Programar visita", href: "#programar-visita" } : undefined}
         icon={<IconCalendar className="w-5 h-5" />}
         title={isCoordinador ? "Agenda de visitas" : "Mi agenda"}
         section="DF-C2 §4"
@@ -125,7 +126,7 @@ export default async function AgendaPage() {
       </section>
 
       {isCoordinador && (
-        <section className="bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
+        <section id="programar-visita" className="scroll-mt-6 bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
           <h2 className="text-sm font-medium text-slate-900 mb-4 flex items-center gap-2">
             <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 text-slate-500">+</span>
             Programar visita

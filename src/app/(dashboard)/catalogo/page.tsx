@@ -132,6 +132,7 @@ export default async function CatalogoPage({
   return (
     <div className="space-y-8">
       <PageHeader
+        action={isDeposito ? { label: "+ Agregar producto", href: "#nuevo-producto" } : undefined}
         icon={<IconBox className="w-5 h-5" />}
         title="Catálogo"
         section="DF-C5 §3"
@@ -337,7 +338,7 @@ export default async function CatalogoPage({
       </section>
 
       {isDeposito && (
-        <section className="bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
+        <section id="nuevo-producto" className="scroll-mt-6 bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
           <h2 className="text-sm font-medium text-slate-900 mb-4 flex items-center gap-2">
             <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 text-slate-500">+</span>
             Agregar producto al catálogo

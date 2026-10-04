@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
-import { requireProfile, NAV_BY_ROLE } from "@/lib/auth";
+import { requireProfile } from "@/lib/auth";
 
+// Al entrar, cada rol cae en su pantalla de Inicio ("¿Qué querés hacer?"),
+// no en la primera sección del menú — antes nadie entendía dónde estaba.
 export default async function HomePage() {
-  const { profile } = await requireProfile();
-  const firstSection = NAV_BY_ROLE[profile.role][0];
-  redirect(firstSection.href);
+  await requireProfile();
+  redirect("/inicio");
 }

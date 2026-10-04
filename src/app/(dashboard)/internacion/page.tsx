@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, SPECIALTY_LABELS } from "@/lib/auth";
 import {
-  createAdmissionAction,
   confirmArrivalAction,
   reportarEgresoAction,
   addTreatmentAuthorizationAction,
@@ -11,6 +10,7 @@ import {
 import PageHeader from "@/components/PageHeader";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import ConsentDocumentRow from "@/components/ConsentDocumentRow";
+import AdmissionWizard from "@/components/AdmissionWizard";
 import { IconClipboard, IconUser, IconMapPin, IconAlert, IconCheck, IconClock, IconSignature } from "@/components/icons";
 import { SEMANTIC_TONE_BADGE_STYLES, SemanticTone } from "@/lib/semantic-status";
 
@@ -49,7 +49,12 @@ const SEMAFORO_LABELS: Record<string, string> = {
   vencida: "Vencida",
 };
 
-export default async function InternacionPage() {
+export default async function InternacionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ nuevo?: string; admitido?: string }>;
+}) {
+  const { nuevo, admitido } = await searchParams;
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
@@ -118,15 +123,40 @@ export default async function InternacionPage() {
     return profile.role === "medico_coordinador" || patient?.coordinador_id === profile.id;
   });
 
+  const admitidoPaciente = admitido ? (patients ?? []).find((p) => p.id === admitido) ?? null : null;
+
   return (
     <div className="space-y-8">
       <PageHeader
         icon={<IconClipboard className="w-5 h-5" />}
         title="Pacientes e internaciones"
         section="DF-C3"
-        purpose="Acá se admite un paciente nuevo con su legajo completo, se le autorizan prácticas (enfermería, kinesiología, etc.), se arma su equipo tratante y se informa el egreso cuando corresponda. Este es el único lugar donde se da de alta un paciente — Autorizaciones de stock (Administración) solo gestiona lo que ya está admitido acá."
+        action={canManage ? { label: "+ Nuevo paciente", href: "/internacion?nuevo=1" } : undefined}
+        purpose="Para dar de alta un paciente tocá «+ Nuevo paciente» (arriba a la derecha): te guiamos en 3 pasos. Después, en la tarjeta de cada paciente, firmás los consentimientos, autorizás prácticas, armás su equipo, confirmás su llegada e informás el egreso. Este es el único lugar donde se da de alta un paciente."
         description="Contrasta con informe-tecnico §4 (el sistema viejo solo tenía nombre/domicilio/obra social en texto libre)."
       />
+
+      {canManage && admitidoPaciente && (
+        <section className="bg-emerald-50 border border-emerald-300 rounded-2xl p-5 animate-fade-slide-up">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600">
+              <IconCheck className="w-4 h-4" />
+            </span>
+            <h2 className="font-semibold text-emerald-900">Paciente admitido: {admitidoPaciente.nombre_completo}</h2>
+          </div>
+          <p className="text-sm text-emerald-900 mb-2">Ya tiene legajo. Para terminar el ingreso, en su tarjeta (resaltada abajo) hacé estos pasos en orden:</p>
+          <ol className="text-sm text-emerald-900 list-decimal pl-5 space-y-0.5">
+            <li>Firmar los consentimientos de ingreso.</li>
+            <li>Tocar «Gestionar» para autorizar las prácticas y armar el equipo tratante.</li>
+            <li>Cuando llegue al domicilio, tocar «Confirmar llegada».</li>
+          </ol>
+          <a href={`#paciente-${admitidoPaciente.id}`} className="inline-flex mt-3 rounded-xl bg-emerald-600 text-white text-sm font-medium px-4 py-2 hover:bg-emerald-700 transition-colors">
+            Ir a la tarjeta del paciente
+          </a>
+        </section>
+      )}
+
+      {canManage && <AdmissionWizard obrasSociales={(obrasSociales ?? []).map((o) => ({ id: o.id, nombre: o.nombre }))} defaultOpen={nuevo === "1"} />}
 
       {canManage && misNovedades.length > 0 && (
         <section className="bg-white border border-slate-200 rounded-2xl p-5 animate-fade-slide-up card-hover">
@@ -182,6 +212,11 @@ export default async function InternacionPage() {
       )}
 
       <section className="space-y-3">
+        {(patients ?? []).length === 0 && (
+          <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-8 text-center text-sm text-slate-500">
+            Todavía no hay pacientes cargados. {canManage ? "Tocá «+ Nuevo paciente» para dar de alta el primero." : ""}
+          </div>
+        )}
         {(patients ?? []).map((p, i) => {
           const auths = (authorizations ?? []).filter((a) => a.patient_id === p.id);
           const team = (careTeam ?? []).filter((t) => t.patient_id === p.id);
@@ -189,7 +224,7 @@ export default async function InternacionPage() {
           const obraSocial = (p.obras_sociales as unknown as { nombre: string } | null)?.nombre ?? p.obra_social;
 
           return (
-            <div key={p.id} className={`bg-white rounded-2xl border border-slate-200 p-5 card-hover animate-fade-slide-up stagger-${Math.min(i + 1, 8)}`}>
+            <div id={`paciente-${p.id}`} key={p.id} className={`scroll-mt-6 bg-white rounded-2xl border border-slate-200 p-5 card-hover animate-fade-slide-up stagger-${Math.min(i + 1, 8)} ${admitido === p.id ? "ring-2 ring-emerald-400" : ""}`}>
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex items-start gap-3">
                   <span className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-900 text-white text-xs font-semibold shrink-0">
@@ -216,6 +251,28 @@ export default async function InternacionPage() {
                   )}
                 </div>
               </div>
+
+              {p.estado !== "dado_de_baja" && (() => {
+                const totalDocs = (legalDocuments ?? []).length;
+                const firmados = (legalDocuments ?? []).filter((d) => signaturesByKey.has(signatureKey(p.id, d.id))).length;
+                const pasos = [
+                  { label: "Consentimientos", detail: `${firmados}/${totalDocs}`, done: totalDocs > 0 && firmados === totalDocs },
+                  { label: "Prácticas autorizadas", detail: "", done: auths.length > 0 },
+                  { label: "Equipo asignado", detail: "", done: team.length > 0 },
+                  { label: "Llegada confirmada", detail: "", done: p.estado !== "admitido_pendiente_llegada" || !!p.llegada_confirmada_at },
+                ];
+                if (pasos.every((x) => x.done)) return null;
+                return (
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[11px]">
+                    <span className="text-slate-500 font-medium mr-1">Ingreso:</span>
+                    {pasos.map((x) => (
+                      <span key={x.label} className={`rounded-full px-2.5 py-1 font-medium ${x.done ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                        {x.done ? "✓" : "○"} {x.label}{!x.done && x.detail ? ` (${x.detail})` : ""}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {team.length > 0 && (
                 <div className="text-xs text-slate-500 mt-3 flex flex-wrap gap-1.5">
@@ -336,36 +393,6 @@ export default async function InternacionPage() {
         })}
       </section>
 
-      {canManage && (
-        <section className="bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
-          <h2 className="text-sm font-medium text-slate-900 mb-4 flex items-center gap-2">
-            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 text-slate-500">+</span>
-            Nueva admisión — legajo completo
-          </h2>
-          <form action={createAdmissionAction} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <input name="nombre_completo" placeholder="Nombre completo" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2" />
-            <input name="dni" placeholder="DNI (obligatorio, sin puntos)" required inputMode="numeric" pattern="[0-9.\s]{6,12}" title="Solo números — identifica al paciente de forma única en todo el sistema" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
-            <input name="fecha_nacimiento" type="date" placeholder="Fecha de nacimiento" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
-            <input name="domicilio" placeholder="Domicilio" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2" />
-            <input name="telefono_contacto" placeholder="Teléfono de contacto" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
-            <input name="fecha_ingreso" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
-            <input name="contacto_familiar_nombre" placeholder="Contacto familiar — nombre" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2" />
-            <input name="contacto_familiar_telefono" placeholder="Contacto familiar — teléfono" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2" />
-            <select name="obra_social_id" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm">
-              <option value="">Obra social...</option>
-              {(obrasSociales ?? []).map((os) => (
-                <option key={os.id} value={os.id}>{os.nombre}</option>
-              ))}
-            </select>
-            <input name="numero_afiliado" placeholder="N° de afiliado" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
-            <input name="medico_derivante" placeholder="Médico derivante" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
-            <input name="diagnostico_principal" placeholder="Diagnóstico principal" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-4" />
-            <button className="rounded-xl bg-slate-900 text-white text-sm font-medium px-4 py-2.5 hover:bg-slate-800 transition-colors sm:col-span-4">
-              Admitir paciente
-            </button>
-          </form>
-        </section>
-      )}
     </div>
   );
 }

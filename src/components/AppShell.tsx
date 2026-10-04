@@ -42,7 +42,7 @@ const SidebarContent = (
 <BrandMark className="h-8 w-8" />
 <BrandWordmark theme="light" className="text-xl" />
 </span>
-<span className="text-[11px] text-slate-400 pl-0.5">Mockup DF-C5 · Stock e Insumos</span>
+<span className="text-[11px] text-slate-400 pl-0.5">Gestión de internación domiciliaria</span>
 </Link>
 </div>
 

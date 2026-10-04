@@ -58,7 +58,7 @@ return (
 </span>
 </div>
 <p className="text-sm text-slate-400 mt-1">
-Mockup plataforma completa — C1 a C5
+Plataforma de gestión de internación domiciliaria
 </p>
 </div>
 

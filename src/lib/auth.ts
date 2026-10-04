@@ -48,41 +48,59 @@ export type NavIconId =
 | "evoluciones"
 | "obras_sociales"
 | "facturacion"
-| "compras";
+| "compras"
+| "inicio"
+| "ayuda";
 
 export const NAV_BY_ROLE: Record<AppRole, { href: string; label: string; icon: NavIconId; description: string }[]> = {
 deposito: [
+{ href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
 { href: "/catalogo", label: "Catálogo", icon: "catalogo", description: "Insumos y equipos" },
 { href: "/pedidos", label: "Pedidos", icon: "pedidos", description: "Entregas a domicilio" },
 { href: "/seguimiento", label: "Seguimiento", icon: "seguimiento", description: "Equipos en tránsito" },
 { href: "/compras", label: "Compras", icon: "compras", description: "Proyección y cotizaciones" },
+{ href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
 administracion: [
-{ href: "/pacientes", label: "Autorizaciones", icon: "pacientes", description: "Stock por paciente" },
+{ href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
+{ href: "/pacientes", label: "Autorizaciones de stock", icon: "pacientes", description: "Stock por paciente y bajas" },
 { href: "/pedidos", label: "Pedidos", icon: "pedidos", description: "Entregas a domicilio" },
 { href: "/seguimiento", label: "Seguimiento", icon: "seguimiento", description: "Equipos en tránsito" },
 { href: "/compras", label: "Compras", icon: "compras", description: "Proyección y cotizaciones" },
 { href: "/obras-sociales", label: "Obras sociales", icon: "obras_sociales", description: "Catálogo y valores" },
 { href: "/facturacion", label: "Facturación", icon: "facturacion", description: "Cierre mensual y débitos" },
+{ href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
 transporte: [
+{ href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
 { href: "/pedidos", label: "Pedidos", icon: "pedidos", description: "Entregas a domicilio" },
 { href: "/seguimiento", label: "Seguimiento", icon: "seguimiento", description: "Equipos en tránsito" },
+{ href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
-direccion: [{ href: "/dashboard", label: "Dashboard ejecutivo", icon: "dashboard", description: "Vista en tiempo real" }],
+direccion: [
+{ href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
+{ href: "/dashboard", label: "Dashboard ejecutivo", icon: "dashboard", description: "Vista en tiempo real" },
+{ href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
+],
 coordinador_internacion: [
-{ href: "/internacion", label: "Pacientes", icon: "internacion", description: "Admisión, legajo y egresos" },
+{ href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
+{ href: "/internacion", label: "Pacientes", icon: "internacion", description: "Alta, legajo y egresos" },
 { href: "/agenda", label: "Agenda", icon: "agenda", description: "Visitas domiciliarias" },
+{ href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
 profesional_asistencial: [
+{ href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
 { href: "/agenda", label: "Mi agenda", icon: "agenda", description: "Visitas asignadas" },
 { href: "/evoluciones", label: "Historia clínica", icon: "evoluciones", description: "Evoluciones por disciplina" },
 { href: "/internacion", label: "Mis pacientes", icon: "internacion", description: "Informar egreso" },
+{ href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
 medico_coordinador: [
-{ href: "/internacion", label: "Pacientes", icon: "internacion", description: "Admisión, legajo y egresos" },
+{ href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
+{ href: "/internacion", label: "Pacientes", icon: "internacion", description: "Alta, legajo y egresos" },
 { href: "/agenda", label: "Agenda", icon: "agenda", description: "Visitas domiciliarias" },
 { href: "/evoluciones", label: "Historia clínica", icon: "evoluciones", description: "Evoluciones por disciplina" },
+{ href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
 };
 

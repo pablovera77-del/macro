@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { NavIconId } from "@/lib/auth";
-import { IconBox, IconTruck, IconRefresh, IconChart, IconUsers, IconClipboard, IconCalendar, IconSignature, IconBuilding, IconCash, IconClipboardCheck } from "@/components/icons";
+import { IconBox, IconTruck, IconRefresh, IconChart, IconUsers, IconClipboard, IconCalendar, IconSignature, IconBuilding, IconCash, IconClipboardCheck, IconGrid, IconStethoscope } from "@/components/icons";
 
 const ICONS: Record<NavIconId, React.ComponentType<{ className?: string }>> = {
 catalogo: IconBox,
@@ -17,6 +17,8 @@ evoluciones: IconSignature,
 obras_sociales: IconBuilding,
 facturacion: IconCash,
 compras: IconClipboardCheck,
+inicio: IconGrid,
+ayuda: IconStethoscope,
 };
 
 type NavItem = { href: string; label: string; icon: NavIconId; description: string };

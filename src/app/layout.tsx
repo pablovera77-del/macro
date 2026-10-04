@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "DF-C5 · Stock e Insumos — Profesionales SRL",
-  description: "Mockup del módulo de Stock e Insumos Domiciliarios (DF-C5)",
+  title: "Profesionales SRL · Gestión de internación domiciliaria",
+  description: "Plataforma de gestión de internación domiciliaria — Profesionales SRL",
 };
 
 export default function RootLayout({

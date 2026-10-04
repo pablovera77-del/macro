@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { Enums } from "@/types/database";
 
 const COORDINACION_ROLES: Enums<"app_role">[] = ["coordinador_internacion", "medico_coordinador"];
@@ -16,9 +17,16 @@ const ESTADO_LABEL: Record<string, string> = {
 // Wizard de admisión — legajo completo (DF-C3 §3/§4). Mejora sobre el
 // sistema viejo, que solo pedía nombre/domicilio/obra social en texto libre
 // (informe-tecnico §4): acá la obra social es una FK real a obras_sociales.
-export async function createAdmissionAction(formData: FormData) {
+export type AdmissionState = { error: string | null };
+
+export async function createAdmissionAction(_prev: AdmissionState, formData: FormData): Promise<AdmissionState> {
   const { profile } = await requireProfile();
-  if (!COORDINACION_ROLES.includes(profile.role)) throw new Error("Solo Coordinación de Internación o Médico Coordinador dan de alta pacientes.");
+  // Los errores de negocio se DEVUELVEN (no se lanzan): en producción Next.js
+  // oculta el texto de los errores lanzados desde una server action y el
+  // usuario veía una pantalla genérica en vez de "ya existe ese DNI".
+  if (!COORDINACION_ROLES.includes(profile.role)) {
+    return { error: "Solo Coordinación de Internación o Médico Coordinador dan de alta pacientes." };
+  }
 
   const supabase = await createClient();
 
@@ -39,9 +47,9 @@ export async function createAdmissionAction(formData: FormData) {
   const medico_derivante = String(formData.get("medico_derivante") || "").trim() || null;
   const fecha_ingreso = String(formData.get("fecha_ingreso") || "") || new Date().toISOString().slice(0, 10);
 
-  if (!nombre_completo || !domicilio) throw new Error("Faltan nombre o domicilio.");
-  if (!dni) throw new Error("Falta el DNI — es obligatorio y es el identificador único del paciente en todo el sistema.");
-  if (dni.length < 6 || dni.length > 9) throw new Error("El DNI no parece válido (debe tener entre 6 y 9 dígitos).");
+  if (!nombre_completo || !domicilio) return { error: "Faltan el nombre o el domicilio del paciente." };
+  if (!dni) return { error: "Falta el DNI: es obligatorio y es el identificador único del paciente en todo el sistema." };
+  if (dni.length < 6 || dni.length > 9) return { error: "El DNI no parece válido (debe tener entre 6 y 9 dígitos)." };
 
   // Denormalizamos también el nombre de la obra social en la columna de texto
   // existente (obra_social) para no romper la UI del mockup C5 (Catálogo/Pedidos)
@@ -52,40 +60,61 @@ export async function createAdmissionAction(formData: FormData) {
     obra_social_texto = os?.nombre ?? null;
   }
 
-  const { error } = await supabase.from("patients").insert({
-    nombre_completo,
-    dni,
-    fecha_nacimiento,
-    domicilio,
-    telefono_contacto,
-    contacto_familiar_nombre,
-    contacto_familiar_telefono,
-    diagnostico_principal,
-    obra_social_id,
-    obra_social: obra_social_texto,
-    numero_afiliado,
-    medico_derivante,
-    fecha_ingreso,
-    coordinador_id: profile.id,
-    estado: "admitido_pendiente_llegada",
-  });
+  const { data: creado, error } = await supabase
+    .from("patients")
+    .insert({
+      nombre_completo,
+      dni,
+      fecha_nacimiento,
+      domicilio,
+      telefono_contacto,
+      contacto_familiar_nombre,
+      contacto_familiar_telefono,
+      diagnostico_principal,
+      obra_social_id,
+      obra_social: obra_social_texto,
+      numero_afiliado,
+      medico_derivante,
+      fecha_ingreso,
+      coordinador_id: profile.id,
+      estado: "admitido_pendiente_llegada",
+    })
+    .select("id")
+    .single();
 
-  if (error) {
+  if (error || !creado) {
     // 23505 = unique_violation — ya existe un paciente con este DNI. Se
     // busca el registro existente para que el mensaje sea accionable (quién
     // es, en vez de un error crudo de Postgres).
-    if (error.code === "23505" && error.message.includes("patients_dni_key")) {
+    if (error?.code === "23505" && error.message.includes("patients_dni_key")) {
       const { data: existente } = await supabase.from("patients").select("nombre_completo, estado").eq("dni", dni).maybeSingle();
-      throw new Error(
-        existente
-          ? `Ya existe un paciente con DNI ${dni}: ${existente.nombre_completo} (${ESTADO_LABEL[existente.estado] ?? existente.estado}). No se puede dar de alta dos veces al mismo paciente — buscalo en la lista.`
-          : `Ya existe un paciente con DNI ${dni}. No se puede dar de alta dos veces al mismo paciente.`
-      );
+      return {
+        error: existente
+          ? `Ya existe un paciente con DNI ${dni}: ${existente.nombre_completo} (${ESTADO_LABEL[existente.estado] ?? existente.estado}). No se puede dar de alta dos veces al mismo paciente: buscalo en la lista.`
+          : `Ya existe un paciente con DNI ${dni}. No se puede dar de alta dos veces al mismo paciente.`,
+      };
     }
-    throw new Error(error.message);
+    return { error: error?.message ?? "No se pudo crear el paciente. Probá de nuevo." };
   }
+
   revalidatePath("/internacion");
-  return;
+  // Al terminar, la pantalla muestra los próximos pasos del paciente recién admitido.
+  redirect(`/internacion?admitido=${creado.id}`);
+}
+
+// Paso 1 del wizard: ¿ya existe un paciente con este DNI? Se consulta antes de
+// completar el resto del formulario, para evitar duplicados en vez de
+// descubrirlos al final.
+export async function checkDniAction(dniRaw: string): Promise<{ existe: boolean; nombre?: string; estado?: string; valido: boolean }> {
+  const { profile } = await requireProfile();
+  if (!COORDINACION_ROLES.includes(profile.role)) return { existe: false, valido: false };
+  const dni = String(dniRaw || "").replace(/\D/g, "");
+  if (dni.length < 6 || dni.length > 9) return { existe: false, valido: false };
+  const supabase = await createClient();
+  const { data } = await supabase.from("patients").select("nombre_completo, estado").eq("dni", dni).maybeSingle();
+  return data
+    ? { existe: true, valido: true, nombre: data.nombre_completo, estado: ESTADO_LABEL[data.estado] ?? data.estado }
+    : { existe: false, valido: true };
 }
 
 // DF-C3 §12: confirmación de llegada al domicilio — insumo crítico del

@@ -61,6 +61,7 @@ return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
 return (
 <div className="space-y-8">
 <PageHeader
+        action={profile.role === "deposito" ? { label: "+ Iniciar pedido", href: "#nuevo-pedido" } : undefined}
 icon={<IconTruck className="w-5 h-5" />}
 title="Pedidos — flujo de entrega"
 section="DF-C5 §4"
@@ -248,7 +249,7 @@ className="rounded-lg border border-slate-300 px-2.5 py-2 text-xs"
 </section>
 
 {profile.role === "deposito" && (
-<section className="bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
+<section id="nuevo-pedido" className="scroll-mt-6 bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
 <h2 className="text-sm font-medium text-slate-900 mb-4 flex items-center gap-2">
 <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 text-slate-500">+</span>
 Iniciar pedido para un paciente nuevo
