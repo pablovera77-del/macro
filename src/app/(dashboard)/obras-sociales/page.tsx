@@ -28,7 +28,7 @@ export default async function ObrasSocialesPage() {
     supabase.from("os_required_documents").select("id, obra_social_id, nombre, obligatorio").eq("activo", true).order("orden"),
   ]);
 
-  const canManage = profile.role === "administracion" || profile.role === "direccion";
+  const canManage = profile.role === "administracion";
   const countByOs = new Map<string, number>();
   (patientCounts ?? []).forEach((p) => {
     if (p.obra_social_id) countByOs.set(p.obra_social_id, (countByOs.get(p.obra_social_id) ?? 0) + 1);

@@ -19,6 +19,7 @@ facturacion: IconCash,
 compras: IconClipboardCheck,
 inicio: IconGrid,
 ayuda: IconStethoscope,
+auditoria: IconClipboardCheck,
 };
 
 type NavItem = { href: string; label: string; icon: NavIconId; description: string };

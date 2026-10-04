@@ -31,8 +31,10 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isLoginPage = request.nextUrl.pathname.startsWith("/login");
+  // El link del mail de recuperación pasa por acá antes de tener sesión.
+  const isAuthCallback = request.nextUrl.pathname.startsWith("/auth/callback");
 
-  if (!user && !isLoginPage) {
+  if (!user && !isLoginPage && !isAuthCallback) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

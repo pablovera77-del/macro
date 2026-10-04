@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { flash } from "@/lib/flash";
 import type { Enums } from "@/types/database";
 
-const BILLING_ROLES: Enums<"app_role">[] = ["administracion", "direccion"];
+const BILLING_ROLES: Enums<"app_role">[] = ["administracion"];
 
 // DF-C4 §2: catálogo de obras sociales, cada una con su propio plazo de
 // facturación. DF-C1 lista un rol "Facturación (4 personas)" que DF-C3 §2 y

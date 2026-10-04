@@ -13,7 +13,7 @@ import type { Enums, TablesUpdate } from "@/types/database";
 // Administración. Si se confirma como rol aparte, agregarlo acá y en
 // facturacion/page.tsx (canManage) — y revisar si también debería poder
 // cargar débitos sin pasar por Administración.
-const BILLING_ROLES: Enums<"app_role">[] = ["administracion", "direccion"];
+const BILLING_ROLES: Enums<"app_role">[] = ["administracion"];
 
 // DF-C4 §4: abre el período de cierre mensual para una obra social.
 export async function createBillingPeriodAction(formData: FormData) {

@@ -24,17 +24,74 @@ export type HomeTask = {
 const ALTA_PACIENTE: HomeTask = {
   id: "alta-paciente",
   title: "Dar de alta un paciente nuevo",
-  summary: "Abrir el legajo de un paciente que ingresa a internación domiciliaria.",
+  summary: "Abrir el legajo de un paciente que ingresa a internación domiciliaria. Son 6 pasos: los 3 primeros se hacen en el alta y los otros 3 en la ficha.",
   steps: [
     "Entrá a Pacientes y tocá el botón verde «+ Nuevo paciente» (arriba a la derecha).",
-    "Paso 1: poné el DNI. El sistema avisa si el paciente ya existe.",
-    "Paso 2: completá datos personales, domicilio y contacto del familiar.",
-    "Paso 3: elegí obra social, N° de afiliado, médico derivante y diagnóstico.",
-    "Tocá «Admitir paciente». Te mostramos los próximos pasos: consentimientos, autorizaciones, equipo y llegada.",
+    "Paso 1: poné el DNI (el sistema avisa si el paciente ya existe) y completá datos personales, domicilio y familiar.",
+    "Paso 2: elegí la obra social, el N° de afiliado y el médico derivante.",
+    "Paso 3: cargá el diagnóstico y, para cada disciplina, cuántas visitas necesita y con qué profesional.",
+    "Tocá «Admitir paciente»: te llevamos a la ficha, solapa «Ingreso y egreso», para los pasos 4 a 6: medicación, información al paciente con consentimientos, y documentación de la obra social.",
+    "En «Ingresos en curso» (pantalla Pacientes) ves qué le falta a cada paciente; podés retomar el ingreso cuando quieras.",
   ],
   href: "/internacion?nuevo=1",
   cta: "Dar de alta",
   doc: "DF-C3 §3",
+};
+
+const PLAN_TRATAMIENTO: HomeTask = {
+  id: "plan-tratamiento",
+  title: "Definir o cambiar el plan de tratamiento",
+  summary: "Indicar cuántas visitas por semana necesita cada disciplina. El sistema avisa cuando falta programar alguna.",
+  steps: [
+    "Abrí la ficha del paciente (desde Pacientes o con el buscador de arriba) y entrá a la solapa «Plan de tratamiento».",
+    "Elegí la disciplina, la cantidad y si es «por semana» o «por día» (con los días marcados).",
+    "Tocá «Guardar plan». Si ya había uno para esa disciplina, queda en el historial y el nuevo pasa a regir.",
+    "En Agenda, Coordinación ve «Faltan programar visitas esta semana» con un botón «Programar» ya completado.",
+  ],
+  href: "/internacion",
+  cta: "Ir a Pacientes",
+  doc: "DF-C3 §4",
+};
+
+const MENSAJES_EQUIPO: HomeTask = {
+  id: "mensajes-equipo",
+  title: "Dejar un mensaje al equipo del paciente",
+  summary: "Avisar algo sobre un paciente (un cambio, un pedido) sin salir de su ficha.",
+  steps: [
+    "Abrí la ficha del paciente y entrá a la solapa «Mensajes del equipo».",
+    "Escribí el mensaje y tocá «Enviar»: queda guardado con tu nombre y la fecha para todo el equipo.",
+  ],
+  href: "/internacion",
+  cta: "Ir a Pacientes",
+  doc: "DF-C3 §4",
+};
+
+const RECORDATORIOS: HomeTask = {
+  id: "recordatorios",
+  title: "Avisar por WhatsApp las visitas de mañana",
+  summary: "Mandar un recordatorio a cada familiar. La app no envía nada sola: abre WhatsApp con el mensaje escrito.",
+  steps: [
+    "Entrá a Agenda: arriba aparece «Recordatorios para mañana».",
+    "Tocá «Avisar por WhatsApp» en cada visita, revisá el número y el texto, y tocá «Enviar» en WhatsApp.",
+    "Si dice «Sin teléfono cargado», completá el contacto del familiar en la ficha del paciente.",
+  ],
+  href: "/agenda",
+  cta: "Ir a Agenda",
+  doc: "DF-C2 §4",
+};
+
+const AUDITORIA: HomeTask = {
+  id: "auditoria",
+  title: "Ver quién cambió qué",
+  summary: "Consultar el registro automático de cambios: altas, planes, medicación, consentimientos, pedidos y evoluciones.",
+  steps: [
+    "Entrá a Auditoría.",
+    "Filtrá por qué se tocó, por persona, por tipo de acción o por fechas.",
+    "El registro no se puede editar. Las evoluciones figuran sin su contenido clínico.",
+  ],
+  href: "/auditoria",
+  cta: "Ir a Auditoría",
+  doc: "DF-C1 §4.1",
 };
 
 const CONTROL_EVOLUCIONES: HomeTask = {
@@ -56,12 +113,12 @@ const CONSENTIMIENTOS: HomeTask = {
   title: "Firmar los consentimientos de ingreso",
   summary: "Registrar, documento por documento, la firma del familiar y del profesional.",
   steps: [
-    "En Pacientes, buscá la tarjeta del paciente recién admitido.",
-    "En el recuadro «Consentimientos de ingreso» hay una fila por documento.",
+    "Abrí la ficha del paciente recién admitido (te llevamos ahí al terminar el alta) y entrá a la solapa «Ingreso y egreso».",
+    "En el paso 5 hay una fila por documento: primero se tilda el checklist de información al paciente y se firman los consentimientos.",
     "En cada fila completá quién firma, tocá «Capturar ubicación» y después «Acepto».",
   ],
-  href: "/internacion",
-  cta: "Ir a Pacientes",
+  href: "/internacion#ingresos",
+  cta: "Ver ingresos en curso",
   doc: "DF-C2 §6",
 };
 
@@ -301,6 +358,7 @@ const DASHBOARD: HomeTask = {
   steps: [
     "Entrá al Dashboard ejecutivo.",
     "Cada indicador es un enlace: tocalo para ir al módulo que lo explica.",
+    "Al tocar un número se abre la lista que lo explica, ya filtrada (por ejemplo los pacientes con autorizaciones por vencer).",
     "Mirá altas y bajas del día y del mes, y el histórico de 12 meses.",
   ],
   href: "/dashboard",
@@ -309,10 +367,11 @@ const DASHBOARD: HomeTask = {
 };
 
 export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
-  coordinador_internacion: [CONFIRMAR_LLEGADA, ARMAR_AGENDA, CONTROL_EVOLUCIONES, INFORMAR_EGRESO],
-  profesional_asistencial: [MI_AGENDA, CARGAR_EVOLUCION, INFORMAR_EGRESO],
+  coordinador_internacion: [CONFIRMAR_LLEGADA, PLAN_TRATAMIENTO, ARMAR_AGENDA, RECORDATORIOS, MENSAJES_EQUIPO, CONTROL_EVOLUCIONES, INFORMAR_EGRESO],
+  profesional_asistencial: [MI_AGENDA, CARGAR_EVOLUCION, MENSAJES_EQUIPO, INFORMAR_EGRESO],
   administracion: [
     ALTA_PACIENTE,
+    PLAN_TRATAMIENTO,
     CONSENTIMIENTOS,
     AUTORIZAR_PRACTICAS,
     CONFIRMAR_LLEGADA,
@@ -323,10 +382,11 @@ export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
     OBRAS_SOCIALES,
     COMPRAS,
     SEGUIMIENTO,
+    MENSAJES_EQUIPO,
   ],
   deposito: [DESPACHAR_PEDIDOS, SEGUIMIENTO, CARGAR_PRODUCTO, COMPRAS],
   transporte: [ENTREGAR_PEDIDOS, SEGUIMIENTO],
-  direccion: [DASHBOARD],
+  direccion: [DASHBOARD, AUDITORIA],
 };
 
 export const ROLE_WELCOME: Record<AppRole, string> = {
@@ -335,5 +395,5 @@ export const ROLE_WELCOME: Record<AppRole, string> = {
   administracion: "Desde acá das de alta a los pacientes, controlás autorizaciones, pedidos, compras y la facturación.",
   deposito: "Desde acá gestionás el catálogo, armás pedidos y seguís los equipos.",
   transporte: "Desde acá ves las entregas y retiros que tenés que hacer.",
-  direccion: "Desde acá ves el estado general de la operación.",
+  direccion: "Desde acá ves el estado general de la operación y quién cambió qué.",
 };

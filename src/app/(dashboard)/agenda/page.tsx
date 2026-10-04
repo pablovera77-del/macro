@@ -5,6 +5,7 @@ import { calcularCumplimiento, semanaActual, describirPlan, type Plan } from "@/
 import StatusBadge from "@/components/StatusBadge";
 import PageHeader from "@/components/PageHeader";
 import SidePanel from "@/components/SidePanel";
+import { linkWhatsapp, mensajeRecordatorio, rangoManiana } from "@/lib/reminders";
 import Link from "next/link";
 import { IconCalendar, IconMapPin, IconCheck, IconAlert } from "@/components/icons";
 
@@ -40,7 +41,7 @@ export default async function AgendaPage({
 
   let visitsQuery = supabase
     .from("visits")
-    .select("id, patient_id, profesional_id, especialidad, fecha_programada, estado, observacion_agenda, patients(nombre_completo, domicilio), profiles(full_name)")
+    .select("id, patient_id, profesional_id, especialidad, fecha_programada, estado, observacion_agenda, patients(nombre_completo, domicilio, telefono_contacto, contacto_familiar_telefono), profiles(full_name)")
     .order("fecha_programada", { ascending: true });
 
   if (profile.role === "profesional_asistencial") {
@@ -80,6 +81,13 @@ export default async function AgendaPage({
   const visitasLista = soloSemana
     ? (visits ?? []).filter((v) => v.fecha_programada >= sem.desde && v.fecha_programada < sem.hasta)
     : (visits ?? []);
+  // G4: visitas de mañana, con un link de WhatsApp ya escrito (se envía a mano).
+  const maniana = rangoManiana();
+  const visitasManiana = isCoordinador
+    ? (visits ?? []).filter(
+        (v) => (v.estado === "programada" || v.estado === "confirmada") && v.fecha_programada >= maniana.desde && v.fecha_programada < maniana.hasta
+      )
+    : [];
   const proximas = visitasLista.filter((v) => v.estado !== "realizada" && v.estado !== "cancelada" && v.estado !== "no_realizada");
   const atrasadas = isCoordinador ? (visits ?? []).filter((v) => v.estado !== "realizada" && v.estado !== "cancelada" && v.estado !== "no_realizada").filter((v) => new Date(v.fecha_programada).getTime() < now) : [];
   const historial = visitasLista.filter((v) => v.estado === "realizada" || v.estado === "cancelada" || v.estado === "no_realizada");
@@ -162,6 +170,41 @@ export default async function AgendaPage({
                 </div>
               </li>
             ))}
+          </ul>
+        </section>
+      )}
+
+      {isCoordinador && visitasManiana.length > 0 && (
+        <section className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 animate-fade-slide-up">
+          <h2 className="text-sm font-semibold text-emerald-900 mb-1">Recordatorios para mañana ({maniana.etiqueta})</h2>
+          <p className="text-xs text-emerald-800 mb-3">Se abre WhatsApp con el mensaje escrito. Revisá el número y tocá «Enviar»: la app no manda nada sola.</p>
+          <ul className="space-y-2">
+            {visitasManiana.map((v) => {
+              const pac = v.patients as unknown as { nombre_completo: string; telefono_contacto: string | null; contacto_familiar_telefono: string | null } | null;
+              const profNombre = (v.profiles as unknown as { full_name: string } | null)?.full_name ?? null;
+              const tel = pac?.telefono_contacto || pac?.contacto_familiar_telefono || null;
+              const link = linkWhatsapp(
+                tel,
+                mensajeRecordatorio({ paciente: pac?.nombre_completo ?? "el paciente", disciplina: SPECIALTY_LABELS[v.especialidad] ?? v.especialidad, fechaIso: v.fecha_programada, profesional: profNombre })
+              );
+              return (
+                <li key={v.id} className="flex items-center justify-between gap-3 flex-wrap bg-white border border-emerald-200 rounded-xl px-3.5 py-2.5 text-sm">
+                  <span>
+                    <span className="font-medium text-slate-900">{pac?.nombre_completo}</span>
+                    <span className="text-xs text-slate-500 ml-2">
+                      {SPECIALTY_LABELS[v.especialidad] ?? v.especialidad} · {new Date(v.fecha_programada).toLocaleTimeString("es-AR", { timeZone: "America/Argentina/San_Juan", hour: "2-digit", minute: "2-digit", hour12: false })} hs{profNombre ? ` · ${profNombre}` : ""}
+                    </span>
+                  </span>
+                  {link ? (
+                    <a href={link} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-emerald-600 text-white text-xs font-medium px-3 py-1.5 hover:bg-emerald-700 transition-colors">
+                      Avisar por WhatsApp
+                    </a>
+                  ) : (
+                    <span className="text-xs text-amber-700">Sin teléfono cargado</span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

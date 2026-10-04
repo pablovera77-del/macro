@@ -2,6 +2,8 @@ import Link from "next/link";
 import { requireProfile, ROLE_LABELS } from "@/lib/auth";
 import { TASKS_BY_ROLE } from "@/lib/home-tasks";
 import PageHeader from "@/components/PageHeader";
+import { PERMISOS, SOLO_LECTURA } from "@/lib/permissions";
+import type { AppRole } from "@/lib/roles";
 import { IconStethoscope, IconArrowRight } from "@/components/icons";
 
 export default async function AyudaPage() {
@@ -53,6 +55,51 @@ export default async function AyudaPage() {
           </details>
         ))}
       </section>
+
+      <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-slide-up">
+        <div className="px-5 py-4 border-b border-slate-100">
+          <h2 className="text-sm font-semibold text-slate-900">Quién puede hacer qué</h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Si un botón no te aparece, es porque esa tarea le corresponde a otro rol. Tu columna está marcada.
+          </p>
+          <p className="text-xs text-slate-600 mt-2">
+            <strong>Vos podés ver:</strong> {SOLO_LECTURA[profile.role]}
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-slate-500 text-xs">
+              <tr>
+                <th className="text-left px-4 py-2.5 font-medium">Tarea</th>
+                {COLUMNAS.map((r) => (
+                  <th key={r} className={`px-2 py-2.5 font-medium text-center ${r === profile.role ? "bg-emerald-50 text-emerald-800" : ""}`}>
+                    {ROLE_LABELS[r]}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {PERMISOS.map((p, i) => (
+                <tr key={p.accion}>
+                  <td className="px-4 py-2 text-slate-800">
+                    {(i === 0 || PERMISOS[i - 1].modulo !== p.modulo) && (
+                      <span className="block text-[10px] uppercase tracking-wide text-slate-400">{p.modulo}</span>
+                    )}
+                    {p.accion}
+                  </td>
+                  {COLUMNAS.map((r) => (
+                    <td key={r} className={`px-2 py-2 text-center ${r === profile.role ? "bg-emerald-50/60" : ""}`}>
+                      {p.roles.includes(r) ? <span className="text-emerald-600 font-semibold" aria-label="puede">✓</span> : <span className="text-slate-300" aria-label="no puede">–</span>}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }
+
+const COLUMNAS: AppRole[] = ["administracion", "coordinador_internacion", "profesional_asistencial", "deposito", "transporte", "direccion"];

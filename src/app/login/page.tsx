@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { IconBox, IconTruck, IconRefresh, IconChart, IconClipboard, IconStethoscope } from "@/components/icons";
 import { ROLE_LABELS } from "@/lib/roles";
@@ -20,7 +20,7 @@ const DEMO_ACCOUNTS = [
 const DEMO_ENABLED = process.env.NEXT_PUBLIC_DEMO_LOGIN !== "0";
 const DEMO_PASSWORD = "DfC5Demo2026!";
 
-export default function LoginPage() {
+function LoginForm() {
 const router = useRouter();
 const supabase = createClient();
 const [email, setEmail] = useState("");
@@ -28,6 +28,22 @@ const [password, setPassword] = useState("");
 const [error, setError] = useState<string | null>(null);
 const [loading, setLoading] = useState(false);
 const [loadingRole, setLoadingRole] = useState<string | null>(null);
+// A3: recuperar contraseña por mail. El mensaje es siempre el mismo, exista o no
+// la cuenta, para no revelar qué mails están registrados.
+const [modo, setModo] = useState<"ingresar" | "recuperar">("ingresar");
+const [enviado, setEnviado] = useState(false);
+const linkVencido = useSearchParams().get("error") === "link";
+
+async function handleRecuperar(e: React.FormEvent) {
+e.preventDefault();
+setLoading(true);
+setError(null);
+await supabase.auth.resetPasswordForEmail(email, {
+redirectTo: `${window.location.origin}/auth/callback?next=/restablecer`,
+});
+setLoading(false);
+setEnviado(true);
+}
 
 async function handleSubmit(e: React.FormEvent) {
 e.preventDefault();
@@ -75,7 +91,7 @@ Plataforma de gestión de internación domiciliaria
 </p>
 </div>
 
-<form onSubmit={handleSubmit} className="space-y-4 bg-white/[0.06] backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl animate-fade-slide-up stagger-1">
+<form onSubmit={modo === "ingresar" ? handleSubmit : handleRecuperar} className="space-y-4 bg-white/[0.06] backdrop-blur-xl rounded-2xl border border-white/10 p-6 shadow-2xl animate-fade-slide-up stagger-1">
 <div>
 <label className="block text-sm font-medium text-slate-200 mb-1.5">Email</label>
 <input
@@ -86,6 +102,10 @@ onChange={(e) => setEmail(e.target.value)}
 className="w-full rounded-xl border border-white/15 bg-white/[0.04] text-white placeholder:text-slate-500 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-teal)]/50 transition-shadow"
 />
 </div>
+{linkVencido && modo === "ingresar" && (
+<p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">El link venció o ya se usó. Pedí uno nuevo con «Olvidé mi contraseña».</p>
+)}
+{modo === "ingresar" && (
 <div>
 <label className="block text-sm font-medium text-slate-200 mb-1.5">Contraseña</label>
 <input
@@ -96,13 +116,31 @@ onChange={(e) => setPassword(e.target.value)}
 className="w-full rounded-xl border border-white/15 bg-white/[0.04] text-white placeholder:text-slate-500 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-teal)]/50 transition-shadow"
 />
 </div>
+)}
+{modo === "recuperar" && (
+<p className="text-xs text-slate-300">Escribí tu email y te enviamos un link para elegir una contraseña nueva.</p>
+)}
+{modo === "recuperar" && enviado && (
+<p className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">Si el email está registrado, te enviamos un link para cambiar la contraseña. Revisá también la carpeta de spam.</p>
+)}
 {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>}
 <button
 type="submit"
 disabled={loading}
 className="w-full rounded-xl bg-gradient-to-r from-[var(--brand-teal)] to-[var(--brand-green)] text-white text-sm font-medium py-2.5 hover:brightness-110 disabled:opacity-50 transition-all shadow-lg shadow-black/30"
 >
-{loading ? "Ingresando..." : "Ingresar"}
+{modo === "ingresar" ? (loading ? "Ingresando..." : "Ingresar") : loading ? "Enviando..." : "Enviarme el link"}
+</button>
+<button
+type="button"
+onClick={() => {
+setModo(modo === "ingresar" ? "recuperar" : "ingresar");
+setError(null);
+setEnviado(false);
+}}
+className="w-full text-xs text-slate-300 hover:text-white underline underline-offset-2"
+>
+{modo === "ingresar" ? "Olvidé mi contraseña" : "Volver a ingresar"}
 </button>
 </form>
 
@@ -136,5 +174,13 @@ className="flex items-center gap-2 text-xs rounded-xl border border-white/10 px-
 )}
 </div>
 </div>
+);
+}
+
+export default function LoginPage() {
+return (
+<Suspense fallback={null}>
+<LoginForm />
+</Suspense>
 );
 }

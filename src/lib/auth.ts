@@ -47,7 +47,8 @@ export type NavIconId =
 | "facturacion"
 | "compras"
 | "inicio"
-| "ayuda";
+| "ayuda"
+| "auditoria";
 
 export const NAV_BY_ROLE: Record<AppRole, { href: string; label: string; icon: NavIconId; description: string }[]> = {
 deposito: [
@@ -78,6 +79,7 @@ transporte: [
 direccion: [
 { href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
 { href: "/dashboard", label: "Dashboard ejecutivo", icon: "dashboard", description: "Vista en tiempo real" },
+{ href: "/auditoria", label: "Auditoría", icon: "auditoria", description: "Quién cambió qué" },
 { href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
 coordinador_internacion: [
