@@ -4,6 +4,7 @@ import { createVisitAction, updateVisitStatusAction, cancelVisitAction, reschedu
 import { calcularCumplimiento, semanaActual, describirPlan, type Plan } from "@/lib/plan";
 import StatusBadge from "@/components/StatusBadge";
 import PageHeader from "@/components/PageHeader";
+import SidePanel from "@/components/SidePanel";
 import Link from "next/link";
 import { IconCalendar, IconMapPin, IconCheck, IconAlert } from "@/components/icons";
 
@@ -29,9 +30,9 @@ function formatFecha(iso: string) {
 export default async function AgendaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ paciente?: string; esp?: string }>;
+  searchParams: Promise<{ paciente?: string; esp?: string; ver?: string }>;
 }) {
-  const { paciente: pacienteSel, esp: espSel } = await searchParams;
+  const { paciente: pacienteSel, esp: espSel, ver } = await searchParams;
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
@@ -73,9 +74,15 @@ export default async function AgendaPage({
   const profesionalSugerido = pacienteSel && espSel ? equipoPorPaciente.get(`${pacienteSel}|${espSel}`) ?? "" : "";
 
   const now = new Date().getTime();
-  const proximas = (visits ?? []).filter((v) => v.estado !== "realizada" && v.estado !== "cancelada" && v.estado !== "no_realizada");
-  const atrasadas = isCoordinador ? proximas.filter((v) => new Date(v.fecha_programada).getTime() < now) : [];
-  const historial = (visits ?? []).filter((v) => v.estado === "realizada" || v.estado === "cancelada" || v.estado === "no_realizada");
+  // F3: desde el Dashboard, "Visitas de esta semana" abre la agenda ya filtrada.
+  const sem = semanaActual();
+  const soloSemana = ver === "semana";
+  const visitasLista = soloSemana
+    ? (visits ?? []).filter((v) => v.fecha_programada >= sem.desde && v.fecha_programada < sem.hasta)
+    : (visits ?? []);
+  const proximas = visitasLista.filter((v) => v.estado !== "realizada" && v.estado !== "cancelada" && v.estado !== "no_realizada");
+  const atrasadas = isCoordinador ? (visits ?? []).filter((v) => v.estado !== "realizada" && v.estado !== "cancelada" && v.estado !== "no_realizada").filter((v) => new Date(v.fecha_programada).getTime() < now) : [];
+  const historial = visitasLista.filter((v) => v.estado === "realizada" || v.estado === "cancelada" || v.estado === "no_realizada");
 
   return (
     <div className="space-y-8">
@@ -160,6 +167,16 @@ export default async function AgendaPage({
       )}
 
       <section className="space-y-3">
+        {soloSemana && (
+          <div className="flex items-center justify-between gap-3 flex-wrap rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm">
+            <span className="text-slate-800">
+              Mostrando: <strong>visitas de esta semana</strong> ({visitasLista.length})
+            </span>
+            <Link href="/agenda" className="text-xs font-medium text-[var(--brand-teal)] underline underline-offset-2">
+              Quitar filtro y ver todas
+            </Link>
+          </div>
+        )}
         {proximas.length === 0 && (
           <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400 text-sm animate-fade-slide-up">
             No hay visitas próximas.
@@ -220,12 +237,8 @@ export default async function AgendaPage({
       </section>
 
       {isCoordinador && (
-        <section id="programar-visita" className="scroll-mt-6 bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
-          <h2 className="text-sm font-medium text-slate-900 mb-4 flex items-center gap-2">
-            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 text-slate-500">+</span>
-            Programar visita
-          </h2>
-          <form action={createVisitAction} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <SidePanel id="programar-visita" title="Programar visita">
+          <form key={`${pacienteSel ?? ""}|${espSel ?? ""}`} action={createVisitAction} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <select name="patient_id" required defaultValue={pacienteSel ?? ""} className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2">
               <option value="">Paciente...</option>
               {(patients ?? []).map((p) => (
@@ -247,7 +260,7 @@ export default async function AgendaPage({
             <input name="observacion_agenda" placeholder="Observación (opcional)" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2" />
             <button className="rounded-xl bg-slate-900 text-white text-sm font-medium px-4 py-2.5 hover:bg-slate-800 transition-colors">Programar</button>
           </form>
-        </section>
+        </SidePanel>
       )}
 
       {historial.length > 0 && (

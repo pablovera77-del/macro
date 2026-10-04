@@ -53,9 +53,9 @@ const SEMAFORO_LABELS: Record<string, string> = {
 export default async function InternacionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ nuevo?: string; admitido?: string }>;
+  searchParams: Promise<{ nuevo?: string; admitido?: string; ver?: string }>;
 }) {
-  const { nuevo, admitido } = await searchParams;
+  const { nuevo, admitido, ver } = await searchParams;
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
@@ -169,6 +169,23 @@ export default async function InternacionPage({
     })
     .filter((x) => x.faltan.length > 0)
     .sort((a, b) => (a.p.fecha_ingreso ?? "").localeCompare(b.p.fecha_ingreso ?? ""));
+
+  // Filtro de la lista que llega desde las tarjetas del Dashboard (F3): cada
+  // número lleva a la lista que lo explica.
+  const hoyAR = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/San_Juan" }).format(new Date());
+  const mesAR = hoyAR.slice(0, 7);
+  const idsPorVencer = new Set(vencenPronto.map((a) => a.patient_id));
+  const FILTROS: Record<string, { label: string; test: (p: NonNullable<typeof patients>[number]) => boolean }> = {
+    activos: { label: "Pacientes activos", test: (p) => p.estado === "activo" },
+    pendientes: { label: "Pendientes de llegada al domicilio", test: (p) => p.estado === "admitido_pendiente_llegada" },
+    por_vencer: { label: "Con autorizaciones por vencer o vencidas", test: (p) => idsPorVencer.has(p.id) },
+    altas_hoy: { label: "Altas de hoy", test: (p) => p.fecha_ingreso === hoyAR },
+    bajas_hoy: { label: "Bajas de hoy", test: (p) => p.fecha_egreso === hoyAR },
+    altas_mes: { label: "Altas de este mes", test: (p) => p.fecha_ingreso?.slice(0, 7) === mesAR },
+    bajas_mes: { label: "Bajas de este mes", test: (p) => p.fecha_egreso?.slice(0, 7) === mesAR },
+  };
+  const filtroActivo = ver ? FILTROS[ver] ?? null : null;
+  const pacientesVisibles = filtroActivo ? (patients ?? []).filter(filtroActivo.test) : (patients ?? []);
 
   const admitidoPaciente = admitido ? (patients ?? []).find((p) => p.id === admitido) ?? null : null;
 
@@ -294,12 +311,24 @@ export default async function InternacionPage({
       )}
 
       <section className="space-y-3">
-        {(patients ?? []).length === 0 && (
-          <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-8 text-center text-sm text-slate-500">
-            Todavía no hay pacientes cargados. {canAdmit ? "Tocá «+ Nuevo paciente» para dar de alta el primero." : ""}
+        {filtroActivo && (
+          <div className="flex items-center justify-between gap-3 flex-wrap rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm">
+            <span className="text-slate-800">
+              Mostrando: <strong>{filtroActivo.label}</strong> ({pacientesVisibles.length})
+            </span>
+            <Link href="/internacion" className="text-xs font-medium text-[var(--brand-teal)] underline underline-offset-2">
+              Quitar filtro y ver todos
+            </Link>
           </div>
         )}
-        {(patients ?? []).map((p, i) => {
+        {pacientesVisibles.length === 0 && (
+          <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-8 text-center text-sm text-slate-500">
+            {filtroActivo
+              ? "No hay pacientes que cumplan este filtro."
+              : `Todavía no hay pacientes cargados. ${canAdmit ? "Tocá «+ Nuevo paciente» para dar de alta el primero." : ""}`}
+          </div>
+        )}
+        {pacientesVisibles.map((p, i) => {
           const auths = (authorizations ?? []).filter((a) => a.patient_id === p.id);
           const team = (careTeam ?? []).filter((t) => t.patient_id === p.id);
           const initials = p.nombre_completo.split(" ").filter(Boolean).slice(0, 2).map((n) => n[0]?.toUpperCase()).join("");

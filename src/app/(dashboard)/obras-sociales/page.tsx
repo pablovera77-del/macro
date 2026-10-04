@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { createObraSocialAction, addValueHistoryAction, assignResponsableAction, addRequiredDocAction, removeRequiredDocAction } from "./actions";
 import PageHeader from "@/components/PageHeader";
+import SidePanel from "@/components/SidePanel";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconBuilding } from "@/components/icons";
 
@@ -140,11 +141,7 @@ export default async function ObrasSocialesPage() {
       </section>
 
       {canManage && (
-        <section id="nueva-obra-social" className="scroll-mt-6 bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
-          <h2 className="text-sm font-medium text-slate-900 mb-4 flex items-center gap-2">
-            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 text-slate-500">+</span>
-            Nueva obra social
-          </h2>
+        <SidePanel id="nueva-obra-social" title="Nueva obra social">
           <form action={createObraSocialAction} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <input name="nombre" placeholder="Nombre" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2" />
             <input name="cuit" placeholder="CUIT (opcional)" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
@@ -154,7 +151,7 @@ export default async function ObrasSocialesPage() {
               Crear
             </button>
           </form>
-        </section>
+        </SidePanel>
       )}
     </div>
   );

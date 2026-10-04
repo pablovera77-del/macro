@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { createProductAction, createAssetAction, addProductSupplierAction, setPreferredSupplierAction } from "./actions";
 import PageHeader from "@/components/PageHeader";
+import SidePanel from "@/components/SidePanel";
 import SearchableSelect from "@/components/SearchableSelect";
 import ExportCsvButton from "@/components/ExportCsvButton";
 import ProductFormFields from "@/components/ProductFormFields";
@@ -338,11 +339,7 @@ export default async function CatalogoPage({
       </section>
 
       {isDeposito && (
-        <section id="nuevo-producto" className="scroll-mt-6 bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
-          <h2 className="text-sm font-medium text-slate-900 mb-4 flex items-center gap-2">
-            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 text-slate-500">+</span>
-            Agregar producto al catálogo
-          </h2>
+        <SidePanel id="nuevo-producto" title="Nuevo producto">
           <p className="text-xs text-slate-400 -mt-2 mb-3">
             El &ldquo;Código de producto&rdquo; es el identificador interno (SKU); el EAN/UPC es el código de barras de fábrica —
             son campos distintos porque no todo proveedor trae uno (pendiente de definir cuál usa cada uno como estándar).
@@ -369,7 +366,7 @@ export default async function CatalogoPage({
               Agregar producto
             </button>
           </form>
-        </section>
+        </SidePanel>
       )}
 
       <div className="animate-fade-slide-up">

@@ -114,3 +114,12 @@ background: #c7d2fe;
 scrollbar-width: thin;
 scrollbar-color: #cbd5e1 transparent;
 }
+
+/* Formularios dentro del panel lateral: una sola columna, aunque el formulario
+   original use una grilla de varias columnas para pantallas anchas. */
+.side-panel-body form.grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+.side-panel-body form.grid > * {
+  grid-column: auto !important;
+}

@@ -8,6 +8,7 @@ dispatchOrderAction,
 deliverOrderAction,
 } from "./actions";
 import PageHeader from "@/components/PageHeader";
+import SidePanel from "@/components/SidePanel";
 import SearchableSelect from "@/components/SearchableSelect";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import StatusBadge from "@/components/StatusBadge";
@@ -249,11 +250,7 @@ className="rounded-lg border border-slate-300 px-2.5 py-2 text-xs"
 </section>
 
 {profile.role === "deposito" && (
-<section id="nuevo-pedido" className="scroll-mt-6 bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
-<h2 className="text-sm font-medium text-slate-900 mb-4 flex items-center gap-2">
-<span className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 text-slate-500">+</span>
-Iniciar pedido para un paciente nuevo
-</h2>
+<SidePanel id="nuevo-pedido" title="Nuevo pedido">
 <form action={addOrderItemAction} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
 <SearchableSelect
 name="patient_id"
@@ -287,7 +284,7 @@ options={(products ?? []).map((p) => ({ value: p.id, label: p.descripcion, group
 Crear pedido
 </button>
 </form>
-</section>
+</SidePanel>
 )}
 </div>
 );

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { createBillingPeriodAction, advanceBillingPeriodAction, addBillingDebitAction, updateDebitStatusAction, registerMontoCobradoAction } from "./actions";
 import PageHeader from "@/components/PageHeader";
+import SidePanel from "@/components/SidePanel";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconCash, IconAlert } from "@/components/icons";
 import { SEMANTIC_TONE_BADGE_STYLES, SemanticTone } from "@/lib/semantic-status";
@@ -97,7 +98,7 @@ export default async function FacturacionPage() {
       />
 
       {pendingDebits.length > 0 && (
-        <section className="bg-red-50 border border-red-200 rounded-2xl p-5 animate-fade-slide-up">
+        <section id="debitos" className="scroll-mt-6 bg-red-50 border border-red-200 rounded-2xl p-5 animate-fade-slide-up">
           <div className="flex items-center gap-2 mb-3">
             <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600">
               <IconAlert className="w-4 h-4" />
@@ -263,11 +264,7 @@ export default async function FacturacionPage() {
       </section>
 
       {canManage && (
-        <section id="abrir-periodo" className="scroll-mt-6 bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
-          <h2 className="text-sm font-medium text-slate-900 mb-4 flex items-center gap-2">
-            <span className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 text-slate-500">+</span>
-            Abrir período de facturación
-          </h2>
+        <SidePanel id="abrir-periodo" title="Abrir período de facturación">
           <form action={createBillingPeriodAction} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <select name="obra_social_id" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2">
               <option value="">Obra social...</option>
@@ -281,7 +278,7 @@ export default async function FacturacionPage() {
               Abrir período
             </button>
           </form>
-        </section>
+        </SidePanel>
       )}
     </div>
   );

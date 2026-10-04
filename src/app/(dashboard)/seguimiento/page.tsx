@@ -60,7 +60,7 @@ description="Doble check retirado / llegó a depósito — cada movimiento queda
 />
 
 {(retiradosSinConfirmar ?? []).length > 0 && (
-<section className="bg-red-50 border border-red-200 rounded-2xl p-5 animate-fade-slide-up">
+<section id="alertas" className="scroll-mt-6 bg-red-50 border border-red-200 rounded-2xl p-5 animate-fade-slide-up">
 <div className="flex items-center gap-2 mb-3">
 <span className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600">
 <span className="absolute inset-0 rounded-lg animate-pulse-ring" />
@@ -88,7 +88,7 @@ Pasadas 48hs desde la notificación de cierre de la internación sin confirmar l
 </section>
 )}
 
-<section className="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-slide-up card-hover">
+<section id="en-domicilio" className="scroll-mt-6 bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-slide-up card-hover">
 <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
 <IconMapPin className="w-4 h-4 text-slate-400" />
 <h2 className="text-sm font-medium text-slate-900">Equipos actualmente en domicilios</h2>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
+import { semanaActual } from "@/lib/plan";
 import { IconChart, IconBox, IconMapPin, IconAlert, IconTruck, IconUsers, IconCalendar, IconCash, IconSignature, IconClipboardCheck } from "@/components/icons";
 
 function formatARS(value: number | null) {
@@ -46,10 +47,9 @@ supabase.from("purchase_order_items").select("cantidad, precio_unitario, purchas
 const pacientesActivos = (pacientes ?? []).filter((p) => p.estado === "activo").length;
 const pacientesPendientesLlegada = (pacientes ?? []).filter((p) => p.estado === "admitido_pendiente_llegada").length;
 
-const inicioSemana = new Date();
-inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay());
-inicioSemana.setHours(0, 0, 0, 0);
-const visitasSemana = (visitas ?? []).filter((v) => new Date(v.fecha_programada) >= inicioSemana);
+// Misma semana (lunes a lunes, hora de San Juan) que usa la agenda al filtrar.
+const sem = semanaActual();
+const visitasSemana = (visitas ?? []).filter((v) => v.fecha_programada >= sem.desde && v.fecha_programada < sem.hasta);
 const visitasRealizadasSemana = visitasSemana.filter((v) => v.estado === "realizada").length;
 
 const hoy = new Date().toISOString().slice(0, 10);
@@ -105,10 +105,10 @@ const valorComprometido = (purchaseOrderItemsAbiertos ?? []).reduce(
 );
 
 const stats = [
-{ label: "Equipos en domicilios", value: (enDomicilio ?? []).length, icon: IconMapPin, tone: "from-blue-500 to-blue-600", href: "/seguimiento" },
+{ label: "Equipos en domicilios", value: (enDomicilio ?? []).length, icon: IconMapPin, tone: "from-blue-500 to-blue-600", href: "/seguimiento#en-domicilio" },
 { label: "Equipos disponibles en depósito", value: totalEquiposDisponibles, icon: IconBox, tone: "from-emerald-500 to-emerald-600", href: "/catalogo" },
 { label: "Unidades de descartables/alimento", value: totalDescartablesEnStock, icon: IconTruck, tone: "from-violet-500 to-violet-600", href: "/catalogo" },
-{ label: "Alertas de ubicación no confirmada", value: alertCount, icon: IconAlert, tone: "from-red-500 to-red-600", alert: alertCount > 0, href: "/seguimiento" },
+{ label: "Alertas de ubicación no confirmada", value: alertCount, icon: IconAlert, tone: "from-red-500 to-red-600", alert: alertCount > 0, href: "/seguimiento#alertas" },
 ];
 
 return (
@@ -240,13 +240,13 @@ Estimado a partir del último precio de compra cargado × cantidad autorizada �
 </h2>
 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
 {[
-{ label: "Pacientes activos", value: pacientesActivos, icon: IconUsers, tone: "from-rose-500 to-rose-600", href: "/internacion" },
-{ label: "Pendientes de llegada", value: pacientesPendientesLlegada, icon: IconUsers, tone: "from-amber-500 to-amber-600", href: "/internacion" },
-{ label: "Visitas realizadas esta semana", value: `${visitasRealizadasSemana}/${visitasSemana.length}`, icon: IconCalendar, tone: "from-teal-500 to-teal-600", href: "/agenda" },
-{ label: "Evoluciones cargadas hoy", value: evolucionesHoyCount, icon: IconSignature, tone: "from-indigo-500 to-indigo-600", href: "/evoluciones" },
-{ label: "Autorizaciones por vencer/vencidas", value: autorizacionesVencenPronto, icon: IconAlert, tone: "from-orange-500 to-orange-600", alert: autorizacionesVencenPronto > 0, href: "/internacion" },
+{ label: "Pacientes activos", value: pacientesActivos, icon: IconUsers, tone: "from-rose-500 to-rose-600", href: "/internacion?ver=activos" },
+{ label: "Pendientes de llegada", value: pacientesPendientesLlegada, icon: IconUsers, tone: "from-amber-500 to-amber-600", href: "/internacion?ver=pendientes" },
+{ label: "Visitas realizadas esta semana", value: `${visitasRealizadasSemana}/${visitasSemana.length}`, icon: IconCalendar, tone: "from-teal-500 to-teal-600", href: "/agenda?ver=semana" },
+{ label: "Evoluciones cargadas hoy", value: evolucionesHoyCount, icon: IconSignature, tone: "from-indigo-500 to-indigo-600", href: "/evoluciones#historial" },
+{ label: "Autorizaciones por vencer/vencidas", value: autorizacionesVencenPronto, icon: IconAlert, tone: "from-orange-500 to-orange-600", alert: autorizacionesVencenPronto > 0, href: "/internacion?ver=por_vencer" },
 { label: "Períodos de facturación abiertos", value: periodosAbiertos, icon: IconCash, tone: "from-blue-500 to-blue-600", href: "/facturacion" },
-{ label: "Débitos pendientes de gestión", value: formatARS(totalDebitosPendientes), icon: IconAlert, tone: "from-red-500 to-red-600", alert: totalDebitosPendientes > 0, href: "/facturacion" },
+{ label: "Débitos pendientes de gestión", value: formatARS(totalDebitosPendientes), icon: IconAlert, tone: "from-red-500 to-red-600", alert: totalDebitosPendientes > 0, href: "/facturacion#debitos" },
 ].map((s, i) => {
 const Icon = s.icon;
 const className = `animate-count-up stagger-${i + 1} card-hover rounded-2xl border p-5 relative overflow-hidden block ${
@@ -280,14 +280,14 @@ Reúne visitas y evoluciones, pacientes y autorizaciones, y facturación en una 
 </h2>
 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
 {[
-{ label: "Altas hoy", value: altasHoy, tone: "from-emerald-500 to-emerald-600" },
-{ label: "Bajas hoy", value: bajasHoy, tone: "from-slate-500 to-slate-600" },
-{ label: "Altas este mes", value: altasMes, tone: "from-teal-500 to-teal-600" },
-{ label: "Bajas este mes", value: bajasMes, tone: "from-rose-400 to-rose-500" },
+{ label: "Altas hoy", ver: "altas_hoy", value: altasHoy, tone: "from-emerald-500 to-emerald-600" },
+{ label: "Bajas hoy", ver: "bajas_hoy", value: bajasHoy, tone: "from-slate-500 to-slate-600" },
+{ label: "Altas este mes", ver: "altas_mes", value: altasMes, tone: "from-teal-500 to-teal-600" },
+{ label: "Bajas este mes", ver: "bajas_mes", value: bajasMes, tone: "from-rose-400 to-rose-500" },
 ].map((s, i) => (
 <Link
 key={s.label}
-href="/internacion"
+href={`/internacion?ver=${s.ver}`}
 className={`animate-count-up stagger-${i + 1} card-hover rounded-2xl border p-5 bg-white border-slate-200 relative overflow-hidden block`}
 >
 <div className="text-2xl font-semibold tabular-nums text-slate-900">{s.value}</div>

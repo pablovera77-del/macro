@@ -75,7 +75,7 @@ export default async function EvolucionesPage({
   const pendientes = (visitsRealizadas ?? []).filter((v) => !linkedVisitIds.has(v.id));
 
   // Control (C2): visitas realizadas sin evolución, agrupadas por profesional, la más antigua primero.
-  const hoy = Date.now();
+  const hoy = new Date().getTime();
   const diasDesde = (iso: string | null) => (iso ? Math.max(0, Math.floor((hoy - new Date(iso).getTime()) / 86400000)) : 0);
   const porProfesional = new Map<string, { nombre: string; items: typeof pendientes }>();
   for (const v of pendientes) {
@@ -230,7 +230,7 @@ export default async function EvolucionesPage({
         })}
       </section>
 
-      <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-slide-up card-hover">
+      <section id="historial" className="scroll-mt-6 bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-slide-up card-hover">
         <div className="px-5 py-4 border-b border-slate-100">
           <h2 className="text-sm font-medium text-slate-900">{isMedico ? "Últimas evoluciones registradas" : "Mi historial reciente"}</h2>
         </div>

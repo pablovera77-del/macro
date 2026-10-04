@@ -19,6 +19,7 @@ export default function PatientSearch() {
   const [loading, setLoading] = useState(false);
   const box = useRef<HTMLDivElement>(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- búsqueda con debounce: el estado de carga acompaña al pedido al servidor */
   useEffect(() => {
     if (q.trim().length < 2) {
       setHits([]);
@@ -42,6 +43,7 @@ export default function PatientSearch() {
       clearTimeout(t);
     };
   }, [q]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
