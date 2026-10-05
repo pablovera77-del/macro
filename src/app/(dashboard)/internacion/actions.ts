@@ -461,3 +461,101 @@ export async function assignCareTeamAction(formData: FormData) {
   await flash("Profesional asignado al equipo.");
   return;
 }
+
+// Quita a un profesional del equipo asistencial (DF-C3 §4.2). El plan y las visitas ya programadas no se tocan:
+// Coordinación reasigna las visitas desde la Agenda.
+export async function quitarIntegranteEquipoAction(formData: FormData) {
+  const { profile } = await requireProfile();
+  if (!EQUIPO_ROLES.includes(profile.role)) throw new Error("Solo Administración o Coordinación arman el equipo asistencial.");
+
+  const supabase = await createClient();
+  const id = Number(formData.get("id") || 0);
+  const patient_id = String(formData.get("patient_id") || "");
+  if (!id) throw new Error("Falta el integrante del equipo que querés quitar.");
+
+  const { error } = await supabase.from("patient_care_team").delete().eq("id", id);
+  if (error) throw new Error(`No se pudo quitar al profesional del equipo: ${error.message}`);
+  revalidatePath("/internacion");
+  if (patient_id) revalidatePath(`/paciente/${patient_id}`);
+  await flash("Profesional quitado del equipo. Si tenía visitas programadas, reasignalas desde la Agenda.");
+  return;
+}
+
+// Prórrogas de autorizaciones (DF-C3 §9): Administración registra cuándo se pidió la prórroga a la obra social
+// y, cuando contesta, si fue aprobada (con la nueva fecha de vencimiento) o rechazada. Al aprobarla, la base
+// actualiza el vencimiento de la autorización y deja el historial en `authorization_extensions`.
+export async function pedirProrrogaAction(formData: FormData) {
+  const { profile } = await requireProfile();
+  if (!ROLES_ALTA.includes(profile.role)) throw new Error("Solo Administración gestiona las prórrogas de autorizaciones.");
+
+  const supabase = await createClient();
+  const authorization_id = Number(formData.get("authorization_id") || 0);
+  const patient_id = String(formData.get("patient_id") || "");
+  const pedida_at = String(formData.get("pedida_at") || "") || hoyAR();
+  const nota = String(formData.get("nota") || "").trim() || null;
+  if (!authorization_id || !patient_id) throw new Error("Falta elegir la autorización a prorrogar.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(pedida_at) || pedida_at > hoyAR()) throw new Error("La fecha del pedido no es válida: no puede ser posterior a hoy.");
+
+  const { data: pendiente } = await supabase.from("authorization_extensions").select("id").eq("authorization_id", authorization_id).eq("estado", "pendiente").maybeSingle();
+  if (pendiente) throw new Error("Esa autorización ya tiene una prórroga pedida y sin respuesta. Registrá primero la respuesta de la obra social.");
+
+  const { error } = await supabase.from("authorization_extensions").insert({ authorization_id, patient_id, pedida_at, nota });
+  if (error) throw new Error(`No se pudo registrar el pedido de prórroga: ${error.message}`);
+  revalidatePath("/internacion");
+  revalidatePath(`/paciente/${patient_id}`);
+  await flash("Pedido de prórroga registrado. Cuando la obra social conteste, cargá la respuesta en «Gestionar».");
+  return;
+}
+
+export async function responderProrrogaAction(formData: FormData) {
+  const { profile } = await requireProfile();
+  if (!ROLES_ALTA.includes(profile.role)) throw new Error("Solo Administración gestiona las prórrogas de autorizaciones.");
+
+  const supabase = await createClient();
+  const id = String(formData.get("id") || "");
+  const patient_id = String(formData.get("patient_id") || "");
+  const resultado = String(formData.get("resultado") || "");
+  const nueva = String(formData.get("nueva_fecha_hasta") || "");
+  const respondida_at = String(formData.get("respondida_at") || "") || hoyAR();
+  const nota = String(formData.get("nota") || "").trim() || null;
+  if (!id) throw new Error("Falta la prórroga a la que le querés cargar la respuesta.");
+  if (resultado !== "aprobada" && resultado !== "rechazada") throw new Error("Elegí si la obra social aprobó o rechazó la prórroga.");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(respondida_at) || respondida_at > hoyAR()) throw new Error("La fecha de la respuesta no es válida: no puede ser posterior a hoy.");
+
+  const { data: pr } = await supabase.from("authorization_extensions").select("id, estado, fecha_hasta_anterior, pedida_at").eq("id", id).maybeSingle();
+  if (!pr) throw new Error("No encontramos esa prórroga.");
+  if (pr.estado !== "pendiente") throw new Error("Esa prórroga ya tiene respuesta cargada.");
+  if (respondida_at < pr.pedida_at) throw new Error("La fecha de la respuesta no puede ser anterior a la del pedido.");
+  if (resultado === "aprobada") {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(nueva)) throw new Error("Falta la nueva fecha de vencimiento que aprobó la obra social.");
+    if (pr.fecha_hasta_anterior && nueva <= pr.fecha_hasta_anterior) throw new Error("La nueva fecha tiene que ser posterior al vencimiento actual de la autorización.");
+  }
+
+  const { error } = await supabase
+    .from("authorization_extensions")
+    .update({ estado: resultado, respondida_at, nueva_fecha_hasta: resultado === "aprobada" ? nueva : null, nota: nota ?? undefined })
+    .eq("id", id);
+  if (error) throw new Error(`No se pudo guardar la respuesta: ${error.message}`);
+  revalidatePath("/internacion");
+  revalidatePath("/inicio");
+  revalidatePath(`/paciente/${patient_id}`);
+  await flash(resultado === "aprobada" ? "Prórroga aprobada: la autorización quedó vigente hasta la nueva fecha." : "Prórroga rechazada: la autorización sigue con su fecha original. Cargá una autorización nueva si la obra social la emite.");
+  return;
+}
+
+// Link de confirmación de llegada para la familia (DF-C3 §12): un solo link vigente por paciente, vence a las 48 h
+// y se usa una vez. El link y la confirmación los resuelve la base (fn_arrival_link_create / fn_arrival_confirm);
+// la familia lo abre sin cuenta en /llegada/<token>.
+export type LinkLlegadaState = { ok: boolean; token?: string; vence?: string; error?: string };
+
+export async function generarLinkLlegadaAction(patientId: string): Promise<LinkLlegadaState> {
+  const { profile } = await requireProfile();
+  if (!LLEGADA_ROLES.includes(profile.role)) return { ok: false, error: "Solo Administración o Coordinación generan el link de llegada." };
+  if (!patientId) return { ok: false, error: "Falta el paciente." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_arrival_link_create", { p_patient: patientId });
+  if (error || !data) return { ok: false, error: error?.message ?? "No se pudo generar el link. Probá de nuevo." };
+  const r = data as { token: string; expires_at: string };
+  return { ok: true, token: r.token, vence: r.expires_at };
+}
