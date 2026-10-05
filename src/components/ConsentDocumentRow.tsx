@@ -21,6 +21,8 @@ export default function ConsentDocumentRow({
   profesionales,
   firmado,
   canSign,
+  detalle,
+  bloqueadoPor,
 }: {
   signAction: (formData: FormData) => Promise<void>;
   patientId: string;
@@ -31,6 +33,10 @@ export default function ConsentDocumentRow({
   profesionales: { id: string; full_name: string }[];
   firmado: { firmante_nombre: string; firmado_at: string; profesional_id: string | null } | null;
   canSign: boolean;
+  /** Datos del paciente que quedan incluidos en el documento (R PFS 05): se muestran antes del «Acepto». */
+  detalle?: React.ReactNode;
+  /** Título del consentimiento anterior si todavía no se firmó: este paso espera (los pasos se firman en orden). */
+  bloqueadoPor?: string | null;
 }) {
   const [locating, setLocating] = useState(false);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -50,13 +56,31 @@ export default function ConsentDocumentRow({
 
   if (firmado) {
     return (
-      <div className="flex items-center gap-2 flex-wrap text-sm py-1.5">
-        <StatusBadge tone="verde" label="Firmado" />
+      <div className="py-1.5">
+        <div className="flex items-center gap-2 flex-wrap text-sm">
+          <StatusBadge tone="verde" label="Firmado" />
+          <span className="text-slate-700">{titulo}</span>
+          <span className="text-xs text-slate-400">
+            {firmado.firmante_nombre} · {new Date(firmado.firmado_at).toLocaleString("es-AR")}
+            {requiereFirmaProfesional && (firmado.profesional_id ? " · con firma profesional" : " · falta firma profesional")}
+          </span>
+        </div>
+        {detalle && (
+          <details className="mt-1">
+            <summary className="cursor-pointer text-xs text-slate-500 underline underline-offset-2">Ver los datos incluidos en este consentimiento</summary>
+            {detalle}
+          </details>
+        )}
+      </div>
+    );
+  }
+
+  if (bloqueadoPor) {
+    return (
+      <div className="flex items-center gap-2 flex-wrap text-sm py-1.5 border-b border-slate-100 last:border-0 opacity-80">
+        <StatusBadge tone="gris" label="Espera" />
         <span className="text-slate-700">{titulo}</span>
-        <span className="text-xs text-slate-400">
-          {firmado.firmante_nombre} · {new Date(firmado.firmado_at).toLocaleString("es-AR")}
-          {requiereFirmaProfesional && (firmado.profesional_id ? " · con firma profesional" : " · falta firma profesional")}
-        </span>
+        <span className="text-xs text-slate-500">Primero tiene que firmarse «{bloqueadoPor}».</span>
       </div>
     );
   }
@@ -71,16 +95,26 @@ export default function ConsentDocumentRow({
   }
 
   return (
-    <form action={signAction} className="flex flex-wrap items-center gap-2 py-1.5 border-b border-slate-100 last:border-0">
+    <div className="py-1.5 border-b border-slate-100 last:border-0">
+    {detalle && (
+      <div className="mb-2">
+        <div className="text-sm font-medium text-slate-900">{titulo}</div>
+        {detalle}
+        <p className="text-[11px] text-slate-500 mt-1">Leé estos datos con el familiar responsable antes de tocar «Acepto».</p>
+      </div>
+    )}
+    <form action={signAction} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="patient_id" value={patientId} />
       <input type="hidden" name="legal_document_id" value={documentId} />
       <input type="hidden" name="lat" value={coords?.lat ?? ""} />
       <input type="hidden" name="lng" value={coords?.lng ?? ""} />
       <StatusBadge tone="gris" label="Pendiente" />
-      <div className="min-w-[160px]">
-        <div className="text-sm text-slate-900">{titulo}</div>
-        {resumen && <div className="text-[11px] text-slate-400">{resumen}</div>}
-      </div>
+      {!detalle && (
+        <div className="min-w-[160px]">
+          <div className="text-sm text-slate-900">{titulo}</div>
+          {resumen && <div className="text-[11px] text-slate-400">{resumen}</div>}
+        </div>
+      )}
       <input
         name="firmante_nombre"
         placeholder="Nombre de quien firma (paciente/familiar)"
@@ -109,5 +143,6 @@ export default function ConsentDocumentRow({
         <IconSignature className="w-3.5 h-3.5" /> Acepto
       </button>
     </form>
+    </div>
   );
 }

@@ -57,6 +57,10 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Agenda", accion: "Reprogramar visitas", roles: [C], guard: { file: AG, message: "Solo Coordinación reprograma visitas." } },
   { modulo: "Agenda", accion: "Marcar el resultado de una visita (confirmada, realizada, no realizada)", roles: [P, C], guard: { file: AG, message: "Solo el profesional asistencial de la visita o Coordinación cambian su estado." } },
   { modulo: "Agenda", accion: "Cancelar visitas", roles: [C], guard: { file: AG, message: "Solo Coordinación cancela visitas." } },
+  { modulo: "Agenda", accion: "Iniciar una visita al llegar al domicilio", roles: [P], guard: { file: AG, message: "Solo el profesional asistencial de la visita inicia la visita." } },
+  { modulo: "Agenda", accion: "Marcar un recordatorio de WhatsApp como enviado", roles: [C], guard: { file: AG, message: "Solo Coordinación marca los recordatorios como enviados." } },
+  { modulo: "Agenda", accion: "Generar las visitas de la semana desde el plan", roles: [C], guard: { file: AG, message: "Solo Coordinación genera las visitas de la semana." } },
+  { modulo: "Agenda", accion: "Ver productividad y cupos (solo lectura)", roles: [C, A, DIR], guard: { file: "src/app/(dashboard)/productividad/page.tsx", message: "ROLES_PRODUCTIVIDAD.includes(profile.role)" } },
   { modulo: "Historia clínica", accion: "Cargar evoluciones", roles: [P], guard: { file: EVO, message: "Solo el profesional asistencial carga evoluciones." } },
   { modulo: "Historia clínica", accion: "Agregar una nota aclaratoria a una evolución firmada", roles: [P, C], guard: { file: EVO, message: "Solo el profesional asistencial de la evolución o Coordinación agregan notas aclaratorias." } },
   // Insumos

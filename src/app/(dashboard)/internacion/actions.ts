@@ -257,6 +257,17 @@ export async function signLegalDocumentAction(formData: FormData) {
     throw new Error("Faltan datos para registrar la firma (documento, paciente o nombre de quien firma).");
   }
 
+  // R60: los consentimientos se firman en orden; no se puede saltear uno que todavía no se firmó.
+  const { data: docsOrdenados } = await supabase.from("legal_documents").select("id, titulo, orden").eq("activo", true).order("orden");
+  const posicion = (docsOrdenados ?? []).findIndex((d) => d.id === legal_document_id);
+  if (posicion > 0) {
+    const anteriores = (docsOrdenados ?? []).slice(0, posicion);
+    const { data: yaFirmados } = await supabase.from("patient_document_signatures").select("legal_document_id").eq("patient_id", patient_id);
+    const firmadosIds = new Set((yaFirmados ?? []).map((x) => x.legal_document_id));
+    const pendiente = anteriores.find((d) => !firmadosIds.has(d.id));
+    if (pendiente) throw new Error(`Primero tiene que firmarse «${pendiente.titulo}». Los consentimientos se firman en orden.`);
+  }
+
   const { error } = await supabase.from("patient_document_signatures").insert({
     patient_id,
     legal_document_id,

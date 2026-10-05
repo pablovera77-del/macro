@@ -104,3 +104,9 @@ export function calcularCumplimiento(planes: Plan[], visitas: VisitaMin[], seman
       };
     });
 }
+
+/**
+ * Promedio diario de visitas realizadas por profesional por debajo del cual la coordinación
+ * quiere enterarse (R63). Valor provisorio: pasa a parámetro editable cuando exista la configuración.
+ */
+export const UMBRAL_VISITAS_DIA = 6;

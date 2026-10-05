@@ -73,6 +73,7 @@ const RECORDATORIOS: HomeTask = {
   steps: [
     "Entrá a Agenda: arriba aparece «Recordatorios para mañana».",
     "Tocá «Avisar por WhatsApp» en cada visita, revisá el número y el texto, y tocá «Enviar» en WhatsApp.",
+    "Después tocá «Ya lo mandé»: la visita queda marcada como avisada y no se te pasa ninguna.",
     "Si dice «Sin teléfono cargado», completá el contacto del familiar en la ficha del paciente.",
   ],
   href: "/agenda",
@@ -201,7 +202,9 @@ const ARMAR_AGENDA: HomeTask = {
   summary: "Programar qué profesional visita a qué paciente, y cuándo.",
   steps: [
     "Entrá a Agenda y tocá el botón verde «+ Programar visita» (arriba a la derecha).",
-    "Elegí paciente, profesional, fecha y hora, y tocá «Programar».",
+    "Elegí paciente, profesional y día. El horario puede ser una hora exacta, mañana/tarde/noche, un rango o «sin hora definida».",
+    "Tocá «Programar». Si el profesional ya tiene otra visita a esa hora, te avisamos.",
+    "Para armar la semana de un solo paso, tocá «Generar visitas de la semana»: revisás la vista previa y confirmás.",
     "Cuando el profesional marca la visita como «Realizada», el sistema lo lleva solo a cargar la evolución.",
   ],
   href: "/agenda",
@@ -216,6 +219,7 @@ const MI_AGENDA: HomeTask = {
   steps: [
     "Entrá a Mi agenda.",
     "Tocá «Confirmar» cuando salís hacia el domicilio.",
+    "Al llegar, tocá «Iniciar visita» (queda registrada la hora; si el celular lo permite, también la ubicación).",
     "Al terminar la visita, tocá «Realizada»: te llevamos a cargar la evolución (o «No realizada» si no se pudo).",
   ],
   href: "/agenda",
@@ -383,6 +387,21 @@ const ENTREGAR_PEDIDOS: HomeTask = {
   doc: "DF-C5 §4",
 };
 
+const PRODUCTIVIDAD: HomeTask = {
+  id: "productividad",
+  title: "Ver productividad y cupos de la semana",
+  summary: "Saber cuántas visitas del plan de cada paciente se hicieron, cuáles faltan o sobran, y cuántas visitas por día hace cada profesional.",
+  steps: [
+    "Entrá a Productividad y cupos.",
+    "En «Cupos de la semana» ves cada paciente con visitas hechas, programadas, faltantes y de más. Los cupos completos quedan aparte.",
+    "En «Visitas por día de cada profesional» ves el promedio de los últimos 30 días y se marca a quien está por debajo de lo esperado.",
+    "Podés filtrar por disciplina.",
+  ],
+  href: "/productividad",
+  cta: "Ir a Productividad y cupos",
+  doc: "DF-C2 §7",
+};
+
 const DASHBOARD: HomeTask = {
   id: "dashboard",
   title: "Ver el tablero de dirección",
@@ -399,7 +418,7 @@ const DASHBOARD: HomeTask = {
 };
 
 export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
-  coordinador_internacion: [CONFIRMAR_LLEGADA, PLAN_TRATAMIENTO, ARMAR_AGENDA, RECORDATORIOS, ACCESO_FAMILIA, MENSAJES_EQUIPO, CONTROL_EVOLUCIONES, INFORMAR_EGRESO],
+  coordinador_internacion: [CONFIRMAR_LLEGADA, PLAN_TRATAMIENTO, ARMAR_AGENDA, RECORDATORIOS, ACCESO_FAMILIA, MENSAJES_EQUIPO, CONTROL_EVOLUCIONES, PRODUCTIVIDAD, INFORMAR_EGRESO],
   profesional_asistencial: [MI_AGENDA, CARGAR_EVOLUCION, MENSAJES_EQUIPO, INFORMAR_EGRESO],
   administracion: [
     ALTA_PACIENTE,
@@ -417,10 +436,11 @@ export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
     SEGUIMIENTO,
     MENSAJES_EQUIPO,
     CONSULTAR_HC,
+    PRODUCTIVIDAD,
   ],
   deposito: [DESPACHAR_PEDIDOS, SEGUIMIENTO, CARGAR_PRODUCTO, COMPRAS],
   transporte: [ENTREGAR_PEDIDOS, SEGUIMIENTO],
-  direccion: [DASHBOARD, AUDITORIA],
+  direccion: [DASHBOARD, PRODUCTIVIDAD, AUDITORIA],
 };
 
 export const ROLE_WELCOME: Record<AppRole, string> = {
