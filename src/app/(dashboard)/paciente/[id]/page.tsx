@@ -98,7 +98,7 @@ export default async function FichaPacientePage({
 
   const [{ data: team }, { data: visits }, { data: auths }, { data: legalDocs }, { data: sigs }, { data: plansRaw }] = await Promise.all([
     supabase.from("patient_care_team").select("id, especialidad, profesional_id, profiles(full_name)").eq("patient_id", id),
-    supabase.from("visits").select("id, patient_id, especialidad, fecha_programada, sin_hora, franja, hora_desde, hora_hasta, estado, profiles(full_name)").eq("patient_id", id).order("fecha_programada", { ascending: false }).limit(80),
+    supabase.from("visits").select("id, patient_id, especialidad, fecha_programada, sin_hora, franja, hora_desde, hora_hasta, estado, profiles!visits_profesional_id_fkey(full_name)").eq("patient_id", id).order("fecha_programada", { ascending: false }).limit(80),
     supabase.from("v_treatment_authorization_status").select("*").eq("patient_id", id).order("periodo_hasta"),
     supabase.from("legal_documents").select("id, codigo, titulo, resumen, requiere_firma_profesional").eq("activo", true).order("orden"),
     supabase.from("patient_document_signatures").select("legal_document_id, firmante_nombre, firmado_at, profesional_id").eq("patient_id", id),

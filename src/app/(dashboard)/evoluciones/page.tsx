@@ -26,7 +26,7 @@ export default async function EvolucionesPage({
 
   let pendingQuery = supabase
     .from("visits")
-    .select("id, patient_id, profesional_id, especialidad, fecha_realizada, patients(nombre_completo), profiles(full_name)")
+    .select("id, patient_id, profesional_id, especialidad, fecha_realizada, patients(nombre_completo), profiles!visits_profesional_id_fkey(full_name)")
     .eq("estado", "realizada")
     .order("fecha_realizada", { ascending: false });
   if (!isMedico) pendingQuery = pendingQuery.eq("profesional_id", profile.id);

@@ -26,4 +26,4 @@ export type VisitaAgenda = {
 };
 
 export const COLUMNAS_VISITA_AGENDA =
-  "id, patient_id, profesional_id, especialidad, fecha_programada, estado, observacion_agenda, sin_hora, franja, hora_desde, hora_hasta, abierta_at, cerrada_at, recordatorio_enviado_at, fecha_realizada, patients(nombre_completo, domicilio, telefono_contacto, contacto_familiar_nombre, contacto_familiar_telefono), profiles(full_name)";
+  "id, patient_id, profesional_id, especialidad, fecha_programada, estado, observacion_agenda, sin_hora, franja, hora_desde, hora_hasta, abierta_at, cerrada_at, recordatorio_enviado_at, fecha_realizada, patients(nombre_completo, domicilio, telefono_contacto, contacto_familiar_nombre, contacto_familiar_telefono), profiles!visits_profesional_id_fkey(full_name)";
