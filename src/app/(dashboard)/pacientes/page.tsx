@@ -1,17 +1,12 @@
 import Link from "next/link";
-import ConfirmButton from "@/components/ConfirmButton";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
-import { addAuthorizationAction, confirmarEgresoAction } from "./actions";
+import { addAuthorizationAction } from "./actions";
 import PageHeader from "@/components/PageHeader";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconUsers, IconUser, IconMapPin, IconClipboard, IconAlert } from "@/components/icons";
-
-const MOTIVO_EGRESO_LABELS: Record<string, string> = {
-alta: "Alta médica",
-fallecimiento: "Fallecimiento",
-fin_internacion: "Fin de internación",
-};
+import CierreEgresoPanel from "@/components/pacientes/CierreEgresoPanel";
+import { motivoEgresoLabel, datetimeLocalAR } from "@/lib/egreso";
 
 const ESTADO_LABELS: Record<string, string> = {
 admitido_pendiente_llegada: "Admitido, pendiente de llegada",
@@ -38,7 +33,7 @@ const [{ data: patients }, { data: products }, { data: authorizations }] = await
 supabase
 .from("patients")
 .select(
-"id, nombre_completo, dni, domicilio, obra_social, estado, frecuencia_reposicion, egreso_informado_at, egreso_motivo_informado, profiles:egreso_informado_por(full_name)"
+"id, nombre_completo, dni, domicilio, obra_social, estado, frecuencia_reposicion, egreso_informado_at, egreso_motivo_informado, egreso_hecho_at, profiles:egreso_informado_por(full_name)"
 )
 .order("nombre_completo"),
 supabase.from("products").select("id, descripcion").eq("active", true),
@@ -47,6 +42,10 @@ supabase.from("patient_authorizations").select("id, patient_id, cantidad_autoriz
 
 const canConfirmEgreso = profile.role === "administracion";
 const egresosPendientes = (patients ?? []).filter((p) => p.egreso_informado_at && p.estado !== "dado_de_baja");
+// Equipos que siguen en el domicilio de los pacientes con egreso pendiente (sección 2 del cierre guiado).
+const { data: equiposEnDomicilio } = canConfirmEgreso && egresosPendientes.length > 0
+? await supabase.from("v_equipos_en_domicilio").select("asset_id, descripcion, numero_serie, patient_id").in("patient_id", egresosPendientes.map((p) => p.id))
+: { data: [] as { asset_id: string | null; descripcion: string | null; numero_serie: string | null; patient_id: string | null }[] };
 
 return (
 <div className="space-y-8">
@@ -81,16 +80,17 @@ description="Lo que cada paciente tiene autorizado (equipo y descartables) dispa
 <span>
 {p.nombre_completo}{" "}
 <span className="text-xs text-slate-400">
-— {MOTIVO_EGRESO_LABELS[p.egreso_motivo_informado ?? ""] ?? p.egreso_motivo_informado}, informado por{" "}
+— {motivoEgresoLabel(p.egreso_motivo_informado)}, informado por{" "}
 {(p.profiles as unknown as { full_name: string } | null)?.full_name ?? "—"}
 </span>
 </span>
-<form action={confirmarEgresoAction}>
-<input type="hidden" name="patient_id" value={p.id} />
-<ConfirmButton className="rounded-lg bg-red-600 text-white text-xs font-medium px-3 py-1.5 hover:bg-red-700 transition-colors" confirmLabel="¿Baja definitiva? Tocá de nuevo">
-Confirmar baja definitiva
-</ConfirmButton>
-</form>
+<CierreEgresoPanel
+patientId={p.id}
+motivoInformado={p.egreso_motivo_informado ?? ""}
+hechoDefault={datetimeLocalAR(p.egreso_hecho_at ?? new Date())}
+informadoPor={(p.profiles as unknown as { full_name: string } | null)?.full_name ?? null}
+equipos={(equiposEnDomicilio ?? []).filter((e) => e.patient_id === p.id)}
+/>
 </div>
 ))}
 </div>

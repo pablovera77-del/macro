@@ -34,7 +34,7 @@ export async function updateSession(request: NextRequest) {
   // El link del mail de recuperación pasa por acá antes de tener sesión.
   const isAuthCallback = request.nextUrl.pathname.startsWith("/auth/callback");
   // Portal de familiares: público, con link + PIN (sin cuenta).
-  const isFamilyPortal = request.nextUrl.pathname.startsWith("/familia/");
+  const isFamilyPortal = request.nextUrl.pathname.startsWith("/familia/") || request.nextUrl.pathname.startsWith("/llegada/");
 
   if (!user && !isLoginPage && !isAuthCallback && !isFamilyPortal) {
     const url = request.nextUrl.clone();
