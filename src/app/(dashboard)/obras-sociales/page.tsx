@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { requireProfile } from "@/lib/auth";
 import { createObraSocialAction, addValueHistoryAction, assignResponsableAction, addRequiredDocAction, removeRequiredDocAction } from "./actions";
 import PageHeader from "@/components/PageHeader";
@@ -15,6 +16,8 @@ function formatARS(value: number | null) {
 
 export default async function ObrasSocialesPage() {
   const { profile } = await requireProfile();
+  // Datos económicos: solo Administración (que los gestiona) y Dirección (solo lectura).
+  if (profile.role !== "administracion" && profile.role !== "direccion") redirect("/inicio");
   const supabase = await createClient();
 
   const [{ data: obrasSociales }, { data: history }, { data: patientCounts }, { data: responsables }, { data: docsReq }] = await Promise.all([
