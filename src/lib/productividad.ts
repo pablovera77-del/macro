@@ -1,4 +1,5 @@
 import { UMBRAL_VISITAS_DIA, semanaActual, ymdAR } from "@/lib/plan";
+import type { AppRole } from "@/lib/roles";
 
 // Productividad de cada profesional (R63, R64, R65): visitas realizadas, días con actividad y
 // promedio diario. Supuestos: una visita realizada cuenta en el día de su cierre
@@ -56,3 +57,6 @@ export function calcularProductividad(visitas: VisitaProd[], ahora = new Date(),
     })
     .sort((a, b) => b.promedioDiario - a.promedioDiario);
 }
+
+/** Quién puede ver «Productividad y cupos» (solo lectura): Coordinación, Administración y Dirección. */
+export const ROLES_PRODUCTIVIDAD: AppRole[] = ["coordinador_internacion", "administracion", "direccion"];
