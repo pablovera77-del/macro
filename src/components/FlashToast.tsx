@@ -7,7 +7,11 @@ function readFlash(): string | null {
     const m = document.cookie.split("; ").find((c) => c.startsWith("flash="));
     if (!m) return null;
     document.cookie = "flash=; path=/; max-age=0";
-    return decodeURIComponent(m.slice("flash=".length));
+    // Next ya codifica el valor de la cookie y flash() también: se decodifica
+    // hasta dos veces para mostrar siempre el texto limpio.
+    let v = m.slice("flash=".length);
+    for (let i = 0; i < 2 && /%[0-9A-Fa-f]{2}/.test(v); i++) v = decodeURIComponent(v);
+    return v;
   } catch {
     return null;
   }
