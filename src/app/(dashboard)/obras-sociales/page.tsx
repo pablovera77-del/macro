@@ -5,6 +5,8 @@ import PageHeader from "@/components/PageHeader";
 import SidePanel from "@/components/SidePanel";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconBuilding } from "@/components/icons";
+import ConfigObraSocialForm from "@/components/facturacion/ConfigObraSocialForm";
+import { MODALIDAD_LABELS } from "@/lib/facturacion";
 
 function formatARS(value: number | null) {
   if (value == null) return "—";
@@ -18,7 +20,7 @@ export default async function ObrasSocialesPage() {
   const [{ data: obrasSociales }, { data: history }, { data: patientCounts }, { data: responsables }, { data: docsReq }] = await Promise.all([
     supabase
       .from("obras_sociales")
-      .select("id, nombre, cuit, dias_para_facturar, valor_modulo, activa, responsable_id, profiles:responsable_id(full_name)")
+      .select("id, nombre, cuit, dias_para_facturar, valor_modulo, activa, responsable_id, reglas_facturacion, modalidad_facturacion, auditoria_contacto_nombre, auditoria_contacto_telefono, auditoria_contacto_email, profiles:responsable_id(full_name)")
       .order("nombre"),
     supabase.from("obra_social_value_history").select("id, obra_social_id, valor, vigente_desde").order("vigente_desde", { ascending: false }),
     supabase.from("patients").select("obra_social_id").eq("estado", "activo"),
@@ -66,6 +68,20 @@ export default async function ObrasSocialesPage() {
                 </div>
               </div>
 
+              <div className="mt-3 text-xs text-slate-500 space-y-1">
+                <div>
+                  <span className="font-medium text-slate-700">Modalidad:</span>{" "}
+                  {os.modalidad_facturacion ? MODALIDAD_LABELS[os.modalidad_facturacion] : "sin definir"}
+                </div>
+                <div>
+                  <span className="font-medium text-slate-700">Reglas de facturación:</span> {os.reglas_facturacion || "sin cargar"}
+                </div>
+                <div>
+                  <span className="font-medium text-slate-700">Contacto de auditoría:</span>{" "}
+                  {[os.auditoria_contacto_nombre, os.auditoria_contacto_telefono, os.auditoria_contacto_email].filter(Boolean).join(" · ") || "sin cargar"}
+                </div>
+              </div>
+
               {hist.length > 0 && (
                 <div className="text-xs text-slate-500 mt-3 flex flex-wrap gap-1.5">
                   {hist.map((h) => (
@@ -74,6 +90,20 @@ export default async function ObrasSocialesPage() {
                     </span>
                   ))}
                 </div>
+              )}
+
+              {canManage && (
+                <ActionDisclosure label="Configurar reglas y contacto" tone="subtle">
+                  <ConfigObraSocialForm
+                    obraSocialId={os.id}
+                    reglas={os.reglas_facturacion}
+                    modalidad={os.modalidad_facturacion}
+                    dias={os.dias_para_facturar}
+                    contactoNombre={os.auditoria_contacto_nombre}
+                    contactoTelefono={os.auditoria_contacto_telefono}
+                    contactoEmail={os.auditoria_contacto_email}
+                  />
+                </ActionDisclosure>
               )}
 
               {canManage && (
