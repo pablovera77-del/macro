@@ -11,6 +11,7 @@ import { type SemanticTone } from "@/lib/semantic-status";
 import { calcularCumplimiento, describirPlan, DIAS_CORTOS, DISCIPLINAS_PLAN, semanaActual, type Plan } from "@/lib/plan";
 import FamilyAccessPanel from "@/components/FamilyAccessPanel";
 import { descripcionFechaHora } from "@/lib/horario";
+import ConsentimientoDetalle from "@/components/agenda/ConsentimientoDetalle";
 import { familyPortalEnabled, type FamilyAccessInfo } from "@/lib/family";
 import { signLegalDocumentAction } from "../../internacion/actions";
 import {
@@ -546,10 +547,14 @@ export default async function FichaPacientePage({
             </ul>
             <h3 className="text-sm font-semibold text-slate-900 mt-6 mb-2">Consentimientos</h3>
             <div className="space-y-2">
-              {(legalDocs ?? []).map((d) => {
+              {(legalDocs ?? []).map((d, idx, todos) => {
                 const s = firmados.get(d.id);
+                // R60: los consentimientos se firman en orden; el siguiente espera hasta que se firme el anterior.
+                const anteriorPendiente = todos.slice(0, idx).find((x) => !firmados.has(x.id));
                 return (
                   <ConsentDocumentRow
+                    bloqueadoPor={anteriorPendiente?.titulo ?? null}
+                    detalle={d.codigo === "r_pfs_05" ? <ConsentimientoDetalle paciente={p} planes={planesActivos} /> : undefined}
                     key={d.id}
                     signAction={signLegalDocumentAction}
                     patientId={id}
