@@ -222,11 +222,9 @@ export async function deliverOrderAction(formData: FormData) {
     );
   }
 
-  const { data: patient } = await supabase
-    .from("patients")
-    .select("domicilio")
-    .eq("id", order.patient_id)
-    .single();
+  const { data: patient } = order.patient_id
+    ? await supabase.from("patients").select("domicilio").eq("id", order.patient_id).single()
+    : { data: null };
 
   const now = new Date().toISOString();
 
