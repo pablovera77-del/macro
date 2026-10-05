@@ -55,6 +55,7 @@ deposito: [
 { href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
 { href: "/catalogo", label: "Catálogo", icon: "catalogo", description: "Insumos y equipos" },
 { href: "/pedidos", label: "Pedidos", icon: "pedidos", description: "Entregas a domicilio" },
+{ href: "/agenda-transporte", label: "Agenda de Transporte", icon: "agenda", description: "Entregas y retiros del día" },
 { href: "/seguimiento", label: "Seguimiento", icon: "seguimiento", description: "Equipos en tránsito" },
 { href: "/compras", label: "Compras", icon: "compras", description: "Proyección y cotizaciones" },
 { href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
@@ -65,6 +66,7 @@ administracion: [
 { href: "/pacientes", label: "Autorizaciones de stock", icon: "pacientes", description: "Stock por paciente y bajas" },
 { href: "/pedidos", label: "Pedidos", icon: "pedidos", description: "Entregas a domicilio" },
 { href: "/seguimiento", label: "Seguimiento", icon: "seguimiento", description: "Equipos en tránsito" },
+{ href: "/agenda-transporte", label: "Agenda de Transporte", icon: "agenda", description: "Entregas y retiros del día" },
 { href: "/compras", label: "Compras", icon: "compras", description: "Proyección y cotizaciones" },
 { href: "/obras-sociales", label: "Obras sociales", icon: "obras_sociales", description: "Catálogo y valores" },
 { href: "/facturacion", label: "Facturación", icon: "facturacion", description: "Cierre mensual y débitos" },
@@ -73,6 +75,7 @@ administracion: [
 ],
 transporte: [
 { href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
+{ href: "/agenda-transporte", label: "Agenda de Transporte", icon: "agenda", description: "Entregas y retiros del día" },
 { href: "/pedidos", label: "Pedidos", icon: "pedidos", description: "Entregas a domicilio" },
 { href: "/seguimiento", label: "Seguimiento", icon: "seguimiento", description: "Equipos en tránsito" },
 { href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
@@ -80,6 +83,7 @@ transporte: [
 direccion: [
 { href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
 { href: "/dashboard", label: "Dashboard ejecutivo", icon: "dashboard", description: "Vista en tiempo real" },
+{ href: "/agenda-transporte", label: "Agenda de Transporte", icon: "agenda", description: "Entregas y retiros del día" },
 { href: "/productividad", label: "Productividad y cupos", icon: "dashboard", description: "Visitas por profesional y cupos" },
 { href: "/auditoria", label: "Auditoría", icon: "auditoria", description: "Quién cambió qué" },
 { href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },

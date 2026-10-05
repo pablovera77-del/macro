@@ -310,7 +310,7 @@ export default async function PedidosPage({
             (!retiroLocal && role === "transporte" && order.estado === "despachado");
 
           return (
-            <div key={order.id} className={`bg-white rounded-2xl border p-4 sm:p-5 card-hover animate-fade-slide-up stagger-${Math.min(idx + 1, 8)} ${order.prioridad === "urgente" && !cerrado(order.estado) ? "border-red-300" : "border-slate-200"}`}>
+            <div key={order.id} id={`pedido-${order.id}`} className={`bg-white rounded-2xl border p-4 sm:p-5 scroll-mt-4 card-hover animate-fade-slide-up stagger-${Math.min(idx + 1, 8)} ${order.prioridad === "urgente" && !cerrado(order.estado) ? "border-red-300" : "border-slate-200"}`}>
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="flex items-start gap-3 min-w-0">
                   <span className="flex items-center justify-center w-9 h-9 rounded-xl bg-slate-100 text-slate-500 shrink-0 mt-0.5">

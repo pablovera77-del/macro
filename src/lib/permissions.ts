@@ -32,6 +32,7 @@ const SEG = "src/app/(dashboard)/seguimiento/actions.ts";
 const OS = "src/app/(dashboard)/obras-sociales/actions.ts";
 const FAC = "src/app/(dashboard)/facturacion/actions.ts";
 const PACS = "src/app/(dashboard)/pacientes/actions.ts";
+const AGT = "src/app/(dashboard)/agenda-transporte/actions.ts";
 const COMP = "src/app/(dashboard)/compras/actions.ts";
 const EVO = "src/app/(dashboard)/evoluciones/actions.ts";
 
@@ -75,6 +76,9 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Pedidos", accion: "Marcar un pedido como preparado", roles: [D], guard: { file: PED, message: "Solo Depósito prepara pedidos." } },
   { modulo: "Pedidos", accion: "Confirmar la entrega o el retiro con firma", roles: [D, T], guard: { file: PED, message: "Solo Depósito o Transporte confirman la entrega." } },
   { modulo: "Pedidos", accion: "Marcar avisos como leídos", roles: [A, C, D, T], guard: { file: PED, message: "Solo Administración, Coordinación, Depósito o Transporte marcan los avisos como leídos." } },
+  { modulo: "Agenda de Transporte", accion: "Crear una tarea en la agenda", roles: [D, T], guard: { file: AGT, message: "Solo Transporte o Depósito crean tareas en la agenda de Transporte." } },
+  { modulo: "Agenda de Transporte", accion: "Iniciar y completar tareas", roles: [T], guard: { file: AGT, message: "Solo Transporte inicia y completa las tareas de la agenda." } },
+  { modulo: "Agenda de Transporte", accion: "Cambiar día y hora, reprogramar o cancelar tareas", roles: [D, T], guard: { file: AGT, message: "Solo Transporte o Depósito editan y reprograman las tareas." } },
   { modulo: "Seguimiento", accion: "Generar el egreso de equipos", roles: [A], guard: { file: SEG, message: "Solo Administración genera el egreso." } },
   { modulo: "Seguimiento", accion: "Marcar el retiro de equipos", roles: [T], guard: { file: SEG, message: "Solo Transporte marca el retiro." } },
   { modulo: "Seguimiento", accion: "Reportar devoluciones de descartables", roles: [T], guard: { file: SEG, message: "Solo Transporte reporta devoluciones de descartables/alimentos." } },
