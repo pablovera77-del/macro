@@ -34,6 +34,7 @@ const FAC = "src/app/(dashboard)/facturacion/actions.ts";
 const PACS = "src/app/(dashboard)/pacientes/actions.ts";
 const COMP = "src/app/(dashboard)/compras/actions.ts";
 const EVO = "src/app/(dashboard)/evoluciones/actions.ts";
+const PRES = "src/app/(dashboard)/presupuestos/actions.ts";
 
 export const PERMISOS: Permiso[] = [
   // Pacientes e ingreso
@@ -78,6 +79,12 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Obras sociales", accion: "Gestionar obras sociales y valores", roles: [A], guard: { file: OS, message: "Solo Administración gestiona obras sociales." } },
   { modulo: "Obras sociales", accion: "Definir la documentación requerida al ingreso", roles: [A], guard: { file: OS, message: "Solo Administración configura la documentación requerida." } },
   { modulo: "Facturación", accion: "Gestionar períodos y débitos", roles: [A], guard: { file: FAC, message: "Solo Administración gestiona la facturación." } },
+  { modulo: "Obras sociales", accion: "Configurar reglas, modalidad, plazo y contacto de auditoría", roles: [A], guard: { file: OS, message: "Solo Administración configura las reglas de facturación de cada obra social." } },
+  { modulo: "Facturación", accion: "Corregir el total de un período", roles: [A], guard: { file: FAC, message: "Solo Administración corrige el total de un período." } },
+  { modulo: "Facturación", accion: "Dejar pacientes fuera del cierre mensual", roles: [A], guard: { file: FAC, message: "Solo Administración deja pacientes fuera del cierre mensual." } },
+  { modulo: "Facturación", accion: "Registrar el reclamo de un débito", roles: [A], guard: { file: FAC, message: "Solo Administración registra el reclamo de un débito." } },
+  { modulo: "Presupuestos", accion: "Armar y editar presupuestos de venta", roles: [A], guard: { file: PRES, message: "Solo Administración arma presupuestos de venta." } },
+  { modulo: "Presupuestos", accion: "Ver presupuestos de venta (solo lectura)", roles: [A, DIR], guard: { file: "src/app/(dashboard)/presupuestos/page.tsx", message: "ROLES_PRESUPUESTOS.includes(profile.role)" } },
   // Dirección (solo lectura)
   { modulo: "Auditoría", accion: "Ver el registro de auditoría", roles: [DIR], guard: { file: "src/app/(dashboard)/auditoria/page.tsx", message: 'profile.role !== "direccion"' } },
 ];

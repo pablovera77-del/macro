@@ -275,7 +275,8 @@ const CIERRE_MENSUAL: HomeTask = {
   steps: [
     "Entrá a Facturación y abrí el período del mes de la obra social.",
     "Si todavía no existe el mes, tocá «+ Abrir período» (arriba a la derecha).",
-    "Abrí «Pre-validación» y corregí los pacientes en rojo (evoluciones cargadas vs. autorizadas).",
+    "Abrí «Pre-validación» y corregí los pacientes en rojo (evoluciones, firmas, días de más, insumos). Si no se puede corregir, dejá al paciente fuera de este cierre.",
+    "Revisá el total del cierre: el sistema lo calcula y lo podés corregir.",
     "Avanzá el período: en revisión → cerrado → presentada.",
     "Cuando paguen, marcalo como cobrada o debitada, o registrá el monto cobrado.",
   ],
@@ -297,6 +298,21 @@ const OBRAS_SOCIALES: HomeTask = {
   href: "/obras-sociales",
   cta: "Ir a Obras sociales",
   doc: "DF-C3 §2 y DF-C4",
+};
+
+const PRESUPUESTOS: HomeTask = {
+  id: "presupuestos",
+  title: "Armar un presupuesto de venta",
+  summary: "Preparar un presupuesto para una obra social o un particular, con los valores vigentes, e imprimirlo o guardarlo en PDF.",
+  steps: [
+    "Entrá a Presupuestos y tocá «+ Nuevo presupuesto».",
+    "Elegí la obra social (o escribí el nombre del particular) y la validez.",
+    "Agregá las líneas: podés traer el valor vigente de la obra social con un toque.",
+    "Abrí el presupuesto y tocá «Imprimir / guardar PDF».",
+  ],
+  href: "/presupuestos",
+  cta: "Ir a Presupuestos",
+  doc: "DF-C4 §3.3",
 };
 
 const COMPRAS: HomeTask = {
@@ -415,6 +431,7 @@ export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
     AUTORIZAR_PEDIDOS,
     CIERRE_MENSUAL,
     OBRAS_SOCIALES,
+    PRESUPUESTOS,
     COMPRAS,
     SEGUIMIENTO,
     MENSAJES_EQUIPO,
@@ -422,7 +439,7 @@ export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
   ],
   deposito: [DESPACHAR_PEDIDOS, SEGUIMIENTO, CARGAR_PRODUCTO, COMPRAS],
   transporte: [ENTREGAR_PEDIDOS, SEGUIMIENTO],
-  direccion: [DASHBOARD, PRODUCTIVIDAD, AUDITORIA],
+  direccion: [DASHBOARD, PRODUCTIVIDAD, PRESUPUESTOS, AUDITORIA],
 };
 
 export const ROLE_WELCOME: Record<AppRole, string> = {
