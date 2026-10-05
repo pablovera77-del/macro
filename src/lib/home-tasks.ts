@@ -116,11 +116,26 @@ const CONTROL_EVOLUCIONES: HomeTask = {
   steps: [
     "Entrá a Control de evoluciones.",
     "En el recuadro rojo aparecen las visitas realizadas sin evolución.",
-    "Reclamale la carga al profesional correspondiente.",
+    "Más abajo ves las evoluciones sin firma del profesional o sin conformidad de la familia, y las visitas de la semana pasada que no coinciden con el plan.",
+    "Reclamale la carga o la firma al profesional correspondiente.",
   ],
   href: "/evoluciones",
   cta: "Ir a Control de evoluciones",
   doc: "DF-C2 §8",
+};
+
+const CONSULTAR_HC: HomeTask = {
+  id: "consultar-hc",
+  title: "Consultar una historia clínica",
+  summary: "Ver lo que cargó el equipo en cada visita, con sus firmas, y imprimirlo o guardarlo en PDF para la obra social. Es solo lectura.",
+  steps: [
+    "Entrá a Historias clínicas y buscá al paciente por nombre.",
+    "Tocá la evolución para abrirla: ves las respuestas, la medicación, el riesgo de úlceras y las dos firmas.",
+    "Tocá «Imprimir para obra social» (sin la narrativa extendida) o «Imprimir completa»; desde el cuadro de impresión también podés guardar el PDF.",
+  ],
+  href: "/evoluciones",
+  cta: "Ir a Historias clínicas",
+  doc: "DF-C2 §3, §5",
 };
 
 const CONSENTIMIENTOS: HomeTask = {
@@ -214,7 +229,9 @@ const CARGAR_EVOLUCION: HomeTask = {
   summary: "Registrar la historia clínica de la visita con el formulario de mi disciplina.",
   steps: [
     "En Mi agenda, tocá «Realizada» al terminar la visita: el sistema te lleva solo al formulario.",
-    "Completá el formulario de tu disciplina y tocá «Guardar evolución».",
+    "Completá el formulario de tu disciplina (lo que tiene * es obligatorio). Podés dictar con el botón «Dictar».",
+    "Al final firmá vos en el recuadro, y pasale el celular al familiar para que firme la conformidad. Tocá «Guardar y firmar evolución».",
+    "Una evolución firmada no se edita: si hay que corregir algo, usá «Agregar nota aclaratoria» en el historial.",
     "Si te olvidás, en Mi agenda aparece el aviso «Te falta cargar una evolución» con el botón «Cargar evolución».",
   ],
   href: "/evoluciones",
@@ -399,6 +416,7 @@ export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
     COMPRAS,
     SEGUIMIENTO,
     MENSAJES_EQUIPO,
+    CONSULTAR_HC,
   ],
   deposito: [DESPACHAR_PEDIDOS, SEGUIMIENTO, CARGAR_PRODUCTO, COMPRAS],
   transporte: [ENTREGAR_PEDIDOS, SEGUIMIENTO],

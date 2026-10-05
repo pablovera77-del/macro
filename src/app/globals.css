@@ -189,3 +189,28 @@ body {
   /* Las tarjetas ocupan todo el ancho útil y los botones de acción de una fila bajan debajo del texto. */
   main h1 { line-height: 1.25; }
 }
+
+/* Vista de impresión de la historia clínica (C2): se oculta el menú y todo lo que no es el documento. */
+@media print {
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .print-doc {
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+  @page {
+    margin: 14mm;
+  }
+}

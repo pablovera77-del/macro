@@ -7,6 +7,7 @@ import StatusBadge from "@/components/StatusBadge";
 import { updateVisitStatusAction } from "../agenda/actions";
 import { SPECIALTY_LABELS } from "@/lib/auth";
 import { IconGrid, IconArrowRight, IconAlert, IconCheck, IconMapPin } from "@/components/icons";
+import AlertasCambioMedicacion from "@/components/hc/AlertasCambioMedicacion";
 
 type Pendiente = { label: string; count: number; href: string; urgente?: boolean };
 
@@ -236,6 +237,8 @@ export default async function InicioPage() {
       />
 
       {profile.role === "profesional_asistencial" && <MiDia userId={profile.id} />}
+
+      <AlertasCambioMedicacion role={profile.role} userId={profile.id} />
 
       <section className="animate-fade-slide-up">
         <h2 className="text-sm font-semibold text-slate-900 mb-3">Para hacer hoy</h2>

@@ -58,6 +58,7 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Agenda", accion: "Marcar el resultado de una visita (confirmada, realizada, no realizada)", roles: [P, C], guard: { file: AG, message: "Solo el profesional asistencial de la visita o Coordinación cambian su estado." } },
   { modulo: "Agenda", accion: "Cancelar visitas", roles: [C], guard: { file: AG, message: "Solo Coordinación cancela visitas." } },
   { modulo: "Historia clínica", accion: "Cargar evoluciones", roles: [P], guard: { file: EVO, message: "Solo el profesional asistencial carga evoluciones." } },
+  { modulo: "Historia clínica", accion: "Agregar una nota aclaratoria a una evolución firmada", roles: [P, C], guard: { file: EVO, message: "Solo el profesional asistencial de la evolución o Coordinación agregan notas aclaratorias." } },
   // Insumos
   { modulo: "Catálogo", accion: "Cargar productos y unidades físicas", roles: [D], guard: { file: CAT, message: "Solo Depósito carga el catálogo." } },
   { modulo: "Catálogo", accion: "Gestionar proveedores del catálogo", roles: [D], guard: { file: CAT, message: "Solo Depósito gestiona proveedores del catálogo." } },
