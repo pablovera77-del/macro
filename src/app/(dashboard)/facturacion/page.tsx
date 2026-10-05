@@ -6,15 +6,15 @@ import SidePanel from "@/components/SidePanel";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconCash, IconAlert } from "@/components/icons";
 import { SEMANTIC_TONE_BADGE_STYLES, SemanticTone } from "@/lib/semantic-status";
-import { SPECIALTY_LABELS } from "@/lib/auth";
-
-// DF-C4 §4, control de pre-validación #1: evoluciones cargadas vs. autorizadas
-// por paciente dentro del mes — mismo tono que el resto de los semáforos.
-const PREVALIDACION_TONE: Record<string, SemanticTone> = { verde: "verde", amarillo: "amarillo", rojo: "rojo" };
-const PREVALIDACION_STYLES: Record<string, string> = Object.fromEntries(
-  Object.entries(PREVALIDACION_TONE).map(([k, tone]) => [k, SEMANTIC_TONE_BADGE_STYLES[tone]])
-);
-const PREVALIDACION_LABELS: Record<string, string> = { verde: "Al día", amarillo: "Mes en curso", rojo: "Faltan evoluciones" };
+import { hoyAR } from "@/lib/plan";
+import { plazoDePresentacion } from "@/lib/facturacion";
+import StatusBadge from "@/components/StatusBadge";
+import ActionForm, { SubmitButton } from "@/components/facturacion/ActionForm";
+import CobrosPorEstado from "@/components/dashboard/CobrosPorEstado";
+import PrevalidacionPanel from "./PrevalidacionPanel";
+import TotalDelCierre from "./TotalDelCierre";
+import ControlesFrecuencia from "./ControlesFrecuencia";
+import DebitoReclamo from "./DebitoReclamo";
 
 // Semáforo de cierre mensual (DF-C4 §9) — "abierto" y "facturado" son etapas de flujo,
 // no estados de alerta, así que mantienen su propio color de workflow; "en_revision" y
@@ -70,18 +70,33 @@ export default async function FacturacionPage() {
   const canManage = profile.role === "administracion";
   const supabase = await createClient();
 
-  const [{ data: periods }, { data: debits }, { data: obrasSociales }, { data: patients }, { data: prevalidacion }] = await Promise.all([
-    supabase.from("billing_periods").select("id, obra_social_id, periodo, estado, total_facturado, fecha_cierre, monto_cobrado, fecha_cobro, obras_sociales(nombre)").order("periodo", { ascending: false }),
-    supabase.from("billing_debits").select("id, billing_period_id, patient_id, motivo, monto, estado, patients(nombre_completo)").order("created_at", { ascending: false }),
+  const [
+    { data: periods },
+    { data: debits },
+    { data: obrasSociales },
+    { data: patients },
+    { data: prevalidacion },
+    { data: controles },
+    { data: insumos },
+    { data: cierres },
+    { data: exclusiones },
+    { data: frecuenciaDiaria },
+    { data: frecuenciaSemanal },
+  ] = await Promise.all([
+    supabase.from("billing_periods").select("id, obra_social_id, periodo, estado, total_facturado, fecha_cierre, monto_cobrado, fecha_cobro, obras_sociales(nombre, dias_para_facturar)").order("periodo", { ascending: false }),
+    supabase.from("billing_debits").select("id, billing_period_id, patient_id, motivo, monto, estado, reclamable, fecha_resubmision, resubmision_notas, patients(nombre_completo)").order("created_at", { ascending: false }),
     supabase.from("obras_sociales").select("id, nombre").eq("activa", true).order("nombre"),
     supabase.from("patients").select("id, nombre_completo").order("nombre_completo"),
-    // DF-C4 §4, control #1: evoluciones cargadas vs. autorizadas por paciente,
-    // dentro del mes de cada período — el control más crítico según el cliente.
-    supabase
-      .from("v_prevalidacion_facturacion")
-      .select("billing_period_id, patient_id, nombre_completo, practica, especialidad, evoluciones_esperadas_mes, evoluciones_cargadas_mes, estado_prevalidacion")
-      .neq("estado_prevalidacion", "verde"),
+    // DF-C4 §4: pre-validación completa (se muestran también los pacientes en verde, C4-37).
+    supabase.from("v_prevalidacion_facturacion").select("*"),
+    supabase.from("v_prevalidacion_controles").select("*"),
+    supabase.from("v_prevalidacion_insumos").select("*"),
+    supabase.from("v_cierre_sugerido").select("*"),
+    supabase.from("billing_period_exclusions").select("billing_period_id, patient_id"),
+    supabase.from("v_control_frecuencia_diaria").select("*"),
+    supabase.from("v_control_frecuencia_semanal").select("*"),
   ]);
+  const hoy = hoyAR();
 
   const abiertos = (periods ?? []).filter((p) => p.estado === "abierto" || p.estado === "en_revision");
   const pendingDebits = (debits ?? []).filter((d) => d.estado === "pendiente" || d.estado === "en_gestion");
@@ -93,9 +108,13 @@ export default async function FacturacionPage() {
         icon={<IconCash className="w-5 h-5" />}
         title="Facturación inteligente a obras sociales"
         section="DF-C4"
-        purpose="Abrí el mes de cada obra social, cargá los débitos cuando te rechazan algo y avanzá el período (en revisión → cerrado → presentado) hasta cobrarlo."
+        purpose="Abrí el mes de cada obra social, controlá lo que se puede facturar, cargá los débitos y avanzá el período hasta cobrarlo."
         description="Semáforo de cierre mensual por obra social y gestión de débitos."
       />
+
+      <CobrosPorEstado />
+
+      <ControlesFrecuencia diaria={frecuenciaDiaria ?? []} semanal={frecuenciaSemanal ?? []} />
 
       {pendingDebits.length > 0 && (
         <section id="debitos" className="scroll-mt-6 bg-red-50 border border-red-200 rounded-2xl p-5 animate-fade-slide-up">
@@ -115,16 +134,26 @@ export default async function FacturacionPage() {
         {(periods ?? []).map((p, i) => {
           const periodDebits = (debits ?? []).filter((d) => d.billing_period_id === p.id);
           const periodPrevalidacion = (prevalidacion ?? []).filter((v) => v.billing_period_id === p.id);
-          const rojos = periodPrevalidacion.filter((v) => v.estado_prevalidacion === "rojo").length;
+          const periodControles = (controles ?? []).filter((c) => c.billing_period_id === p.id);
+          const periodInsumos = (insumos ?? []).filter((c) => c.billing_period_id === p.id);
+          const excluidos = new Set((exclusiones ?? []).filter((x) => x.billing_period_id === p.id).map((x) => x.patient_id));
+          const cierre = (cierres ?? []).find((c) => c.billing_period_id === p.id);
+          const os = p.obras_sociales as unknown as { nombre: string; dias_para_facturar: number } | null;
+          const plazo = plazoDePresentacion(p.periodo, os?.dias_para_facturar ?? 10, p.estado, hoy);
+          const editable = canManage && ["abierto", "en_revision", "cerrado"].includes(p.estado);
           const next = NEXT_ESTADO[p.estado];
           return (
             <div key={p.id} className={`bg-white rounded-2xl border border-slate-200 p-5 card-hover animate-fade-slide-up stagger-${Math.min(i + 1, 8)}`}>
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div>
-                  <div className="font-medium text-slate-900">{(p.obras_sociales as unknown as { nombre: string } | null)?.nombre}</div>
+                  <div className="font-medium text-slate-900">{os?.nombre}</div>
                   <div className="text-xs text-slate-500 mt-0.5">
                     Período {new Date(p.periodo).toLocaleDateString("es-AR", { month: "long", year: "numeric" })}
                     {p.fecha_cierre && <> · cerrado el {new Date(p.fecha_cierre).toLocaleDateString("es-AR")}</>}
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                    <StatusBadge tone={plazo.tone} label={plazo.tone === "gris" ? "Plazo" : plazo.tone === "rojo" ? "Vencido" : plazo.tone === "amarillo" ? "Por vencer" : "En plazo"} />
+                    <span className="text-xs text-slate-500">{plazo.texto}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -177,26 +206,16 @@ export default async function FacturacionPage() {
                 </div>
               )}
 
-              {periodPrevalidacion.length > 0 && (
-                <ActionDisclosure label={`Pre-validación${rojos > 0 ? ` (${rojos} bloqueante${rojos > 1 ? "s" : ""})` : ""}`} tone={rojos > 0 ? "alert" : "subtle"}>
-                  <ul className="text-sm space-y-1.5">
-                    {periodPrevalidacion.map((v, idx) => (
-                      <li key={idx} className="flex items-center gap-2 flex-wrap">
-                        <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${PREVALIDACION_STYLES[v.estado_prevalidacion ?? "verde"]}`}>
-                          {PREVALIDACION_LABELS[v.estado_prevalidacion ?? "verde"]}
-                        </span>
-                        {v.nombre_completo} · {v.practica} ({SPECIALTY_LABELS[v.especialidad ?? ""] ?? v.especialidad})
-                        <span className="text-xs text-slate-400">
-                          — {v.evoluciones_cargadas_mes}/{v.evoluciones_esperadas_mes} evoluciones este mes
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  <p className="text-xs text-slate-400 mt-2">
-                    Esperadas = autorizado total prorrateado por los días del mes dentro de la ventana autorizada — no reemplaza una frecuencia estructurada (practica es texto libre hoy).
-                  </p>
-                </ActionDisclosure>
-              )}
+              <TotalDelCierre periodId={p.id} totalActual={p.total_facturado} cierre={cierre} puedeEditar={editable} />
+
+              <PrevalidacionPanel
+                periodId={p.id}
+                filas={periodPrevalidacion}
+                controles={periodControles}
+                insumos={periodInsumos}
+                excluidos={excluidos}
+                puedeEditar={editable}
+              />
 
               {periodDebits.length > 0 && (
                 <ul className="text-sm text-slate-600 mt-3 space-y-1.5">
@@ -214,6 +233,7 @@ export default async function FacturacionPage() {
                           </button>
                         </form>
                       )}
+                      <DebitoReclamo debitId={d.id} reclamable={d.reclamable} fecha={d.fecha_resubmision} notas={d.resubmision_notas} puedeEditar={canManage} />
                     </li>
                   ))}
                 </ul>
@@ -265,19 +285,19 @@ export default async function FacturacionPage() {
 
       {canManage && (
         <SidePanel id="abrir-periodo" title="Abrir período de facturación">
-          <form action={createBillingPeriodAction} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <ActionForm action={createBillingPeriodAction} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <select name="obra_social_id" required className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-2">
               <option value="">Obra social...</option>
               {(obrasSociales ?? []).map((os) => (
                 <option key={os.id} value={os.id}>{os.nombre}</option>
               ))}
             </select>
-            <input name="periodo" type="month" required defaultValue={new Date().toISOString().slice(0, 7)} className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
-            <input name="total_facturado" type="number" step="0.01" placeholder="Total estimado (opcional)" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
-            <button className="rounded-xl bg-slate-900 text-white text-sm font-medium px-4 py-2.5 hover:bg-slate-800 transition-colors sm:col-span-4">
+            <input name="periodo" type="month" required defaultValue={hoy.slice(0, 7)} className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+            <input name="total_facturado" type="number" step="0.01" placeholder="Total (opcional: si lo dejás vacío se sugiere)" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+            <SubmitButton className="rounded-xl bg-slate-900 text-white text-sm font-medium px-4 py-2.5 hover:bg-slate-800 transition-colors sm:col-span-4" pendingLabel="Abriendo…">
               Abrir período
-            </button>
-          </form>
+            </SubmitButton>
+          </ActionForm>
         </SidePanel>
       )}
     </div>
