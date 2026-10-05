@@ -10,6 +10,7 @@ import { IconUser, IconMapPin, IconCheck, IconAlert } from "@/components/icons";
 import { type SemanticTone } from "@/lib/semantic-status";
 import { calcularCumplimiento, describirPlan, DIAS_CORTOS, DISCIPLINAS_PLAN, semanaActual, type Plan } from "@/lib/plan";
 import FamilyAccessPanel from "@/components/FamilyAccessPanel";
+import { descripcionFechaHora } from "@/lib/horario";
 import { familyPortalEnabled, type FamilyAccessInfo } from "@/lib/family";
 import { signLegalDocumentAction } from "../../internacion/actions";
 import {
@@ -94,7 +95,7 @@ export default async function FichaPacientePage({
 
   const [{ data: team }, { data: visits }, { data: auths }, { data: legalDocs }, { data: sigs }, { data: plansRaw }] = await Promise.all([
     supabase.from("patient_care_team").select("id, especialidad, profesional_id, profiles(full_name)").eq("patient_id", id),
-    supabase.from("visits").select("id, patient_id, especialidad, fecha_programada, estado, profiles(full_name)").eq("patient_id", id).order("fecha_programada", { ascending: false }).limit(80),
+    supabase.from("visits").select("id, patient_id, especialidad, fecha_programada, sin_hora, franja, hora_desde, hora_hasta, estado, profiles(full_name)").eq("patient_id", id).order("fecha_programada", { ascending: false }).limit(80),
     supabase.from("v_treatment_authorization_status").select("*").eq("patient_id", id).order("periodo_hasta"),
     supabase.from("legal_documents").select("id, codigo, titulo, resumen, requiere_firma_profesional").eq("activo", true).order("orden"),
     supabase.from("patient_document_signatures").select("legal_document_id, firmante_nombre, firmado_at, profesional_id").eq("patient_id", id),
@@ -240,7 +241,7 @@ export default async function FichaPacientePage({
             {(() => {
               const prox = [...(visits ?? [])].filter((v) => v.estado === "programada" || v.estado === "confirmada").sort((a, b) => a.fecha_programada.localeCompare(b.fecha_programada))[0];
               return prox ? (
-                <p className="text-sm">{fechaHora(prox.fecha_programada)} · {SPECIALTY_LABELS[prox.especialidad] ?? prox.especialidad} · {nombreDe(prox.profiles)}</p>
+                <p className="text-sm">{descripcionFechaHora(prox)} · {SPECIALTY_LABELS[prox.especialidad] ?? prox.especialidad} · {nombreDe(prox.profiles)}</p>
               ) : (
                 <p className="text-sm text-slate-400">No hay visitas programadas.</p>
               );
@@ -378,7 +379,7 @@ export default async function FichaPacientePage({
             <ul className="divide-y divide-slate-100 text-sm">
               {(visits ?? []).slice(0, 30).map((v) => (
                 <li key={v.id} className="py-2 flex items-center justify-between gap-3 flex-wrap">
-                  <span>{fechaHora(v.fecha_programada)} · {SPECIALTY_LABELS[v.especialidad] ?? v.especialidad} · {nombreDe(v.profiles)}</span>
+                  <span>{descripcionFechaHora(v)} · {SPECIALTY_LABELS[v.especialidad] ?? v.especialidad} · {nombreDe(v.profiles)}</span>
                   <StatusBadge tone={VISITA_TONE[v.estado] ?? "gris"} label={VISITA_LABELS[v.estado] ?? v.estado} />
                 </li>
               ))}
