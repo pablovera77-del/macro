@@ -5,6 +5,8 @@ import { requireProfile } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
 import { semanaActual, hoyAR, ymdAR } from "@/lib/plan";
 import { IconChart, IconBox, IconMapPin, IconAlert, IconTruck, IconUsers, IconCalendar, IconCash, IconSignature, IconClipboardCheck } from "@/components/icons";
+import CobrosPorEstado from "@/components/dashboard/CobrosPorEstado";
+import ValoresObraSocial from "@/components/dashboard/ValoresObraSocial";
 
 function formatARS(value: number | null) {
 if (value == null) return "—";
@@ -275,6 +277,10 @@ return s.href ? (
 Reúne visitas y evoluciones, pacientes y autorizaciones, y facturación en una sola vista para Dirección.
 </p>
 </section>
+
+<CobrosPorEstado href="/facturacion" />
+
+<ValoresObraSocial />
 
 <section className="animate-fade-slide-up">
 <h2 className="text-sm font-medium text-slate-900 mb-3 flex items-center gap-2">

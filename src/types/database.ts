@@ -60,31 +60,40 @@ export type Database = {
           billing_period_id: string
           created_at: string
           estado: Database["public"]["Enums"]["debit_status"]
+          fecha_resubmision: string | null
           gestionado_por: string | null
           id: number
           monto: number
           motivo: string
           patient_id: string | null
+          reclamable: boolean
+          resubmision_notas: string | null
         }
         Insert: {
           billing_period_id: string
           created_at?: string
           estado?: Database["public"]["Enums"]["debit_status"]
+          fecha_resubmision?: string | null
           gestionado_por?: string | null
           id?: never
           monto: number
           motivo: string
           patient_id?: string | null
+          reclamable?: boolean
+          resubmision_notas?: string | null
         }
         Update: {
           billing_period_id?: string
           created_at?: string
           estado?: Database["public"]["Enums"]["debit_status"]
+          fecha_resubmision?: string | null
           gestionado_por?: string | null
           id?: never
           monto?: number
           motivo?: string
           patient_id?: string | null
+          reclamable?: boolean
+          resubmision_notas?: string | null
         }
         Relationships: [
           {
@@ -93,6 +102,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "billing_periods"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_debits_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "v_cierre_sugerido"
+            referencedColumns: ["billing_period_id"]
+          },
+          {
+            foreignKeyName: "billing_debits_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["billing_period_id"]
           },
           {
             foreignKeyName: "billing_debits_billing_period_id_fkey"
@@ -121,6 +144,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_debits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "billing_debits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "billing_debits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
           },
           {
             foreignKeyName: "billing_debits_patient_id_fkey"
@@ -600,31 +644,46 @@ export type Database = {
       obras_sociales: {
         Row: {
           activa: boolean
+          auditoria_contacto_email: string | null
+          auditoria_contacto_nombre: string | null
+          auditoria_contacto_telefono: string | null
           created_at: string
           cuit: string | null
           dias_para_facturar: number
           id: string
+          modalidad_facturacion: string | null
           nombre: string
+          reglas_facturacion: string | null
           responsable_id: string | null
           valor_modulo: number | null
         }
         Insert: {
           activa?: boolean
+          auditoria_contacto_email?: string | null
+          auditoria_contacto_nombre?: string | null
+          auditoria_contacto_telefono?: string | null
           created_at?: string
           cuit?: string | null
           dias_para_facturar?: number
           id?: string
+          modalidad_facturacion?: string | null
           nombre: string
+          reglas_facturacion?: string | null
           responsable_id?: string | null
           valor_modulo?: number | null
         }
         Update: {
           activa?: boolean
+          auditoria_contacto_email?: string | null
+          auditoria_contacto_nombre?: string | null
+          auditoria_contacto_telefono?: string | null
           created_at?: string
           cuit?: string | null
           dias_para_facturar?: number
           id?: string
+          modalidad_facturacion?: string | null
           nombre?: string
+          reglas_facturacion?: string | null
           responsable_id?: string | null
           valor_modulo?: number | null
         }
@@ -1889,34 +1948,43 @@ export type Database = {
           autorizado_por: string | null
           cantidad_autorizada: number
           created_at: string
+          dias_semana: number[] | null
           especialidad: Database["public"]["Enums"]["specialty"]
+          frecuencia_tipo: string | null
           id: number
           patient_id: string
           periodo_desde: string
           periodo_hasta: string
           practica: string
+          veces_por_dia: number | null
         }
         Insert: {
           autorizado_por?: string | null
           cantidad_autorizada: number
           created_at?: string
+          dias_semana?: number[] | null
           especialidad: Database["public"]["Enums"]["specialty"]
+          frecuencia_tipo?: string | null
           id?: never
           patient_id: string
           periodo_desde?: string
           periodo_hasta: string
           practica: string
+          veces_por_dia?: number | null
         }
         Update: {
           autorizado_por?: string | null
           cantidad_autorizada?: number
           created_at?: string
+          dias_semana?: number[] | null
           especialidad?: Database["public"]["Enums"]["specialty"]
+          frecuencia_tipo?: string | null
           id?: never
           patient_id?: string
           periodo_desde?: string
           periodo_hasta?: string
           practica?: string
+          veces_por_dia?: number | null
         }
         Relationships: [
           {
@@ -1932,6 +2000,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "treatment_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "treatment_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
           },
           {
             foreignKeyName: "treatment_authorizations_patient_id_fkey"
@@ -2232,6 +2321,200 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_period_exclusions: {
+        Row: {
+          billing_period_id: string
+          created_at: string
+          excluido_por: string | null
+          id: number
+          motivo: string | null
+          patient_id: string
+        }
+        Insert: {
+          billing_period_id: string
+          created_at?: string
+          excluido_por?: string | null
+          id?: never
+          motivo?: string | null
+          patient_id: string
+        }
+        Update: {
+          billing_period_id?: string
+          created_at?: string
+          excluido_por?: string | null
+          id?: never
+          motivo?: string | null
+          patient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_period_exclusions_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "billing_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "v_cierre_sugerido"
+            referencedColumns: ["billing_period_id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["billing_period_id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["billing_period_id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_resumen"
+            referencedColumns: ["billing_period_id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_excluido_por_fkey"
+            columns: ["excluido_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+        ]
+      }
+      sales_quote_items: {
+        Row: {
+          cantidad: number
+          created_at: string
+          descripcion: string
+          id: number
+          orden: number
+          quote_id: string
+          valor_unitario: number
+        }
+        Insert: {
+          cantidad: number
+          created_at?: string
+          descripcion: string
+          id?: never
+          orden?: number
+          quote_id: string
+          valor_unitario: number
+        }
+        Update: {
+          cantidad?: number
+          created_at?: string
+          descripcion?: string
+          id?: never
+          orden?: number
+          quote_id?: string
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "sales_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_quotes: {
+        Row: {
+          creado_por: string | null
+          created_at: string
+          destinatario_particular: string | null
+          fecha: string
+          id: string
+          notas: string | null
+          numero: number
+          obra_social_id: string | null
+          validez_dias: number
+        }
+        Insert: {
+          creado_por?: string | null
+          created_at?: string
+          destinatario_particular?: string | null
+          fecha?: string
+          id?: string
+          notas?: string | null
+          numero?: never
+          obra_social_id?: string | null
+          validez_dias?: number
+        }
+        Update: {
+          creado_por?: string | null
+          created_at?: string
+          destinatario_particular?: string | null
+          fecha?: string
+          id?: string
+          notas?: string | null
+          numero?: never
+          obra_social_id?: string | null
+          validez_dias?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_quotes_creado_por_fkey"
+            columns: ["creado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_quotes_obra_social_id_fkey"
+            columns: ["obra_social_id"]
+            isOneToOne: false
+            referencedRelation: "obras_sociales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       v_costos_por_paciente: {
@@ -2342,20 +2625,40 @@ export type Database = {
         Row: {
           billing_period_id: string | null
           cantidad_autorizada: number | null
+          dia_corte: string | null
+          dias_aun_no_llego: number | null
+          dias_semana: number[] | null
+          dias_sin_evolucion_inicio: number | null
+          egreso_informado_at: string | null
           especialidad: Database["public"]["Enums"]["specialty"] | null
+          estado_control: string | null
           estado_prevalidacion: string | null
           evoluciones_cargadas_mes: number | null
+          evoluciones_cargadas_ventana: number | null
+          evoluciones_dia_no_autorizado: number | null
+          evoluciones_esperadas_ajustadas: number | null
           evoluciones_esperadas_mes: number | null
+          evoluciones_exceso: number | null
+          evoluciones_post_egreso: number | null
+          frecuencia_tipo: string | null
+          llegada_confirmada_at: string | null
+          motivo_faltante: string | null
           nombre_completo: string | null
           obra_social_id: string | null
           overlap_desde: string | null
           overlap_hasta: string | null
+          paciente_estado: string | null
+          paciente_fecha_egreso: string | null
+          paciente_fecha_ingreso: string | null
           patient_id: string | null
           periodo: string | null
           periodo_desde: string | null
           periodo_hasta: string | null
           practica: string | null
           treatment_authorization_id: number | null
+          veces_por_dia: number | null
+          ventana_desde: string | null
+          ventana_hasta: string | null
         }
         Relationships: [
           {
@@ -2372,6 +2675,11 @@ export type Database = {
           amarillos: number | null
           billing_period_id: string | null
           bloqueado: boolean | null
+          bloqueado_efectivo: boolean | null
+          pacientes_rojos: number | null
+          pacientes_rojos_excluidos: number | null
+          pacientes_rojos_pendientes: number | null
+          pacientes_total: number | null
           rojos: number | null
           verdes: number | null
         }
@@ -2561,6 +2869,84 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      v_cierre_sugerido: {
+        Row: {
+          billing_period_id: string | null
+          modalidad_facturacion: string | null
+          modulos_en_curso: number | null
+          modulos_verdes: number | null
+          obra_social_id: string | null
+          pacientes_excluidos: number | null
+          pacientes_rojos: number | null
+          total_proyectado: number | null
+          total_sugerido: number | null
+          valor_vigente: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_periods_obra_social_id_fkey"
+            columns: ["obra_social_id"]
+            isOneToOne: false
+            referencedRelation: "obras_sociales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_control_frecuencia_diaria: {
+        Row: {
+          cargadas: number | null
+          especialidad: string | null
+          esperadas: number | null
+          fecha: string | null
+          nombre_completo: string | null
+          patient_id: string | null
+          practica: string | null
+          treatment_authorization_id: number | null
+        }
+        Relationships: []
+      }
+      v_control_frecuencia_semanal: {
+        Row: {
+          cargadas: number | null
+          dias_semana: number[] | null
+          especialidad: string | null
+          esperadas: number | null
+          nombre_completo: string | null
+          patient_id: string | null
+          practica: string | null
+          semana_desde: string | null
+          semana_hasta: string | null
+          treatment_authorization_id: number | null
+        }
+        Relationships: []
+      }
+      v_prevalidacion_controles: {
+        Row: {
+          billing_period_id: string | null
+          evoluciones_mes: number | null
+          nombre_completo: string | null
+          patient_id: string | null
+          sin_conformidad_familiar: number | null
+          sin_firma_profesional: number | null
+          visitas_sin_evolucion: number | null
+        }
+        Relationships: []
+      }
+      v_prevalidacion_insumos: {
+        Row: {
+          billing_period_id: string | null
+          cantidad_autorizada: number | null
+          cantidad_entregada: number | null
+          codigo: string | null
+          descripcion: string | null
+          estado_control: string | null
+          nombre_completo: string | null
+          patient_id: string | null
+          product_id: string | null
+          tipo: string | null
+        }
+        Relationships: []
       }
     }
     Functions: {

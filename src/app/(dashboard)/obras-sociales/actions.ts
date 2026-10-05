@@ -5,6 +5,7 @@ import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { flash } from "@/lib/flash";
 import type { Enums } from "@/types/database";
+import type { ActionResult } from "@/lib/facturacion";
 
 const BILLING_ROLES: Enums<"app_role">[] = ["administracion"];
 
@@ -108,4 +109,42 @@ export async function removeRequiredDocAction(formData: FormData) {
   if (error) throw new Error(error.message);
   revalidatePath("/obras-sociales");
   await flash("Documento quitado de la lista requerida.");
+}
+
+// C4-05/06/09/10: reglas propias de facturación, modalidad (por módulos o por prestaciones),
+// plazo para presentar y contacto de auditoría de cada obra social.
+export async function updateObraSocialConfigAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const { profile } = await requireProfile();
+  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Administración configura las reglas de facturación de cada obra social.");
+
+  const supabase = await createClient();
+  const obra_social_id = String(formData.get("obra_social_id") || "");
+  if (!obra_social_id) return { error: "Falta la obra social. Recargá la página." };
+
+  const modalidadRaw = String(formData.get("modalidad_facturacion") || "");
+  if (modalidadRaw && modalidadRaw !== "modulos" && modalidadRaw !== "prestaciones") {
+    return { error: "Elegí «Por módulos» o «Por prestaciones» como modalidad de facturación." };
+  }
+  const dias = Number(formData.get("dias_para_facturar") || 0);
+  if (!Number.isInteger(dias) || dias < 0 || dias > 365) return { error: "Los días para facturar tienen que ser un número entero entre 0 y 365." };
+  const email = String(formData.get("auditoria_contacto_email") || "").trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "El email del contacto de auditoría no parece válido. Revisalo (ej. nombre@empresa.com)." };
+
+  const { error } = await supabase
+    .from("obras_sociales")
+    .update({
+      reglas_facturacion: String(formData.get("reglas_facturacion") || "").trim() || null,
+      modalidad_facturacion: modalidadRaw || null,
+      dias_para_facturar: dias,
+      auditoria_contacto_nombre: String(formData.get("auditoria_contacto_nombre") || "").trim() || null,
+      auditoria_contacto_telefono: String(formData.get("auditoria_contacto_telefono") || "").trim() || null,
+      auditoria_contacto_email: email || null,
+    })
+    .eq("id", obra_social_id);
+  if (error) return { error: `No se pudo guardar la configuración: ${error.message}.` };
+
+  revalidatePath("/obras-sociales");
+  revalidatePath("/facturacion");
+  await flash("Configuración de la obra social guardada. Se usa en el cierre mensual (plazo y total sugerido).");
+  return null;
 }
