@@ -20,6 +20,8 @@ compras: IconClipboardCheck,
 inicio: IconGrid,
 ayuda: IconStethoscope,
 auditoria: IconClipboardCheck,
+usuarios: IconUsers,
+configuracion: IconGrid,
 };
 
 type NavItem = { href: string; label: string; icon: NavIconId; description: string };

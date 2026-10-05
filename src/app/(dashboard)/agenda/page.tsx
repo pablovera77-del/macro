@@ -70,6 +70,11 @@ export default async function AgendaPage({
   const supabase = await createClient();
 
   const isCoordinador = profile.role === "coordinador_internacion";
+  // Motivos para reprogramar: se editan en Configuración → Catálogos.
+  const { data: motivosData } = isCoordinador
+    ? await supabase.from("catalog_items").select("codigo, nombre").eq("catalogo", "motivos_reprogramacion").eq("activo", true).order("orden")
+    : { data: [] as { codigo: string; nombre: string }[] };
+  const motivos = motivosData ?? [];
   const esProfesional = profile.role === "profesional_asistencial";
   const veInterno = isCoordinador || profile.role === "direccion";
   const orden: "hora" | "domicilio" = ordenSel === "domicilio" ? "domicilio" : "hora";
@@ -251,7 +256,7 @@ export default async function AgendaPage({
                     <span className="font-medium text-slate-900">{v.patients?.nombre_completo}</span>
                     <span className="text-xs text-slate-500 ml-2">{SPECIALTY_LABELS[v.especialidad] ?? v.especialidad} · {descripcionFechaHora(v)} · {v.profiles?.full_name}</span>
                   </span>
-                  <ReprogramarForm visitId={v.id} />
+                  <ReprogramarForm visitId={v.id} motivos={motivos} />
                 </div>
               </li>
             ))}
@@ -376,7 +381,7 @@ export default async function AgendaPage({
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-2">{tituloDia(ymd, hoy)}</h3>
                 <div className="space-y-3">
                   {items.map((v) => (
-                    <VisitaCard key={v.id} v={v} rol={profile.role} atrasada={estaAtrasada(v, ahora)} conflicto={conflictos.has(v.id)} mostrarProfesional={isCoordinador && !agruparPorProfesional} />
+                    <VisitaCard key={v.id} motivos={motivos} v={v} rol={profile.role} atrasada={estaAtrasada(v, ahora)} conflicto={conflictos.has(v.id)} mostrarProfesional={isCoordinador && !agruparPorProfesional} />
                   ))}
                 </div>
               </div>

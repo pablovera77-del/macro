@@ -141,9 +141,10 @@ export async function rescheduleVisitAction(formData: FormData) {
   if (!visit_id) throw new Error("Falta indicar la visita.");
   const horario = leerHorarioDeForm(formData);
   if ("error" in horario) throw new Error(horario.error);
+  const motivo = String(formData.get("motivo_reprogramacion") || "") || null;
   const { error } = await supabase
     .from("visits")
-    .update({ ...horario, estado: "programada", abierta_at: null, abierta_lat: null, abierta_lng: null, recordatorio_enviado_at: null })
+    .update({ ...horario, motivo_reprogramacion: motivo, estado: "programada", abierta_at: null, abierta_lat: null, abierta_lng: null, recordatorio_enviado_at: null })
     .eq("id", visit_id);
   if (error) throw new Error(error.message);
   refrescar();

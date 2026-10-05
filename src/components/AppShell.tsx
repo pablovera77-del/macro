@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import type { AppRole, NavIconId } from "@/lib/auth";
+import type { NavIconId } from "@/lib/auth";
 import SidebarNav from "@/components/SidebarNav";
-import { IconLogout, IconMenu } from "@/components/icons";
+import { IconBell, IconLogout, IconMenu } from "@/components/icons";
 import { BrandMark, BrandWordmark } from "@/components/BrandLogo";
 
 type NavItem = { href: string; label: string; icon: NavIconId; description: string };
@@ -17,6 +17,7 @@ roleLabel,
 accent,
 logout,
 search,
+notifCount = 0,
 children,
 }: {
 nav: NavItem[];
@@ -25,6 +26,7 @@ roleLabel: string;
 accent: Accent;
 logout: React.ReactNode;
 search?: React.ReactNode;
+notifCount?: number;
 children: React.ReactNode;
 }) {
 const [open, setOpen] = useState(false);
@@ -35,6 +37,22 @@ const initials = fullName
 .slice(0, 2)
 .map((n) => n[0]?.toUpperCase())
 .join("");
+
+const Campana = (
+<Link
+href="/notificaciones"
+onClick={() => setOpen(false)}
+className="relative flex items-center justify-center w-11 h-11 rounded-lg border border-slate-200 lg:border-white/10 text-slate-600 lg:text-slate-300 hover:bg-slate-50 lg:hover:bg-white/5"
+aria-label={notifCount > 0 ? `Avisos: ${notifCount} sin leer` : "Avisos"}
+>
+<IconBell className="w-5 h-5" />
+{notifCount > 0 && (
+<span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-red-600 text-white text-[10px] font-semibold flex items-center justify-center px-1">
+{notifCount > 99 ? "99+" : notifCount}
+</span>
+)}
+</Link>
+);
 
 const SidebarContent = (
 <div className="flex flex-col h-full">
@@ -53,6 +71,7 @@ const SidebarContent = (
 </div>
 
 <div className="px-3 pb-4 pt-3 border-t border-white/10 mx-3">
+<div className="hidden lg:flex justify-end mb-2">{Campana}</div>
 <div className={`flex items-center gap-3 rounded-xl px-3 py-2.5 mb-2 ring-1 ${accent.bg} ${accent.ring}`}>
 <span className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-semibold ${accent.text} bg-white/10`}>
 {initials || "?"}
@@ -92,6 +111,8 @@ return (
 <BrandWordmark theme="color" className="text-lg" />
 </span>
 </Link>
+<div className="flex items-center gap-2">
+{Campana}
 <button
 onClick={() => setOpen(true)}
 className="flex items-center justify-center w-11 h-11 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
@@ -99,6 +120,7 @@ aria-label="Abrir menú"
 >
 <IconMenu className="w-5 h-5" />
 </button>
+</div>
 </header>
 
 <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">

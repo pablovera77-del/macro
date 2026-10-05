@@ -50,7 +50,10 @@ export default async function ProductividadPage({ searchParams }: { searchParams
   };
 
   // Promedio diario por profesional (R63, R64).
-  const filas = calcularProductividad((todas as VisitaProd[]).filter((v) => !disciplina || v.especialidad === disciplina), ahora);
+  // El umbral se edita en Configuración → Parámetros; si no se puede leer, rige el valor por defecto.
+  const { data: umbralRow } = await supabase.from("app_settings").select("valor").eq("clave", "umbral_visitas_dia").maybeSingle();
+  const umbral = umbralRow?.valor != null ? Number(umbralRow.valor) : UMBRAL_VISITAS_DIA;
+  const filas = calcularProductividad((todas as VisitaProd[]).filter((v) => !disciplina || v.especialidad === disciplina), ahora, undefined, umbral);
   const nombreProf = new Map((profes ?? []).map((p) => [p.id, p.full_name]));
   const sinVisitas = disciplina ? [] : (profes ?? []).filter((p) => !filas.some((f) => f.profesional_id === p.id));
 
@@ -151,7 +154,7 @@ export default async function ProductividadPage({ searchParams }: { searchParams
         <div>
           <h2 className="text-sm font-semibold text-slate-900">Visitas por día de cada profesional</h2>
           <p className="text-xs text-slate-500">
-            Últimos {DIAS_PRODUCTIVIDAD} días. El promedio es de visitas realizadas por cada día en que el profesional hizo al menos una. Se marca cuando está por debajo de {UMBRAL_VISITAS_DIA} visitas por día
+            Últimos {DIAS_PRODUCTIVIDAD} días. El promedio es de visitas realizadas por cada día en que el profesional hizo al menos una. Se marca cuando está por debajo de {umbral} visitas por día
             (valor provisorio; más adelante se podrá editar).
           </p>
         </div>
@@ -179,7 +182,7 @@ export default async function ProductividadPage({ searchParams }: { searchParams
                     <td className="px-4 py-2.5 text-slate-600">{f.diasActivos}</td>
                     <td className="px-4 py-2.5">
                       <span className="font-semibold text-slate-900 mr-2">{f.promedioDiario.toLocaleString("es-AR")}</span>
-                      {f.bajoUmbral ? <StatusBadge tone="amarillo" label={`Menos de ${UMBRAL_VISITAS_DIA} por día`} /> : <StatusBadge tone="verde" label="En el nivel esperado" />}
+                      {f.bajoUmbral ? <StatusBadge tone="amarillo" label={`Menos de ${umbral} por día`} /> : <StatusBadge tone="verde" label="En el nivel esperado" />}
                     </td>
                     <td className="px-4 py-2.5 text-slate-900">{f.realizadasSemana}</td>
                   </tr>

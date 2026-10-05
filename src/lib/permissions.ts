@@ -36,6 +36,8 @@ const AGT = "src/app/(dashboard)/agenda-transporte/actions.ts";
 const COMP = "src/app/(dashboard)/compras/actions.ts";
 const EVO = "src/app/(dashboard)/evoluciones/actions.ts";
 const PRES = "src/app/(dashboard)/presupuestos/actions.ts";
+const USR = "src/app/(dashboard)/usuarios/actions.ts";
+const CFG = "src/app/(dashboard)/configuracion/actions.ts";
 
 export const PERMISOS: Permiso[] = [
   // Pacientes e ingreso
@@ -101,11 +103,14 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Presupuestos", accion: "Ver presupuestos de venta (solo lectura)", roles: [A, DIR], guard: { file: "src/app/(dashboard)/presupuestos/page.tsx", message: "ROLES_PRESUPUESTOS.includes(profile.role)" } },
   // Dirección (solo lectura)
   { modulo: "Auditoría", accion: "Ver el registro de auditoría", roles: [DIR], guard: { file: "src/app/(dashboard)/auditoria/page.tsx", message: 'profile.role !== "direccion"' } },
+  // Usuarios y configuración
+  { modulo: "Usuarios", accion: "Crear usuarios, asignar roles, editar el legajo y desactivar cuentas", roles: [A], guard: { file: USR, message: "Solo Administración gestiona los usuarios." } },
+  { modulo: "Configuración", accion: "Editar parámetros, catálogos y alertas", roles: [A], guard: { file: CFG, message: "Solo Administración configura la plataforma." } },
 ];
 
 /** Lo que cada rol puede VER (sin modificar), para completar la matriz en pantalla. */
 export const SOLO_LECTURA: Record<AppRole, string> = {
-  administracion: "Todo lo de pacientes, pedidos, compras, seguimiento, obras sociales y facturación.",
+  administracion: "Todo lo de pacientes, pedidos, compras, seguimiento, obras sociales, facturación, usuarios y configuración.",
   coordinador_internacion: "Pacientes (ficha completa), agenda de todos los profesionales y control de evoluciones.",
   profesional_asistencial: "Su agenda, sus pacientes y su historia clínica.",
   deposito: "Catálogo, pedidos, seguimiento de equipos y compras.",

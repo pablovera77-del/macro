@@ -33,11 +33,11 @@ export default function FlashToast() {
 
   if (!msg) return null;
   return (
-    <div role="status" aria-live="polite" className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 max-w-[92vw] sm:max-w-md animate-fade-slide-up">
+    <div role="status" aria-live="polite" className="fixed top-[72px] lg:top-auto lg:bottom-5 left-1/2 -translate-x-1/2 z-50 max-w-[92vw] sm:max-w-md animate-fade-slide-up">
       <div className="flex items-start gap-3 rounded-2xl bg-emerald-700 text-white shadow-xl px-4 py-3 text-sm">
         <span aria-hidden className="mt-0.5">✓</span>
         <p className="flex-1">{msg}</p>
-        <button type="button" onClick={() => setMsg(null)} aria-label="Cerrar mensaje" className="text-emerald-100 hover:text-white">×</button>
+        <button type="button" onClick={() => setMsg(null)} aria-label="Cerrar mensaje" className="no-touch -my-1 px-2 py-1 text-lg leading-none text-emerald-100 hover:text-white">×</button>
       </div>
     </div>
   );

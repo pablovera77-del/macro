@@ -63,6 +63,7 @@ error.message.toLowerCase().includes("invalid login")
 );
 return;
 }
+void supabase.rpc("touch_last_login");
 router.push("/");
 router.refresh();
 }
@@ -77,6 +78,7 @@ setLoadingRole(null);
 setError("No se pudo ingresar con la cuenta de demostración. Probá de nuevo en unos segundos.");
 return;
 }
+void supabase.rpc("touch_last_login");
 router.push("/");
 router.refresh();
 }

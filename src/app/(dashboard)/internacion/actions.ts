@@ -354,6 +354,17 @@ export async function reportarEgresoAction(formData: FormData) {
     .eq("id", patient_id);
   if (error) throw new Error(error.message);
 
+  // Aviso dentro de la plataforma (Configuración → Alertas). Si falla, el egreso ya quedó informado.
+  const { data: pac } = await supabase.from("patients").select("nombre_completo").eq("id", patient_id).maybeSingle();
+  await supabase.rpc("fn_notificar", {
+    p_tipo: "egreso_informado",
+    p_vars: { paciente: pac?.nombre_completo ?? "un paciente", motivo: motivoEgresoLabel(motivo) },
+    p_href: "/pacientes",
+    p_entidad: "patients",
+    p_entidad_id: patient_id,
+    p_extra_users: [],
+  });
+
   revalidatePath("/internacion");
   revalidatePath("/pacientes");
   await flash("Egreso informado. Administración debe confirmar la baja definitiva.");

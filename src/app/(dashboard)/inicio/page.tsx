@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfile, ROLE_LABELS, type AppRole } from "@/lib/auth";
 import { TASKS_BY_ROLE, ROLE_WELCOME } from "@/lib/home-tasks";
 import PageHeader from "@/components/PageHeader";
-import StatusBadge from "@/components/StatusBadge";
 import MiDia from "@/components/agenda/MiDia";
 import { contarFaltanProgramar, contarAtrasadas } from "@/lib/agenda-pendientes";
 import { IconGrid, IconArrowRight, IconAlert, IconCheck } from "@/components/icons";

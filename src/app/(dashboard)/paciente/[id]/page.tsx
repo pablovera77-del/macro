@@ -6,7 +6,7 @@ import { requireProfile, SPECIALTY_LABELS } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
 import StatusBadge from "@/components/StatusBadge";
 import ConsentDocumentRow from "@/components/ConsentDocumentRow";
-import { IconUser, IconMapPin, IconCheck, IconAlert } from "@/components/icons";
+import { IconUser, IconMapPin, IconAlert } from "@/components/icons";
 import { type SemanticTone } from "@/lib/semantic-status";
 import { calcularCumplimiento, describirPlan, DIAS_CORTOS, DISCIPLINAS_PLAN, semanaActual, type Plan } from "@/lib/plan";
 import FamilyAccessPanel from "@/components/FamilyAccessPanel";

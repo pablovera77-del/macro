@@ -277,6 +277,31 @@ export function buildFixtures() {
   const acciones = ["INSERT", "UPDATE", "UPDATE", "DELETE"]; const ents = ["patients", "orders", "evolutions", "visits", "products"];
   T.audit_log = Array.from({ length: 14 }, (_, i) => ({ id: i + 1, created_at: at(-Math.floor(i / 3), 9 + (i % 8), 12), accion: acciones[i % 4], entidad: ents[i % 5], entidad_id: uid(4, (i % 9) + 1), user_id: [P.marcela, P.laura, P.sandra, P.raul][i % 4], payload_antes: i % 4 === 0 ? null : { estado: "borrador", updated_at: "x" }, payload_despues: i % 4 === 3 ? null : { estado: "autorizado", prioridad: "urgente", observaciones: "Se modificó el domicilio de entrega por pedido de la familia" } }));
 
+  // Configuración y avisos
+  T.app_settings = [
+    { clave: "dias_aviso_autorizacion", valor: 7, descripcion: "Días de anticipación con los que una autorización de práctica pasa a «por vencer».", updated_at: at(-5) },
+    { clave: "horas_ubicacion_no_confirmada", valor: 48, descripcion: "Horas desde el aviso de egreso después de las cuales un equipo sin confirmar llegada se marca en rojo.", updated_at: at(-5) },
+    { clave: "umbral_visitas_dia", valor: 6, descripcion: "Promedio diario esperado de visitas realizadas.", updated_at: at(-5) },
+  ];
+  T.catalog_items = [
+    ["motivos_reprogramacion", "nadie_en_domicilio", "No había nadie en el domicilio"],
+    ["motivos_reprogramacion", "pedido_familia", "Lo pidió la familia"],
+    ["motivos_reprogramacion", "imprevisto", "Imprevisto (clima, tránsito, otro)"],
+    ["motivos_baja", "alta", "Alta médica"],
+    ["motivos_baja", "fallecimiento", "Fallecimiento"],
+    ["especialidades", "enfermeria", "Enfermería"],
+    ["categorias_iva", "21%", "21 %"],
+  ].map(([catalogo, codigo, nombre], i) => ({ id: uid(30, i + 1), catalogo, codigo, nombre, activo: true, orden: i + 1 }));
+  T.alert_types = [
+    { codigo: "egreso_informado", nombre: "Egreso informado sin confirmar", descripcion: "Falta la baja definitiva.", urgencia: "inmediata", mensaje: "Se informó el egreso de {paciente} ({motivo}). Falta confirmar la baja definitiva.", canal_app: true, canal_email: false, canal_whatsapp: false, activo: true },
+    { codigo: "autorizacion_por_vencer", nombre: "Autorización por vencer", descripcion: "Una autorización entra en el plazo de aviso.", urgencia: "digest", mensaje: "La autorización de {paciente} vence el {fecha}.", canal_app: true, canal_email: false, canal_whatsapp: false, activo: true },
+  ];
+  T.alert_type_recipients = [{ id: uid(31, 1), alert_type: "egreso_informado", role: "administracion", user_id: null }, { id: uid(31, 2), alert_type: "autorizacion_por_vencer", role: "administracion", user_id: null }];
+  T.notifications = [
+    { id: uid(32, 1), user_id: P.marcela, alert_type: "egreso_informado", mensaje: "Se informó el egreso de un paciente (Alta médica). Falta confirmar la baja definitiva.", href: "/pacientes", entidad: "patients", entidad_id: "x", created_at: at(-1), read_at: null },
+    { id: uid(32, 2), user_id: P.marcela, alert_type: "autorizacion_por_vencer", mensaje: "La autorización de un paciente vence pronto.", href: "/internacion", entidad: null, entidad_id: null, created_at: at(-3), read_at: at(-2) },
+  ];
+
   // RPC
   const accesos = [{ id: uid(23, 1), created_at: at(-3), expires_at: at(27), revoked_at: null, last_access_at: at(-1), locked_until: null, creado_por: P.laura }];
   const portal = (tokenOk) => tokenOk ? { ok: true, paciente: PT[0].nombre_completo, vence: at(27), proximas: [{ id: uid(6, 1), especialidad: "kinesiologia", fecha: at(1, 9, 0), estado: "confirmada", profesional: "Carolina Páez" }, { id: uid(6, 2), especialidad: "enfermeria", fecha: at(1, 14, 30), estado: "programada", profesional: "Sandra Quiroga" }], recientes: [{ id: uid(6, 3), especialidad: "medicina", fecha: at(-2, 10, 0), estado: "realizada", profesional: "Dr. Gustavo Herrera", confirmada_at: null, confirmada_por: null }, { id: uid(6, 4), especialidad: "kinesiologia", fecha: at(-4, 9, 0), estado: "realizada", profesional: "Carolina Páez", confirmada_at: at(-3), confirmada_por: "Gabriela Albornoz" }] } : { ok: false, error: "invalido" };

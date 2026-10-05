@@ -2,7 +2,7 @@ import Link from "next/link";
 import ConfirmButton from "@/components/ConfirmButton";
 import StatusBadge from "@/components/StatusBadge";
 import IniciarVisitaButton from "@/components/agenda/IniciarVisitaButton";
-import ReprogramarForm from "@/components/agenda/ReprogramarForm";
+import ReprogramarForm, { type MotivoReprogramacion } from "@/components/agenda/ReprogramarForm";
 import { IconCheck, IconMapPin } from "@/components/icons";
 import { SPECIALTY_LABELS } from "@/lib/roles";
 import { updateVisitStatusAction, cancelVisitAction } from "@/app/(dashboard)/agenda/actions";
@@ -32,12 +32,14 @@ export default function VisitaCard({
   atrasada,
   conflicto,
   mostrarProfesional,
+  motivos = [],
 }: {
   v: VisitaAgenda;
   rol: string;
   atrasada: boolean;
   conflicto: boolean;
   mostrarProfesional: boolean;
+  motivos?: MotivoReprogramacion[];
 }) {
   const p = v.patients;
   const esProfesional = rol === "profesional_asistencial";
@@ -123,7 +125,7 @@ export default function VisitaCard({
 
       {esCoordinador && (v.estado === "programada" || v.estado === "confirmada") && (
         <div className="mt-3 flex flex-wrap items-start gap-2">
-          <ReprogramarForm visitId={v.id} />
+          <ReprogramarForm visitId={v.id} motivos={motivos} />
           <form action={cancelVisitAction}>
             <input type="hidden" name="visit_id" value={v.id} />
             <ConfirmButton className="rounded-lg bg-slate-100 text-slate-600 text-xs font-medium px-3 py-1.5 hover:bg-slate-200 transition-colors" confirmLabel="¿Cancelar? Tocá de nuevo">
