@@ -522,6 +522,147 @@ export type Database = {
           },
         ]
       }
+      family_access: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          failed_attempts: number
+          id: string
+          last_access_at: string | null
+          locked_until: string | null
+          patient_id: string
+          pin_hash: string
+          revoked_at: string | null
+          revoked_by: string | null
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          failed_attempts?: number
+          id?: string
+          last_access_at?: string | null
+          locked_until?: string | null
+          patient_id: string
+          pin_hash: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          token: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          failed_attempts?: number
+          id?: string
+          last_access_at?: string | null
+          locked_until?: string | null
+          patient_id?: string
+          pin_hash?: string
+          revoked_at?: string | null
+          revoked_by?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_access_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_access_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_access_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "family_access_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      family_visit_confirmations: {
+        Row: {
+          access_id: string
+          confirmed_at: string
+          id: string
+          nombre: string
+          visit_id: string
+        }
+        Insert: {
+          access_id: string
+          confirmed_at?: string
+          id?: string
+          nombre: string
+          visit_id: string
+        }
+        Update: {
+          access_id?: string
+          confirmed_at?: string
+          id?: string
+          nombre?: string
+          visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_visit_confirmations_access_id_fkey"
+            columns: ["access_id"]
+            isOneToOne: false
+            referencedRelation: "family_access"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_visit_confirmations_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: true
+            referencedRelation: "v_visit_evolution_discrepancies"
+            referencedColumns: ["visit_id"]
+          },
+          {
+            foreignKeyName: "family_visit_confirmations_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: true
+            referencedRelation: "visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      info_checklist_items: {
+        Row: {
+          activo: boolean
+          id: string
+          orden: number
+          texto: string
+        }
+        Insert: {
+          activo?: boolean
+          id?: string
+          orden: number
+          texto: string
+        }
+        Update: {
+          activo?: boolean
+          id?: string
+          orden?: number
+          texto?: string
+        }
+        Relationships: []
+      }
       legal_documents: {
         Row: {
           activo: boolean
@@ -786,6 +927,41 @@ export type Database = {
           },
         ]
       }
+      os_required_documents: {
+        Row: {
+          activo: boolean
+          id: string
+          nombre: string
+          obligatorio: boolean
+          obra_social_id: string
+          orden: number
+        }
+        Insert: {
+          activo?: boolean
+          id?: string
+          nombre: string
+          obligatorio?: boolean
+          obra_social_id: string
+          orden?: number
+        }
+        Update: {
+          activo?: boolean
+          id?: string
+          nombre?: string
+          obligatorio?: boolean
+          obra_social_id?: string
+          orden?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "os_required_documents_obra_social_id_fkey"
+            columns: ["obra_social_id"]
+            isOneToOne: false
+            referencedRelation: "obras_sociales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_authorizations: {
         Row: {
           cantidad_autorizada: number
@@ -967,6 +1143,210 @@ export type Database = {
           {
             foreignKeyName: "patient_document_signatures_profesional_id_fkey"
             columns: ["profesional_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_info_checklist: {
+        Row: {
+          confirmado_at: string
+          confirmado_por: string | null
+          item_id: string
+          patient_id: string
+        }
+        Insert: {
+          confirmado_at?: string
+          confirmado_por?: string | null
+          item_id: string
+          patient_id: string
+        }
+        Update: {
+          confirmado_at?: string
+          confirmado_por?: string | null
+          item_id?: string
+          patient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_info_checklist_confirmado_por_fkey"
+            columns: ["confirmado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_info_checklist_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "info_checklist_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_info_checklist_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_info_checklist_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+        ]
+      }
+      patient_medications: {
+        Row: {
+          activo: boolean
+          creado_por: string | null
+          created_at: string
+          dosis: string | null
+          frecuencia: string | null
+          id: string
+          medicamento: string
+          patient_id: string
+          via: string | null
+        }
+        Insert: {
+          activo?: boolean
+          creado_por?: string | null
+          created_at?: string
+          dosis?: string | null
+          frecuencia?: string | null
+          id?: string
+          medicamento: string
+          patient_id: string
+          via?: string | null
+        }
+        Update: {
+          activo?: boolean
+          creado_por?: string | null
+          created_at?: string
+          dosis?: string | null
+          frecuencia?: string | null
+          id?: string
+          medicamento?: string
+          patient_id?: string
+          via?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_medications_creado_por_fkey"
+            columns: ["creado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_medications_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_medications_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+        ]
+      }
+      patient_messages: {
+        Row: {
+          autor_id: string
+          created_at: string
+          id: string
+          mensaje: string
+          patient_id: string
+        }
+        Insert: {
+          autor_id?: string
+          created_at?: string
+          id?: string
+          mensaje: string
+          patient_id: string
+        }
+        Update: {
+          autor_id?: string
+          created_at?: string
+          id?: string
+          mensaje?: string
+          patient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_messages_autor_id_fkey"
+            columns: ["autor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_messages_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_messages_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+        ]
+      }
+      patient_required_documents: {
+        Row: {
+          doc_id: string
+          patient_id: string
+          recibido_at: string
+          recibido_por: string | null
+        }
+        Insert: {
+          doc_id: string
+          patient_id: string
+          recibido_at?: string
+          recibido_por?: string | null
+        }
+        Update: {
+          doc_id?: string
+          patient_id?: string
+          recibido_at?: string
+          recibido_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_required_documents_doc_id_fkey"
+            columns: ["doc_id"]
+            isOneToOne: false
+            referencedRelation: "os_required_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_required_documents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_required_documents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_required_documents_recibido_por_fkey"
+            columns: ["recibido_por"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -1942,42 +2322,146 @@ export type Database = {
           },
         ]
       }
+      treatment_plans: {
+        Row: {
+          activo: boolean
+          cantidad: number
+          creado_por: string | null
+          created_at: string
+          desde: string
+          dias_semana: number[] | null
+          especialidad: Database["public"]["Enums"]["specialty"]
+          hasta: string | null
+          id: string
+          nota: string | null
+          patient_id: string
+          reemplaza_id: string | null
+          unidad: string
+        }
+        Insert: {
+          activo?: boolean
+          cantidad: number
+          creado_por?: string | null
+          created_at?: string
+          desde?: string
+          dias_semana?: number[] | null
+          especialidad: Database["public"]["Enums"]["specialty"]
+          hasta?: string | null
+          id?: string
+          nota?: string | null
+          patient_id: string
+          reemplaza_id?: string | null
+          unidad: string
+        }
+        Update: {
+          activo?: boolean
+          cantidad?: number
+          creado_por?: string | null
+          created_at?: string
+          desde?: string
+          dias_semana?: number[] | null
+          especialidad?: Database["public"]["Enums"]["specialty"]
+          hasta?: string | null
+          id?: string
+          nota?: string | null
+          patient_id?: string
+          reemplaza_id?: string | null
+          unidad?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_plans_creado_por_fkey"
+            columns: ["creado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "treatment_plans_reemplaza_id_fkey"
+            columns: ["reemplaza_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visits: {
         Row: {
+          abierta_at: string | null
+          abierta_lat: number | null
+          abierta_lng: number | null
+          cerrada_at: string | null
           creado_por: string | null
           created_at: string
           especialidad: Database["public"]["Enums"]["specialty"]
           estado: Database["public"]["Enums"]["visit_status"]
           fecha_programada: string
           fecha_realizada: string | null
+          franja: string | null
+          hora_desde: string | null
+          hora_hasta: string | null
           id: string
           observacion_agenda: string | null
           patient_id: string
           profesional_id: string
+          recordatorio_enviado_at: string | null
+          sin_hora: boolean
         }
         Insert: {
+          abierta_at?: string | null
+          abierta_lat?: number | null
+          abierta_lng?: number | null
+          cerrada_at?: string | null
           creado_por?: string | null
           created_at?: string
           especialidad: Database["public"]["Enums"]["specialty"]
           estado?: Database["public"]["Enums"]["visit_status"]
           fecha_programada: string
           fecha_realizada?: string | null
+          franja?: string | null
+          hora_desde?: string | null
+          hora_hasta?: string | null
           id?: string
           observacion_agenda?: string | null
           patient_id: string
           profesional_id: string
+          recordatorio_enviado_at?: string | null
+          sin_hora?: boolean
         }
         Update: {
+          abierta_at?: string | null
+          abierta_lat?: number | null
+          abierta_lng?: number | null
+          cerrada_at?: string | null
           creado_por?: string | null
           created_at?: string
           especialidad?: Database["public"]["Enums"]["specialty"]
           estado?: Database["public"]["Enums"]["visit_status"]
           fecha_programada?: string
           fecha_realizada?: string | null
+          franja?: string | null
+          hora_desde?: string | null
+          hora_hasta?: string | null
           id?: string
           observacion_agenda?: string | null
           patient_id?: string
           profesional_id?: string
+          recordatorio_enviado_at?: string | null
+          sin_hora?: boolean
         }
         Relationships: [
           {
@@ -2009,228 +2493,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      family_visit_confirmations: {
-        Row: {
-          access_id: string
-          confirmed_at: string
-          id: string
-          nombre: string
-          visit_id: string
-        }
-        Insert: {
-          access_id: string
-          confirmed_at?: string
-          id?: string
-          nombre: string
-          visit_id: string
-        }
-        Update: {
-          access_id?: string
-          confirmed_at?: string
-          id?: string
-          nombre?: string
-          visit_id?: string
-        }
-        Relationships: []
-      }
-      treatment_plans: {
-        Row: {
-          id: string
-          patient_id: string
-          especialidad: Database["public"]["Enums"]["specialty"]
-          cantidad: number
-          unidad: string
-          dias_semana: number[] | null
-          desde: string
-          hasta: string | null
-          activo: boolean
-          reemplaza_id: string | null
-          nota: string | null
-          creado_por: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          patient_id: string
-          especialidad: Database["public"]["Enums"]["specialty"]
-          cantidad: number
-          unidad: string
-          dias_semana?: number[] | null
-          desde?: string
-          hasta?: string | null
-          activo?: boolean
-          reemplaza_id?: string | null
-          nota?: string | null
-          creado_por?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          patient_id?: string
-          especialidad?: Database["public"]["Enums"]["specialty"]
-          cantidad?: number
-          unidad?: string
-          dias_semana?: number[] | null
-          desde?: string
-          hasta?: string | null
-          activo?: boolean
-          reemplaza_id?: string | null
-          nota?: string | null
-          creado_por?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      patient_messages: {
-        Row: {
-          id: string
-          patient_id: string
-          autor_id: string
-          mensaje: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          patient_id: string
-          autor_id?: string
-          mensaje: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          patient_id?: string
-          autor_id?: string
-          mensaje?: string
-          created_at?: string
-        }
-        Relationships: []
-      }
-      patient_medications: {
-        Row: {
-          id: string
-          patient_id: string
-          medicamento: string
-          dosis: string | null
-          via: string | null
-          frecuencia: string | null
-          activo: boolean
-          creado_por: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          patient_id: string
-          medicamento: string
-          dosis?: string | null
-          via?: string | null
-          frecuencia?: string | null
-          activo?: boolean
-          creado_por?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          patient_id?: string
-          medicamento?: string
-          dosis?: string | null
-          via?: string | null
-          frecuencia?: string | null
-          activo?: boolean
-          creado_por?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      info_checklist_items: {
-        Row: {
-          id: string
-          orden: number
-          texto: string
-          activo: boolean
-        }
-        Insert: {
-          id?: string
-          orden: number
-          texto: string
-          activo?: boolean
-        }
-        Update: {
-          id?: string
-          orden?: number
-          texto?: string
-          activo?: boolean
-        }
-        Relationships: []
-      }
-      patient_info_checklist: {
-        Row: {
-          patient_id: string
-          item_id: string
-          confirmado_at: string
-          confirmado_por: string | null
-        }
-        Insert: {
-          patient_id: string
-          item_id: string
-          confirmado_at?: string
-          confirmado_por?: string | null
-        }
-        Update: {
-          patient_id?: string
-          item_id?: string
-          confirmado_at?: string
-          confirmado_por?: string | null
-        }
-        Relationships: []
-      }
-      os_required_documents: {
-        Row: {
-          id: string
-          obra_social_id: string
-          nombre: string
-          obligatorio: boolean
-          orden: number
-          activo: boolean
-        }
-        Insert: {
-          id?: string
-          obra_social_id: string
-          nombre: string
-          obligatorio?: boolean
-          orden?: number
-          activo?: boolean
-        }
-        Update: {
-          id?: string
-          obra_social_id?: string
-          nombre?: string
-          obligatorio?: boolean
-          orden?: number
-          activo?: boolean
-        }
-        Relationships: []
-      }
-      patient_required_documents: {
-        Row: {
-          patient_id: string
-          doc_id: string
-          recibido_at: string
-          recibido_por: string | null
-        }
-        Insert: {
-          patient_id: string
-          doc_id: string
-          recibido_at?: string
-          recibido_por?: string | null
-        }
-        Update: {
-          patient_id?: string
-          doc_id?: string
-          recibido_at?: string
-          recibido_por?: string | null
-        }
-        Relationships: []
       }
     }
     Views: {
@@ -2564,24 +2826,27 @@ export type Database = {
       }
     }
     Functions: {
-      fn_family_access_create: {
-        Args: { p_patient: string }
-        Returns: Json
+      fn__family_check: {
+        Args: { p_pin: string; p_token: string }
+        Returns: Record<string, unknown>
       }
-      fn_family_access_list: {
-        Args: { p_patient: string }
-        Returns: Json
-      }
+      fn_family_access_create: { Args: { p_patient: string }; Returns: Json }
+      fn_family_access_list: { Args: { p_patient: string }; Returns: Json }
       fn_family_access_revoke: {
         Args: { p_access: string }
         Returns: undefined
       }
-      fn_family_portal_view: {
-        Args: { p_token: string; p_pin: string }
+      fn_family_confirm_visit: {
+        Args: {
+          p_nombre: string
+          p_pin: string
+          p_token: string
+          p_visit: string
+        }
         Returns: Json
       }
-      fn_family_confirm_visit: {
-        Args: { p_token: string; p_pin: string; p_visit: string; p_nombre: string }
+      fn_family_portal_view: {
+        Args: { p_pin: string; p_token: string }
         Returns: Json
       }
       get_current_app_role: {
