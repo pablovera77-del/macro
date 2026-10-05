@@ -68,6 +68,7 @@ administracion: [
 { href: "/compras", label: "Compras", icon: "compras", description: "Proyección y cotizaciones" },
 { href: "/obras-sociales", label: "Obras sociales", icon: "obras_sociales", description: "Catálogo y valores" },
 { href: "/facturacion", label: "Facturación", icon: "facturacion", description: "Cierre mensual y débitos" },
+{ href: "/productividad", label: "Productividad y cupos", icon: "dashboard", description: "Visitas por profesional y cupos" },
 { href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
 transporte: [
@@ -79,6 +80,7 @@ transporte: [
 direccion: [
 { href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
 { href: "/dashboard", label: "Dashboard ejecutivo", icon: "dashboard", description: "Vista en tiempo real" },
+{ href: "/productividad", label: "Productividad y cupos", icon: "dashboard", description: "Visitas por profesional y cupos" },
 { href: "/auditoria", label: "Auditoría", icon: "auditoria", description: "Quién cambió qué" },
 { href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
@@ -87,6 +89,7 @@ coordinador_internacion: [
 { href: "/internacion", label: "Pacientes", icon: "internacion", description: "Consulta y llegada al domicilio" },
 { href: "/agenda", label: "Agenda", icon: "agenda", description: "Visitas domiciliarias" },
 { href: "/evoluciones", label: "Control de evoluciones", icon: "evoluciones", description: "Visitas sin historia clínica" },
+{ href: "/productividad", label: "Productividad y cupos", icon: "dashboard", description: "Visitas por profesional y cupos" },
 { href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
 profesional_asistencial: [
