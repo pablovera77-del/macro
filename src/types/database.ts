@@ -982,6 +982,8 @@ export type Database = {
           diagnostico_principal: string | null
           dni: string
           domicilio: string
+          domicilio_actual: string | null
+          egreso_hecho_at: string | null
           egreso_informado_at: string | null
           egreso_informado_por: string | null
           egreso_motivo_informado:
@@ -993,15 +995,24 @@ export type Database = {
           fecha_nacimiento: string | null
           frecuencia_reposicion: Database["public"]["Enums"]["replenishment_frequency"]
           id: string
+          lat: number | null
           llegada_confirmada_at: string | null
+          lng: number | null
+          localidad: string | null
           medicacion_confirmada_at: string | null
           medico_derivante: string | null
+          medico_matricula: string | null
           motivo_egreso: Database["public"]["Enums"]["discharge_reason"] | null
           nombre_completo: string
+          nro_historia_clinica: number | null
           numero_afiliado: string | null
           obra_social: string | null
           obra_social_id: string | null
+          ocupacion: string | null
+          sexo: string | null
+          telefono_actual: string | null
           telefono_contacto: string | null
+          updated_at: string
         }
         Insert: {
           contacto_familiar_nombre?: string | null
@@ -1011,6 +1022,8 @@ export type Database = {
           diagnostico_principal?: string | null
           dni: string
           domicilio: string
+          domicilio_actual?: string | null
+          egreso_hecho_at?: string | null
           egreso_informado_at?: string | null
           egreso_informado_por?: string | null
           egreso_motivo_informado?:
@@ -1022,15 +1035,24 @@ export type Database = {
           fecha_nacimiento?: string | null
           frecuencia_reposicion?: Database["public"]["Enums"]["replenishment_frequency"]
           id?: string
+          lat?: number | null
           llegada_confirmada_at?: string | null
+          lng?: number | null
+          localidad?: string | null
           medicacion_confirmada_at?: string | null
           medico_derivante?: string | null
+          medico_matricula?: string | null
           motivo_egreso?: Database["public"]["Enums"]["discharge_reason"] | null
           nombre_completo: string
+          nro_historia_clinica?: number | null
           numero_afiliado?: string | null
           obra_social?: string | null
           obra_social_id?: string | null
+          ocupacion?: string | null
+          sexo?: string | null
+          telefono_actual?: string | null
           telefono_contacto?: string | null
+          updated_at?: string
         }
         Update: {
           contacto_familiar_nombre?: string | null
@@ -1040,6 +1062,8 @@ export type Database = {
           diagnostico_principal?: string | null
           dni?: string
           domicilio?: string
+          domicilio_actual?: string | null
+          egreso_hecho_at?: string | null
           egreso_informado_at?: string | null
           egreso_informado_por?: string | null
           egreso_motivo_informado?:
@@ -1051,15 +1075,24 @@ export type Database = {
           fecha_nacimiento?: string | null
           frecuencia_reposicion?: Database["public"]["Enums"]["replenishment_frequency"]
           id?: string
+          lat?: number | null
           llegada_confirmada_at?: string | null
+          lng?: number | null
+          localidad?: string | null
           medicacion_confirmada_at?: string | null
           medico_derivante?: string | null
+          medico_matricula?: string | null
           motivo_egreso?: Database["public"]["Enums"]["discharge_reason"] | null
           nombre_completo?: string
+          nro_historia_clinica?: number | null
           numero_afiliado?: string | null
           obra_social?: string | null
           obra_social_id?: string | null
+          ocupacion?: string | null
+          sexo?: string | null
+          telefono_actual?: string | null
           telefono_contacto?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -2232,6 +2265,301 @@ export type Database = {
         }
         Relationships: []
       }
+      arrival_tokens: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          patient_id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          patient_id: string
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          patient_id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arrival_tokens_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arrival_tokens_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arrival_tokens_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+        ]
+      }
+      authorization_extensions: {
+        Row: {
+          authorization_id: number
+          created_at: string
+          estado: string
+          fecha_hasta_anterior: string | null
+          gestionada_por: string | null
+          id: string
+          nota: string | null
+          nueva_fecha_hasta: string | null
+          patient_id: string
+          pedida_at: string
+          respondida_at: string | null
+        }
+        Insert: {
+          authorization_id: number
+          created_at?: string
+          estado?: string
+          fecha_hasta_anterior?: string | null
+          gestionada_por?: string | null
+          id?: string
+          nota?: string | null
+          nueva_fecha_hasta?: string | null
+          patient_id: string
+          pedida_at?: string
+          respondida_at?: string | null
+        }
+        Update: {
+          authorization_id?: number
+          created_at?: string
+          estado?: string
+          fecha_hasta_anterior?: string | null
+          gestionada_por?: string | null
+          id?: string
+          nota?: string | null
+          nueva_fecha_hasta?: string | null
+          patient_id?: string
+          pedida_at?: string
+          respondida_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "authorization_extensions_authorization_id_fkey"
+            columns: ["authorization_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_authorizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "authorization_extensions_authorization_id_fkey"
+            columns: ["authorization_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["treatment_authorization_id"]
+          },
+          {
+            foreignKeyName: "authorization_extensions_authorization_id_fkey"
+            columns: ["authorization_id"]
+            isOneToOne: false
+            referencedRelation: "v_treatment_authorization_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "authorization_extensions_gestionada_por_fkey"
+            columns: ["gestionada_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "authorization_extensions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "authorization_extensions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+        ]
+      }
+      patient_internaciones: {
+        Row: {
+          creado_por: string | null
+          created_at: string
+          diagnostico: string | null
+          egreso_hecho_at: string | null
+          estado: string
+          fecha_egreso: string | null
+          fecha_ingreso: string | null
+          id: string
+          llegada_confirmada_at: string | null
+          motivo_egreso: Database["public"]["Enums"]["discharge_reason"] | null
+          numero: number
+          numero_afiliado: string | null
+          obra_social_id: string | null
+          patient_id: string
+        }
+        Insert: {
+          creado_por?: string | null
+          created_at?: string
+          diagnostico?: string | null
+          egreso_hecho_at?: string | null
+          estado?: string
+          fecha_egreso?: string | null
+          fecha_ingreso?: string | null
+          id?: string
+          llegada_confirmada_at?: string | null
+          motivo_egreso?: Database["public"]["Enums"]["discharge_reason"] | null
+          numero?: number
+          numero_afiliado?: string | null
+          obra_social_id?: string | null
+          patient_id: string
+        }
+        Update: {
+          creado_por?: string | null
+          created_at?: string
+          diagnostico?: string | null
+          egreso_hecho_at?: string | null
+          estado?: string
+          fecha_egreso?: string | null
+          fecha_ingreso?: string | null
+          id?: string
+          llegada_confirmada_at?: string | null
+          motivo_egreso?: Database["public"]["Enums"]["discharge_reason"] | null
+          numero?: number
+          numero_afiliado?: string | null
+          obra_social_id?: string | null
+          patient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_internaciones_creado_por_fkey"
+            columns: ["creado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_internaciones_obra_social_id_fkey"
+            columns: ["obra_social_id"]
+            isOneToOne: false
+            referencedRelation: "obras_sociales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_internaciones_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_internaciones_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+        ]
+      }
+      patient_status_history: {
+        Row: {
+          confirmado_por: string | null
+          created_at: string
+          evento: string
+          fecha_evento: string
+          id: string
+          informado_at: string | null
+          informado_por: string | null
+          internacion_id: string | null
+          motivo: Database["public"]["Enums"]["discharge_reason"] | null
+          observaciones: string | null
+          patient_id: string
+        }
+        Insert: {
+          confirmado_por?: string | null
+          created_at?: string
+          evento: string
+          fecha_evento?: string
+          id?: string
+          informado_at?: string | null
+          informado_por?: string | null
+          internacion_id?: string | null
+          motivo?: Database["public"]["Enums"]["discharge_reason"] | null
+          observaciones?: string | null
+          patient_id: string
+        }
+        Update: {
+          confirmado_por?: string | null
+          created_at?: string
+          evento?: string
+          fecha_evento?: string
+          id?: string
+          informado_at?: string | null
+          informado_por?: string | null
+          internacion_id?: string | null
+          motivo?: Database["public"]["Enums"]["discharge_reason"] | null
+          observaciones?: string | null
+          patient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_status_history_confirmado_por_fkey"
+            columns: ["confirmado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_status_history_informado_por_fkey"
+            columns: ["informado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_status_history_internacion_id_fkey"
+            columns: ["internacion_id"]
+            isOneToOne: false
+            referencedRelation: "patient_internaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_status_history_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_status_history_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+        ]
+      }
     }
     Views: {
       v_costos_por_paciente: {
@@ -2584,6 +2912,23 @@ export type Database = {
         Args: { p_token: string; p_pin: string; p_visit: string; p_nombre: string }
         Returns: Json
       }
+      fn_arrival_confirm: { Args: { p_token: string }; Returns: Json }
+      fn_arrival_info: { Args: { p_token: string }; Returns: Json }
+      fn_arrival_link_create: { Args: { p_patient: string }; Returns: Json }
+      fn_buscar_pacientes_similares: {
+        Args: { p_dni?: string; p_nombre: string; p_telefono?: string }
+        Returns: {
+          dni: string
+          estado: string
+          id: string
+          motivo: string
+          nombre_completo: string
+          nro_historia_clinica: number
+          puntaje: number
+        }[]
+      }
+      fn_digitos: { Args: { t: string }; Returns: string }
+      fn_norm_texto: { Args: { t: string }; Returns: string }
       get_current_app_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
@@ -2616,7 +2961,14 @@ export type Database = {
         | "debitada"
         | "en_gestion"
       debit_status: "pendiente" | "en_gestion" | "resuelto" | "perdido"
-      discharge_reason: "alta" | "fallecimiento" | "fin_internacion"
+      discharge_reason:
+        | "alta"
+        | "fallecimiento"
+        | "fin_internacion"
+        | "alta_medica"
+        | "traslado_otro_domicilio"
+        | "traslado_otra_institucion"
+        | "internacion_otro"
       discharge_status: "pendiente_retiro" | "retiro_informado" | "cerrado"
       iva_category:
         | "21%"
@@ -2822,7 +3174,15 @@ export const Constants = {
         "en_gestion",
       ],
       debit_status: ["pendiente", "en_gestion", "resuelto", "perdido"],
-      discharge_reason: ["alta", "fallecimiento", "fin_internacion"],
+      discharge_reason: [
+        "alta",
+        "fallecimiento",
+        "fin_internacion",
+        "alta_medica",
+        "traslado_otro_domicilio",
+        "traslado_otra_institucion",
+        "internacion_otro",
+      ],
       discharge_status: ["pendiente_retiro", "retiro_informado", "cerrado"],
       iva_category: [
         "21%",
