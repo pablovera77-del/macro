@@ -1,5 +1,6 @@
 import type { SemanticTone } from "@/lib/semantic-status";
 import { DIAS_CORTOS } from "@/lib/plan";
+import type { AppRole } from "@/lib/roles";
 
 /** Resultado de las acciones que se usan con ActionForm: un error legible o nada. */
 export type ActionResult = { error?: string } | null;
@@ -69,3 +70,19 @@ export const MODALIDAD_LABELS: Record<string, string> = {
   modulos: "Por módulos",
   prestaciones: "Por prestaciones",
 };
+
+// Presupuestos de venta (C4-15/16): Administración los arma; Dirección solo los consulta.
+export const ROLES_PRESUPUESTOS: AppRole[] = ["administracion", "direccion"];
+
+export function totalPresupuesto(items: { cantidad: number; valor_unitario: number }[]): number {
+  return items.reduce((acc, i) => acc + Number(i.cantidad) * Number(i.valor_unitario), 0);
+}
+
+/** Fecha hasta la que vale un presupuesto: fecha + validez en días corridos. */
+export function vencimientoPresupuesto(fecha: string, validezDias: number): string {
+  return ymdMasDias(fecha.slice(0, 10), validezDias);
+}
+
+export function numeroPresupuesto(n: number | string): string {
+  return `N.º ${String(n).padStart(5, "0")}`;
+}
