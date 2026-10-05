@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ConfirmButton from "@/components/ConfirmButton";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { addAuthorizationAction, confirmarEgresoAction } from "./actions";
@@ -86,15 +87,15 @@ description="Lo que cada paciente tiene autorizado (equipo y descartables) dispa
 </span>
 <form action={confirmarEgresoAction}>
 <input type="hidden" name="patient_id" value={p.id} />
-<button className="rounded-lg bg-red-600 text-white text-xs font-medium px-3 py-1.5 hover:bg-red-700 transition-colors">
+<ConfirmButton className="rounded-lg bg-red-600 text-white text-xs font-medium px-3 py-1.5 hover:bg-red-700 transition-colors" confirmLabel="¿Baja definitiva? Tocá de nuevo">
 Confirmar baja definitiva
-</button>
+</ConfirmButton>
 </form>
 </div>
 ))}
 </div>
 <p className="text-xs text-red-500 mt-3">
-El profesional o Coordinación solo informa el egreso — es Administración quien confirma la baja definitiva, y eso dispara la alerta de retiro de equipos a Depósito (DF-C5).
+El profesional o Coordinación solo informa el egreso — es Administración quien confirma la baja definitiva, y eso dispara la alerta de retiro de equipos para Transporte y Depósito.
 </p>
 </section>
 )}

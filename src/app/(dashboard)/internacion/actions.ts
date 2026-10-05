@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { flash } from "@/lib/flash";
 import { redirect } from "next/navigation";
 import type { Enums } from "@/types/database";
-import { DISCIPLINAS_PLAN } from "@/lib/plan";
+import { DISCIPLINAS_PLAN, hoyAR } from "@/lib/plan";
 import type { AppRole } from "@/lib/auth";
 
 // DF-C3 §2 y §3: el alta, el legajo, las firmas de ingreso y las autorizaciones
@@ -52,7 +52,7 @@ export async function createAdmissionAction(_prev: AdmissionState, formData: For
   const obra_social_id = String(formData.get("obra_social_id") || "") || null;
   const numero_afiliado = String(formData.get("numero_afiliado") || "").trim() || null;
   const medico_derivante = String(formData.get("medico_derivante") || "").trim() || null;
-  const fecha_ingreso = String(formData.get("fecha_ingreso") || "") || new Date().toISOString().slice(0, 10);
+  const fecha_ingreso = String(formData.get("fecha_ingreso") || "") || hoyAR();
 
   if (!nombre_completo || !domicilio) return { error: "Faltan el nombre o el domicilio del paciente." };
   if (!dni) return { error: "Falta el DNI: es obligatorio y es el identificador único del paciente en todo el sistema." };

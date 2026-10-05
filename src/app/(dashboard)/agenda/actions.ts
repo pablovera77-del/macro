@@ -45,13 +45,22 @@ export async function updateVisitStatusAction(formData: FormData) {
   const estado = String(formData.get("estado") || "") as Enums<"visit_status">;
   if (!visit_id || !estado) throw new Error("Faltan datos.");
 
+  // Solo el profesional de la visita o Coordinación pueden cambiar su estado.
+  if (profile.role !== "coordinador_internacion" && profile.role !== "profesional_asistencial") {
+    throw new Error("Solo el profesional asistencial de la visita o Coordinación cambian su estado.");
+  }
+  if (profile.role === "profesional_asistencial") {
+    const { data: visita } = await supabase.from("visits").select("profesional_id").eq("id", visit_id).maybeSingle();
+    if (!visita || visita.profesional_id !== profile.id) throw new Error("Solo el profesional asignado a la visita puede cambiar su estado.");
+    if (estado === "cancelada") throw new Error("Solo Coordinación cancela visitas.");
+  }
+
   const patch: TablesUpdate<"visits"> = { estado };
   if (estado === "realizada") patch.fecha_realizada = new Date().toISOString();
 
   const { error } = await supabase.from("visits").update(patch).eq("id", visit_id);
   if (error) throw new Error(error.message);
 
-  void profile;
   revalidatePath("/agenda");
   revalidatePath("/evoluciones");
   revalidatePath("/inicio");

@@ -43,7 +43,8 @@ export default async function EvolucionesPage({
   const supabase = await createClient();
 
   // Coordinación solo controla (ve todo, no carga evoluciones); quien carga es el profesional.
-  const isMedico = profile.role === "coordinador_internacion";
+  const isMedico = ["coordinador_internacion", "direccion", "administracion"].includes(profile.role);
+  const soloLectura = profile.role === "direccion" || profile.role === "administracion";
 
   let pendingQuery = supabase
     .from("visits")
@@ -92,7 +93,7 @@ export default async function EvolucionesPage({
     <div className="space-y-8">
       <PageHeader
         icon={<IconSignature className="w-5 h-5" />}
-        title={isMedico ? "Control de evoluciones" : "Historia clínica digital"}
+        title={soloLectura ? "Historias clínicas (consulta)" : isMedico ? "Control de evoluciones" : "Historia clínica digital"}
         section="DF-C2 §5"
         purpose={
           isMedico

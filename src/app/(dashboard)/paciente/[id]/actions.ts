@@ -8,7 +8,7 @@ import { headers } from "next/headers";
 import QRCode from "qrcode";
 import { familyPortalEnabled } from "@/lib/family";
 import { flash } from "@/lib/flash";
-import { DISCIPLINAS_PLAN } from "@/lib/plan";
+import { DISCIPLINAS_PLAN, hoyAR } from "@/lib/plan";
 import type { Enums } from "@/types/database";
 
 const PLAN_ROLES: AppRole[] = ["administracion", "coordinador_internacion"];
@@ -37,7 +37,7 @@ export async function savePlanAction(formData: FormData) {
   if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > 50) throw new Error("La cantidad tiene que ser un número entre 1 y 50.");
   if (unidad !== "dia" && unidad !== "semana") throw new Error("La unidad tiene que ser día o semana.");
 
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyAR();
   const { data: previo } = await supabase
     .from("treatment_plans")
     .select("id")
@@ -71,7 +71,7 @@ export async function endPlanAction(formData: FormData) {
   const supabase = await createClient();
   const plan_id = String(formData.get("plan_id") || "");
   const patient_id = String(formData.get("patient_id") || "");
-  const { error } = await supabase.from("treatment_plans").update({ activo: false, hasta: new Date().toISOString().slice(0, 10) }).eq("id", plan_id);
+  const { error } = await supabase.from("treatment_plans").update({ activo: false, hasta: hoyAR() }).eq("id", plan_id);
   if (error) throw new Error(error.message);
   refresh(patient_id);
   await flash("Disciplina quitada del plan. Queda en el historial.");

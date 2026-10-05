@@ -47,6 +47,16 @@ function ymdEnSanJuan(d: Date): string {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: TZ }).format(d);
 }
 
+/** Fecha (AAAA-MM-DD) de un instante, en hora de San Juan. */
+export function ymdAR(d: Date | string): string {
+  return ymdEnSanJuan(typeof d === "string" ? new Date(d) : d);
+}
+
+/** «Hoy» en hora de San Juan: después de las 21:00 el UTC ya es «mañana». */
+export function hoyAR(): string {
+  return ymdEnSanJuan(new Date());
+}
+
 /** Lunes 00:00 → lunes siguiente 00:00 (hora de San Juan, UTC-3 sin horario de verano). */
 export function semanaActual(ahora = new Date()): { desde: string; hasta: string; diasTranscurridos: number } {
   const ymd = ymdEnSanJuan(ahora);

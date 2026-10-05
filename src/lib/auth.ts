@@ -28,7 +28,7 @@ const { data: profile } = await supabase
 .single();
 
 if (!profile || !profile.active || profile.role === "medico_coordinador") {
-redirect("/login?error=cuenta_inactiva");
+redirect("/auth/salir?error=cuenta_inactiva");
 }
 
 return { user, profile: { ...profile, role: profile.role as AppRole } };

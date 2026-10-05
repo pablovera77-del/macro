@@ -317,7 +317,7 @@ const SEGUIMIENTO: HomeTask = {
   steps: [
     "Entrá a Seguimiento.",
     "Transporte reporta el retiro desde el domicilio.",
-    "Depósito toca «Confirmar llegada a depósito»; si tarda, aparece una alerta roja.",
+    "Cuando el equipo llega, Transporte toca «Confirmar llegada a depósito»; Depósito ve lo que está en camino y, si tarda, aparece una alerta roja.",
   ],
   href: "/seguimiento",
   cta: "Ir a Seguimiento",

@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
-import { semanaActual } from "@/lib/plan";
+import { semanaActual, hoyAR, ymdAR } from "@/lib/plan";
 import { IconChart, IconBox, IconMapPin, IconAlert, IconTruck, IconUsers, IconCalendar, IconCash, IconSignature, IconClipboardCheck } from "@/components/icons";
 
 function formatARS(value: number | null) {
@@ -11,7 +12,8 @@ return new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maxi
 }
 
 export default async function DashboardPage() {
-await requireProfile();
+const { profile } = await requireProfile();
+if (profile.role !== "direccion") redirect("/inicio");
 const supabase = await createClient();
 
 const [
@@ -52,10 +54,10 @@ const sem = semanaActual();
 const visitasSemana = (visitas ?? []).filter((v) => v.fecha_programada >= sem.desde && v.fecha_programada < sem.hasta);
 const visitasRealizadasSemana = visitasSemana.filter((v) => v.estado === "realizada").length;
 
-const hoy = new Date().toISOString().slice(0, 10);
-const evolucionesHoyCount = (evoluciones ?? []).filter((e) => e.created_at.slice(0, 10) === hoy).length;
+const hoy = hoyAR();
+const evolucionesHoyCount = (evoluciones ?? []).filter((e) => ymdAR(e.created_at) === hoy).length;
 
-const periodosAbiertos = (periodosFacturacion ?? []).filter((p) => p.estado !== "facturado").length;
+const periodosAbiertos = (periodosFacturacion ?? []).filter((p) => p.estado === "abierto" || p.estado === "en_revision").length;
 const totalDebitosPendientes = (debitosPendientes ?? [])
 .filter((d) => d.estado === "pendiente" || d.estado === "en_gestion")
 .reduce((acc, d) => acc + d.monto, 0);
@@ -77,7 +79,7 @@ const alertCount = (retiradosSinConfirmar ?? []).length;
 // DF-C3 §13: dashboard gerencial de pacientes — pedido reiterado de Andrés.
 // Altas/bajas por día y total mensual, más histórico anual mensualizado de
 // altas para detectar picos de más o menos pacientes.
-const hoyStr = new Date().toISOString().slice(0, 10);
+const hoyStr = hoyAR();
 const mesActualStr = hoyStr.slice(0, 7);
 const altasHoy = (pacientes ?? []).filter((p) => p.fecha_ingreso === hoyStr).length;
 const bajasHoy = (pacientes ?? []).filter((p) => p.fecha_egreso === hoyStr).length;
@@ -315,7 +317,7 @@ style={{ height: `${Math.max(3, (m.altas / maxAltasMensual) * 100)}px` }}
 ))}
 </div>
 <p className="text-xs text-slate-400 mt-3">
-Cantidad de pacientes admitidos por mes, últimos 12 meses — para detectar picos de más o menos pacientes (pedido reiterado de Andrés). Pacientes activos en tiempo real: ver la tarjeta &ldquo;Pacientes activos&rdquo; más arriba.
+Cantidad de pacientes admitidos por mes, últimos 12 meses — para detectar picos de más o menos pacientes. Pacientes activos en tiempo real: ver la tarjeta &ldquo;Pacientes activos&rdquo; más arriba.
 </p>
 </div>
 </section>

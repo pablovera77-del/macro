@@ -2,7 +2,7 @@
 
 import { useActionState, useRef, useState, useTransition } from "react";
 import { createAdmissionAction, checkDniAction, type AdmissionState } from "@/app/(dashboard)/internacion/actions";
-import { DISCIPLINAS_PLAN, DIAS_CORTOS } from "@/lib/plan";
+import { DISCIPLINAS_PLAN, DIAS_CORTOS, hoyAR } from "@/lib/plan";
 import { SPECIALTY_LABELS } from "@/lib/roles";
 
 type ObraSocial = { id: string; nombre: string };
@@ -198,7 +198,7 @@ export default function AdmissionWizard({ obrasSociales, profesionales = [], def
             <input name="medico_derivante" autoComplete="off" className={inputCls} />
           </Field>
           <Field label="Fecha de ingreso al servicio" hint="Por defecto, hoy.">
-            <input name="fecha_ingreso" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className={inputCls} />
+            <input name="fecha_ingreso" type="date" defaultValue={hoyAR()} className={inputCls} />
           </Field>
         </div>
 

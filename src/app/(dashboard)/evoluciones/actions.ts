@@ -36,9 +36,11 @@ export async function createEvolutionAction(formData: FormData) {
 
   let upp_escala_nova5: Record<string, number | string> | null = null;
   const nova5Keys = ["estado_mental", "incontinencia", "movilidad", "nutricion", "actividad"];
-  if (nova5Keys.every((k) => formData.get(`nova5__${k}`))) {
-    const scores = nova5Keys.map((k) => Number(formData.get(`nova5__${k}`) || 0));
-    const total = scores.reduce((a, b) => a + b, 0);
+  // La escala solo se guarda si el profesional la completó (algún puntaje mayor a 0):
+  // con todo en 0 se interpreta «no aplica» y no se registra un riesgo inventado.
+  const scores = nova5Keys.map((k) => Number(formData.get(`nova5__${k}`) || 0));
+  const total = scores.reduce((a, b) => a + b, 0);
+  if (nova5Keys.every((k) => formData.get(`nova5__${k}`)) && total > 0) {
     const riesgo = total <= 4 ? "bajo" : total <= 8 ? "medio" : "alto";
     upp_escala_nova5 = {
       estado_mental: scores[0],

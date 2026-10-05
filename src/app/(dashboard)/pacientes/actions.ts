@@ -1,5 +1,6 @@
 "use server";
 
+import { hoyAR } from "@/lib/plan";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
@@ -65,7 +66,7 @@ export async function confirmarEgresoAction(formData: FormData) {
 
   const { error: patientError } = await supabase
     .from("patients")
-    .update({ estado: "dado_de_baja", motivo_egreso: motivo, fecha_egreso: today.slice(0, 10) })
+    .update({ estado: "dado_de_baja", motivo_egreso: motivo, fecha_egreso: hoyAR() })
     .eq("id", patient_id);
   if (patientError) throw new Error(patientError.message);
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ConfirmButton from "@/components/ConfirmButton";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, SPECIALTY_LABELS, ROLES_ALTA } from "@/lib/auth";
 import {
@@ -201,6 +202,8 @@ export default async function InternacionPage({
             ? "Dá de alta un paciente con «+ Nuevo paciente» y completá su ingreso: consentimientos, autorizaciones, equipo y llegada."
             : isCoord
             ? "Consultá los pacientes y confirmá cuándo llega cada uno a su domicilio."
+            : profile.role === "direccion"
+            ? "Vista de consulta: pacientes, estado de ingreso y autorizaciones. No se modifica nada desde acá."
             : "Tus pacientes. Desde acá podés informar un egreso."
         }
         description="Contrasta con informe-tecnico §4 (el sistema viejo solo tenía nombre/domicilio/obra social en texto libre)."
@@ -460,9 +463,9 @@ export default async function InternacionPage({
                     <option value="fallecimiento">Fallecimiento</option>
                     <option value="fin_internacion">Fin de internación</option>
                   </select>
-                  <button className="rounded-lg bg-red-50 text-red-700 border border-red-200 text-xs font-medium px-3 py-1.5 hover:bg-red-100 transition-colors">
+                  <ConfirmButton className="rounded-lg bg-red-50 text-red-700 border border-red-200 text-xs font-medium px-3 py-1.5 hover:bg-red-100 transition-colors" confirmLabel="¿Informar egreso? Tocá de nuevo">
                     Informar egreso
-                  </button>
+                  </ConfirmButton>
                 </form>
               )}
 

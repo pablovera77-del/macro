@@ -1,5 +1,6 @@
 "use server";
 
+import { hoyAR } from "@/lib/plan";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
@@ -83,7 +84,7 @@ async function tryAutoAuthorize(
 
   if (!items || items.length === 0) return;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = hoyAR();
   const cubierto = items.every((item) => {
     const auth = (authorizations ?? []).find((a) => {
       if (a.product_id !== item.product_id) return false;
@@ -229,7 +230,7 @@ export async function deliverOrderAction(formData: FormData) {
 
   const now = new Date().toISOString();
 
-  await supabase
+  const { error: remitoError } = await supabase
     .from("remitos")
     .update({
       transportista_id: profile.id,
@@ -245,8 +246,16 @@ export async function deliverOrderAction(formData: FormData) {
       notificacion_canal: "whatsapp+email",
     })
     .eq("order_id", order_id);
+  if (remitoError) throw new Error(`No se pudo firmar el remito: ${remitoError.message}`);
 
-  await supabase.from("orders").update({ estado: "entregado" }).eq("id", order_id);
+  const { data: entregado, error: estadoError } = await supabase
+    .from("orders")
+    .update({ estado: "entregado" })
+    .eq("id", order_id)
+    .eq("estado", "despachado")
+    .select("id");
+  if (estadoError) throw new Error(`No se pudo marcar la entrega: ${estadoError.message}`);
+  if (!entregado || entregado.length === 0) throw new Error("No se pudo marcar el pedido como entregado: revisá que siga despachado.");
 
   const { data: items } = await supabase
     .from("order_items")

@@ -45,9 +45,9 @@ async function getPendientes(role: AppRole, userId: string): Promise<Pendiente[]
   }
   if (role === "administracion") {
     push(
-      "pacientes admitidos esperan que confirmes su llegada o completes su ingreso",
+      "pacientes admitidos esperan que se confirme su llegada al domicilio",
       await count(supabase.from("patients").select("id", { count: "exact", head: true }).eq("estado", "admitido_pendiente_llegada")),
-      "/internacion"
+      "/internacion#ingresos"
     );
     push(
       "pedidos esperan tu autorización",
@@ -84,6 +84,11 @@ async function getPendientes(role: AppRole, userId: string): Promise<Pendiente[]
       "pedidos despachados esperan entrega",
       await count(supabase.from("orders").select("id", { count: "exact", head: true }).eq("estado", "despachado")),
       "/pedidos"
+    );
+    push(
+      "equipos retirados esperan que confirmes su llegada a depósito",
+      await count(supabase.from("v_equipos_retirados_sin_confirmar").select("*", { count: "exact", head: true })),
+      "/seguimiento"
     );
   }
   if (role === "profesional_asistencial") {

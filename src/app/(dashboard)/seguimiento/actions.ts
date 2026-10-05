@@ -66,15 +66,17 @@ export async function markRetiradoAction(formData: FormData) {
 
   const now = new Date().toISOString();
 
-  await supabase
+  const { error: checkError } = await supabase
     .from("retrieval_checklist")
     .update({ retirado_at: now, retirado_por: profile.id, foto_url })
     .eq("id", checklist_id);
+  if (checkError) throw new Error(`No se pudo registrar el retiro: ${checkError.message}`);
 
-  await supabase
+  const { error: alertError } = await supabase
     .from("discharge_alerts")
     .update({ estado: "retiro_informado" })
     .eq("id", item.discharge_alert_id);
+  if (alertError) throw new Error(`No se pudo actualizar el egreso: ${alertError.message}`);
 
   if (item.asset_id) {
     await supabase.from("equipment_asset_photos").insert({ asset_id: item.asset_id, momento: "retiro", url: foto_url });
@@ -131,11 +133,12 @@ export async function reportDiscardableReturnAction(formData: FormData) {
   return;
 }
 
-// Depósito confirma la llegada — cierra el doble check del punto 4.2 y
-// libera el equipo (vuelve a "disponible").
+// Transporte confirma la llegada a depósito — cierra el doble check del punto 4.2
+// y libera el equipo (vuelve a "disponible"). Decisión del 02/10: lo marca quien
+// lo trae; Depósito ve el aviso y controla que no se demore.
 export async function confirmLlegadaAction(formData: FormData) {
   const { profile } = await requireProfile();
-  if (profile.role !== "deposito") throw new Error("Solo Depósito confirma la llegada.");
+  if (profile.role !== "transporte") throw new Error("Solo Transporte confirma la llegada.");
 
   const supabase = await createClient();
   const checklist_id = Number(formData.get("checklist_id"));
@@ -150,10 +153,11 @@ export async function confirmLlegadaAction(formData: FormData) {
 
   const now = new Date().toISOString();
 
-  await supabase
+  const { error: llegadaError } = await supabase
     .from("retrieval_checklist")
     .update({ llego_deposito_at: now, llego_deposito_confirmado_por: profile.id })
     .eq("id", checklist_id);
+  if (llegadaError) throw new Error(`No se pudo confirmar la llegada: ${llegadaError.message}`);
 
   if (item.asset_id) {
     await supabase.from("equipment_assets").update({ estado: "disponible" }).eq("id", item.asset_id);
@@ -186,7 +190,8 @@ export async function confirmLlegadaAction(formData: FormData) {
     .is("llego_deposito_at", null);
 
   if (!pending || pending.length === 0) {
-    await supabase.from("discharge_alerts").update({ estado: "cerrado" }).eq("id", item.discharge_alert_id);
+    const { error: cierreError } = await supabase.from("discharge_alerts").update({ estado: "cerrado" }).eq("id", item.discharge_alert_id);
+    if (cierreError) throw new Error(`No se pudo cerrar el egreso: ${cierreError.message}`);
   }
 
   revalidatePath("/seguimiento");

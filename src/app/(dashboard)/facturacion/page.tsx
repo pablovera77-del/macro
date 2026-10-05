@@ -83,7 +83,7 @@ export default async function FacturacionPage() {
       .neq("estado_prevalidacion", "verde"),
   ]);
 
-  const abiertos = (periods ?? []).filter((p) => p.estado !== "facturado");
+  const abiertos = (periods ?? []).filter((p) => p.estado === "abierto" || p.estado === "en_revision");
   const pendingDebits = (debits ?? []).filter((d) => d.estado === "pendiente" || d.estado === "en_gestion");
 
   return (

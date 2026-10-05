@@ -1,5 +1,6 @@
 "use server";
 
+import { hoyAR } from "@/lib/plan";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
@@ -74,7 +75,7 @@ export async function advanceBillingPeriodAction(formData: FormData) {
   // DF-C4 §11: Cobrada/Debitada/En gestión, continuación de "facturado"
   // (= Presentada) — se registra cuándo se actualizó el estado de cobro.
   if (nuevo_estado === "cobrada" || nuevo_estado === "debitada" || nuevo_estado === "en_gestion") {
-    patch.fecha_cobro = new Date().toISOString().slice(0, 10);
+    patch.fecha_cobro = hoyAR();
     patch.cobro_actualizado_por = profile.id;
   }
 
@@ -98,7 +99,7 @@ export async function registerMontoCobradoAction(formData: FormData) {
 
   const { error } = await supabase
     .from("billing_periods")
-    .update({ monto_cobrado, fecha_cobro: new Date().toISOString().slice(0, 10), cobro_actualizado_por: profile.id })
+    .update({ monto_cobrado, fecha_cobro: hoyAR(), cobro_actualizado_por: profile.id })
     .eq("id", billing_period_id);
   if (error) throw new Error(error.message);
   revalidatePath("/facturacion");

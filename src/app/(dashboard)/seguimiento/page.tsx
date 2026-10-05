@@ -55,7 +55,7 @@ return (
 icon={<IconRefresh className="w-5 h-5" />}
 title="Seguimiento de equipos"
 section="DF-C5 §4.2"
-purpose="Acá sabés dónde está cada equipo serializado. Transporte marca cuándo lo retira del domicilio, Depósito confirma cuándo llegó — si pasa mucho tiempo sin esa confirmación, se dispara una alerta."
+purpose="Acá sabés dónde está cada equipo serializado. Transporte marca cuándo lo retira del domicilio y cuándo lo deja en depósito; Depósito ve lo que está en camino y controla que no se demore — si pasa mucho tiempo sin confirmar la llegada, se dispara una alerta."
 description="Doble check retirado / llegó a depósito — cada movimiento queda en el historial del equipo."
 />
 
@@ -83,7 +83,7 @@ description="Doble check retirado / llegó a depósito — cada movimiento queda
 ))}
 </ul>
 <p className="text-xs text-red-500 mt-3">
-Pasadas 48hs desde la notificación de cierre de la internación sin confirmar la llegada a depósito, el equipo queda marcado “+48hs” — plazo confirmado por Administración.
+Pasadas 48hs desde la notificación de cierre de la internación sin confirmar la llegada a depósito (la confirma Transporte), el equipo queda marcado “+48hs” — plazo confirmado por Administración.
 </p>
 </section>
 )}
@@ -160,7 +160,7 @@ Marcar retirado
 <IconApple className="w-4 h-4 text-slate-400" /> Reportar devolución de descartable/alimento
 </h2>
 <p className="text-xs text-slate-400 mb-3">
-Lo que sobró sin usar en el egreso de un paciente, con foto obligatoria — se acredita al stock cuando Depósito confirma la llegada.
+Lo que sobró sin usar en el egreso de un paciente, con foto obligatoria — se acredita al stock cuando Transporte confirma la llegada a depósito.
 </p>
 <form action={reportDiscardableReturnAction} className="flex flex-wrap gap-2">
 <select name="discharge_alert_id" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs flex-1 min-w-[160px]">
@@ -182,10 +182,10 @@ Lo que sobró sin usar en el egreso de un paciente, con foto obligatoria — se 
 </section>
 )}
 
-{profile.role === "deposito" && pendienteConfirmacion.length > 0 && (
+{profile.role === "transporte" && pendienteConfirmacion.length > 0 && (
 <section className="bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
 <h2 className="text-sm font-medium text-slate-900 mb-3 flex items-center gap-2">
-<IconCheck className="w-4 h-4 text-slate-400" /> Pendientes de confirmar llegada
+<IconCheck className="w-4 h-4 text-slate-400" /> Retirados: confirmá cuando lleguen a depósito
 </h2>
 <div className="space-y-2">
 {pendienteConfirmacion.map((c) => {
@@ -200,6 +200,26 @@ return (
 Confirmar llegada a depósito
 </button>
 </form>
+</div>
+);
+})}
+</div>
+</section>
+)}
+
+{profile.role === "deposito" && pendienteConfirmacion.length > 0 && (
+<section className="bg-white rounded-2xl border border-slate-200 p-5 animate-fade-slide-up card-hover">
+<h2 className="text-sm font-medium text-slate-900 mb-1 flex items-center gap-2">
+<IconTruck className="w-4 h-4 text-slate-400" /> En camino a depósito
+</h2>
+<p className="text-xs text-slate-500 mb-3">Ya los retiró Transporte. Cuando lleguen, Transporte confirma la llegada y vuelven a quedar disponibles.</p>
+<div className="space-y-2">
+{pendienteConfirmacion.map((c) => {
+const asset = c.equipment_assets as unknown as { numero_serie: string; products: { descripcion: string } | null } | null;
+const producto = c.products as unknown as { descripcion: string } | null;
+return (
+<div key={c.id} className="text-sm border border-slate-100 rounded-xl px-3.5 py-2.5">
+{asset ? `${asset.numero_serie} · ${asset.products?.descripcion}` : `${producto?.descripcion} x${c.cantidad} (devolución)`}
 </div>
 );
 })}

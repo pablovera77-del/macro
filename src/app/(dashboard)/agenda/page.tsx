@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import ConfirmButton from "@/components/ConfirmButton";
 import { requireProfile, SPECIALTY_LABELS } from "@/lib/auth";
 import { createVisitAction, updateVisitStatusAction, cancelVisitAction, rescheduleVisitAction } from "./actions";
 import { calcularCumplimiento, semanaActual, describirPlan, type Plan } from "@/lib/plan";
@@ -97,11 +98,13 @@ export default async function AgendaPage({
       <PageHeader
         action={isCoordinador ? { label: "+ Programar visita", href: "#programar-visita" } : undefined}
         icon={<IconCalendar className="w-5 h-5" />}
-        title={isCoordinador ? "Agenda de visitas" : "Mi agenda"}
+        title={esProfesional ? "Mi agenda" : "Agenda de visitas"}
         section="DF-C2 §4"
         purpose={
           isCoordinador
             ? "Programá la visita de cada profesional a cada paciente y seguí cuáles ya se hicieron."
+            : profile.role === "direccion"
+            ? "Vista de consulta de las visitas de todos los profesionales y su estado."
             : "Tus visitas asignadas. Al terminar una, tocá «Realizada» y te llevamos a cargar su evolución."
         }
         description="Toda visita marcada 'realizada' debe tener una evolución asociada (control DF-C2 §8)."
@@ -262,14 +265,14 @@ export default async function AgendaPage({
                       <form action={updateVisitStatusAction}>
                         <input type="hidden" name="visit_id" value={v.id} />
                         <input type="hidden" name="estado" value="no_realizada" />
-                        <button className="rounded-full bg-red-100 text-red-700 text-xs font-medium px-3 py-1 hover:bg-red-200 transition-colors">No realizada</button>
+                        <ConfirmButton className="rounded-full bg-red-100 text-red-700 text-xs font-medium px-3 py-1 hover:bg-red-200 transition-colors" confirmLabel="¿No se hizo? Tocá de nuevo">No realizada</ConfirmButton>
                       </form>
                     </>
                   )}
                   {isCoordinador && (v.estado === "programada" || v.estado === "confirmada") && (
                     <form action={cancelVisitAction}>
                       <input type="hidden" name="visit_id" value={v.id} />
-                      <button className="rounded-full bg-slate-100 text-slate-500 text-xs font-medium px-3 py-1 hover:bg-slate-200 transition-colors">Cancelar</button>
+                      <ConfirmButton className="rounded-full bg-slate-100 text-slate-500 text-xs font-medium px-3 py-1 hover:bg-slate-200 transition-colors" confirmLabel="¿Cancelar? Tocá de nuevo">Cancelar</ConfirmButton>
                     </form>
                   )}
                 </div>

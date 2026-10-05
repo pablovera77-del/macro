@@ -32,7 +32,9 @@ const [loadingRole, setLoadingRole] = useState<string | null>(null);
 // la cuenta, para no revelar qué mails están registrados.
 const [modo, setModo] = useState<"ingresar" | "recuperar">("ingresar");
 const [enviado, setEnviado] = useState(false);
-const linkVencido = useSearchParams().get("error") === "link";
+const errorParam = useSearchParams().get("error");
+const linkVencido = errorParam === "link";
+const cuentaInactiva = errorParam === "cuenta_inactiva";
 
 async function handleRecuperar(e: React.FormEvent) {
 e.preventDefault();
@@ -52,7 +54,13 @@ setError(null);
 const { error } = await supabase.auth.signInWithPassword({ email, password });
 setLoading(false);
 if (error) {
-setError(error.message);
+setError(
+error.message.toLowerCase().includes("invalid login")
+? "El email o la contraseña no son correctos."
+: error.message.toLowerCase().includes("email not confirmed")
+? "Todavía no confirmaste tu email. Revisá tu bandeja de entrada."
+: "No se pudo ingresar. Probá de nuevo en unos segundos."
+);
 return;
 }
 router.push("/");
@@ -104,6 +112,9 @@ className="w-full rounded-xl border border-white/15 bg-white/[0.04] text-white p
 </div>
 {linkVencido && modo === "ingresar" && (
 <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">El link venció o ya se usó. Pedí uno nuevo con «Olvidé mi contraseña».</p>
+)}
+{cuentaInactiva && modo === "ingresar" && (
+<p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">Tu cuenta está desactivada o sin permisos. Pedile a Administración que la revise.</p>
 )}
 {modo === "ingresar" && (
 <div>

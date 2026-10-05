@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { hoyAR } from "@/lib/plan";
 import { requireProfile } from "@/lib/auth";
 import { createProductAction, createAssetAction, addProductSupplierAction, setPreferredSupplierAction } from "./actions";
 import PageHeader from "@/components/PageHeader";
@@ -144,7 +145,7 @@ export default async function CatalogoPage({
       <section className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3 flex-wrap animate-fade-slide-up card-hover">
         <form className="flex items-center gap-2 text-sm">
           <label htmlFor="fecha" className="text-slate-500 text-xs">Consultar stock a una fecha pasada:</label>
-          <input id="fecha" name="fecha" type="date" defaultValue={fechaConsulta ?? ""} max={new Date().toISOString().slice(0, 10)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
+          <input id="fecha" name="fecha" type="date" defaultValue={fechaConsulta ?? ""} max={hoyAR()} className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
           <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Consultar</button>
           {fechaConsulta && (
             <a href="/catalogo" className="text-xs text-slate-400 underline hover:text-slate-700">volver a stock actual</a>

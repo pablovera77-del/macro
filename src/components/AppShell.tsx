@@ -94,7 +94,7 @@ return (
 </Link>
 <button
 onClick={() => setOpen(true)}
-className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+className="flex items-center justify-center w-11 h-11 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
 aria-label="Abrir menú"
 >
 <IconMenu className="w-5 h-5" />

@@ -26,7 +26,7 @@ export async function generateQuoteRequestAction(formData: FormData) {
 
   const { data: quoteRequest, error } = await supabase
     .from("quote_requests")
-    .insert({ estado: "borrador", notas: "Generado automáticamente desde la proyección de compras (DF-C5 §6).", creado_por: profile.id })
+    .insert({ estado: "borrador", notas: "Generado automáticamente desde la proyección de compras.", creado_por: profile.id })
     .select("id")
     .single();
 

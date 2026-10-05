@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ConfirmButton from "@/components/ConfirmButton";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, SPECIALTY_LABELS } from "@/lib/auth";
@@ -65,7 +66,7 @@ export default async function FichaPacientePage({
   const { tab: tabParam } = await searchParams;
   const { profile } = await requireProfile();
   const role = profile.role;
-  if (!["administracion", "coordinador_internacion", "profesional_asistencial"].includes(role)) redirect("/inicio");
+  if (!["administracion", "coordinador_internacion", "profesional_asistencial", "direccion"].includes(role)) redirect("/inicio");
 
   const esAdmin = role === "administracion";
   const puedeEditarPlan = role === "administracion" || role === "coordinador_internacion";
@@ -92,13 +93,18 @@ export default async function FichaPacientePage({
   if (!p) notFound();
 
   const [{ data: team }, { data: visits }, { data: auths }, { data: legalDocs }, { data: sigs }, { data: plansRaw }] = await Promise.all([
-    supabase.from("patient_care_team").select("id, especialidad, profiles(full_name)").eq("patient_id", id),
+    supabase.from("patient_care_team").select("id, especialidad, profesional_id, profiles(full_name)").eq("patient_id", id),
     supabase.from("visits").select("id, patient_id, especialidad, fecha_programada, estado, profiles(full_name)").eq("patient_id", id).order("fecha_programada", { ascending: false }).limit(80),
     supabase.from("v_treatment_authorization_status").select("*").eq("patient_id", id).order("periodo_hasta"),
     supabase.from("legal_documents").select("id, codigo, titulo, resumen, requiere_firma_profesional").eq("activo", true).order("orden"),
     supabase.from("patient_document_signatures").select("legal_document_id, firmante_nombre, firmado_at, profesional_id").eq("patient_id", id),
     supabase.from("treatment_plans").select("id, patient_id, especialidad, cantidad, unidad, dias_semana, desde, hasta, activo, nota, created_at").eq("patient_id", id).order("created_at", { ascending: false }),
   ]);
+
+  const puedeEscribirMensajes =
+    role === "administracion" ||
+    role === "coordinador_internacion" ||
+    (role === "profesional_asistencial" && (team ?? []).some((t) => t.profesional_id === profile.id));
   const plans = (plansRaw ?? []) as unknown as (Plan & { created_at: string })[];
   const planesActivos = plans.filter((x) => x.activo);
   const historialPlanes = plans.filter((x) => !x.activo);
@@ -301,7 +307,7 @@ export default async function FichaPacientePage({
                           <form action={endPlanAction}>
                             <input type="hidden" name="plan_id" value={pl.id} />
                             <input type="hidden" name="patient_id" value={id} />
-                            <button className={btnGhost}>Quitar</button>
+                            <ConfirmButton className={btnGhost} confirmLabel="¿Quitar? Tocá de nuevo">Quitar</ConfirmButton>
                           </form>
                         )}
                       </div>
@@ -486,7 +492,7 @@ export default async function FichaPacientePage({
                       <form action={removeMedicationAction}>
                         <input type="hidden" name="id" value={m.id} />
                         <input type="hidden" name="patient_id" value={id} />
-                        <button className={btnGhost}>Quitar</button>
+                        <ConfirmButton className={btnGhost} confirmLabel="¿Quitar? Tocá de nuevo">Quitar</ConfirmButton>
                       </form>
                     )}
                   </li>
@@ -615,11 +621,15 @@ export default async function FichaPacientePage({
         <section className={card}>
           <h2 className="text-sm font-semibold text-slate-900">Mensajes del equipo</h2>
           <p className="text-xs text-slate-500 mt-1 mb-4">Para coordinar entre el equipo del paciente sin usar WhatsApp personal. Lo ven Administración, Coordinación y los profesionales asignados a este paciente.</p>
+          {puedeEscribirMensajes ? (
           <form action={postMessageAction} className="flex gap-2 items-start mb-5">
             <input type="hidden" name="patient_id" value={id} />
             <textarea name="mensaje" required maxLength={1000} rows={2} placeholder="Escribí un mensaje para el equipo…" className={`${inputCls} flex-1`} />
             <button className={btnPrimary}>Enviar</button>
           </form>
+          ) : (
+            <p className="text-xs text-slate-500 bg-slate-50 rounded-xl px-3 py-2 mb-5">Solo el equipo asignado al paciente, Administración y Coordinación escriben acá. Podés leer los mensajes.</p>
+          )}
           {(mensajes ?? []).length === 0 ? (
             <p className="text-sm text-slate-400">Todavía no hay mensajes.</p>
           ) : (
@@ -670,7 +680,7 @@ export default async function FichaPacientePage({
                           <form action={revokeFamilyAccessAction}>
                             <input type="hidden" name="patient_id" value={id} />
                             <input type="hidden" name="access_id" value={a.id} />
-                            <button className="rounded-lg border border-red-200 text-red-700 text-xs font-medium px-3 py-1.5 hover:bg-red-50">Dar de baja</button>
+                            <ConfirmButton className="rounded-lg border border-red-200 text-red-700 text-xs font-medium px-3 py-1.5 hover:bg-red-50" confirmLabel="¿Dar de baja? Tocá de nuevo">Dar de baja</ConfirmButton>
                           </form>
                         )}
                       </li>

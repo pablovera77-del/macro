@@ -141,3 +141,51 @@ scrollbar-color: #cbd5e1 transparent;
     width: 340px;
   }
 }
+
+/* ---- Celular y tablet ------------------------------------------------------
+   - Con 14 px en un campo, iOS acerca la pantalla al tocarlo: en pantallas chicas
+     todos los campos usan 16 px.
+   - En pantallas táctiles los botones y campos tienen al menos 44 px de alto
+     (recomendación de Apple y Google para tocar sin errar).
+   - Nada ensancha la página: lo que no entra se desplaza dentro de su caja. */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  overflow-x: clip;
+}
+@media (max-width: 1023px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+@media (pointer: coarse) {
+  main button:not(.no-touch),
+  main select,
+  main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="range"]),
+  main summary,
+  .side-panel-body button,
+  .side-panel-body select,
+  .side-panel-body input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]) {
+    min-height: 44px;
+  }
+  main a[class*="rounded"][class*="px-"]:not(.no-touch) {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  main input[type="checkbox"],
+  main input[type="radio"] {
+    width: 22px;
+    height: 22px;
+  }
+  /* Los botones de las filas de las tablas no se estiran a la altura de la fila entera. */
+  main td button { align-self: center; }
+}
+@media (max-width: 640px) {
+  /* Las tarjetas ocupan todo el ancho útil y los botones de acción de una fila bajan debajo del texto. */
+  main h1 { line-height: 1.25; }
+}

@@ -55,6 +55,7 @@ export const PERMISOS: Permiso[] = [
   // Agenda y evoluciones
   { modulo: "Agenda", accion: "Programar visitas", roles: [C], guard: { file: AG, message: "Solo Coordinación programa visitas." } },
   { modulo: "Agenda", accion: "Reprogramar visitas", roles: [C], guard: { file: AG, message: "Solo Coordinación reprograma visitas." } },
+  { modulo: "Agenda", accion: "Marcar el resultado de una visita (confirmada, realizada, no realizada)", roles: [P, C], guard: { file: AG, message: "Solo el profesional asistencial de la visita o Coordinación cambian su estado." } },
   { modulo: "Agenda", accion: "Cancelar visitas", roles: [C], guard: { file: AG, message: "Solo Coordinación cancela visitas." } },
   { modulo: "Historia clínica", accion: "Cargar evoluciones", roles: [P], guard: { file: EVO, message: "Solo el profesional asistencial carga evoluciones." } },
   // Insumos
@@ -67,7 +68,7 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Seguimiento", accion: "Generar el egreso de equipos", roles: [A], guard: { file: SEG, message: "Solo Administración genera el egreso." } },
   { modulo: "Seguimiento", accion: "Marcar el retiro de equipos", roles: [T], guard: { file: SEG, message: "Solo Transporte marca el retiro." } },
   { modulo: "Seguimiento", accion: "Reportar devoluciones de descartables", roles: [T], guard: { file: SEG, message: "Solo Transporte reporta devoluciones de descartables/alimentos." } },
-  { modulo: "Seguimiento", accion: "Confirmar la llegada a depósito", roles: [D], guard: { file: SEG, message: "Solo Depósito confirma la llegada." } },
+  { modulo: "Seguimiento", accion: "Confirmar la llegada a depósito", roles: [T], guard: { file: SEG, message: "Solo Transporte confirma la llegada." } },
   { modulo: "Compras", accion: "Recibir órdenes de compra", roles: [D], guard: { file: COMP, message: "Solo Depósito gestiona la recepción de órdenes de compra." } },
   // Obras sociales y facturación
   { modulo: "Obras sociales", accion: "Gestionar obras sociales y valores", roles: [A], guard: { file: OS, message: "Solo Administración gestiona obras sociales." } },
