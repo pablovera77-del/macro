@@ -1,50 +1,28 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, SPECIALTY_LABELS } from "@/lib/auth";
-import { createEvolutionAction } from "./actions";
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import StatusBadge from "@/components/StatusBadge";
-import { IconSignature, IconAlert, IconCheck, IconUser } from "@/components/icons";
-
-type Campo = { label: string; tipo: string; obligatorio?: boolean };
-
-function slug(s: string) {
-  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-}
-
-function inputFor(campo: Campo) {
-  const name = `campo__${slug(campo.label)}`;
-  const common = "rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs w-full";
-  switch (campo.tipo) {
-    case "Texto largo":
-      return <textarea name={name} required={campo.obligatorio} rows={2} className={common} />;
-    case "Número":
-    case "Año":
-      return <input name={name} type="number" required={campo.obligatorio} className={common} />;
-    case "Fecha y hora":
-      return <input name={name} type="datetime-local" required={campo.obligatorio} className={common} />;
-    case "Fecha":
-    case "Día":
-      return <input name={name} type="date" required={campo.obligatorio} className={common} />;
-    case "Hora":
-      return <input name={name} type="time" required={campo.obligatorio} className={common} />;
-    default:
-      return <input name={name} type="text" required={campo.obligatorio} className={common} />;
-  }
-}
+import EvolucionForm from "@/components/hc/EvolucionForm";
+import EvolucionDetalle from "@/components/hc/EvolucionDetalle";
+import NotaAclaratoria from "@/components/hc/NotaAclaratoria";
+import ControlFirmasPlan from "@/components/hc/ControlFirmasPlan";
+import { IconSignature, IconAlert, IconCheck, IconUser, IconChevronDown } from "@/components/icons";
+import { asNova5, EVOLUCION_COLS, fechaHoraAR, parseCampos, RIESGO_TONE } from "@/lib/hc";
 
 export default async function EvolucionesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ visita?: string }>;
+  searchParams: Promise<{ visita?: string; q?: string }>;
 }) {
-  const { visita } = await searchParams;
+  const { visita, q } = await searchParams;
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
-  // Coordinación solo controla (ve todo, no carga evoluciones); quien carga es el profesional.
+  // Coordinación controla y Administración/Dirección consultan (solo lectura); quien carga es el profesional.
   const isMedico = ["coordinador_internacion", "direccion", "administracion"].includes(profile.role);
   const soloLectura = profile.role === "direccion" || profile.role === "administracion";
+  const busqueda = (q ?? "").replace(/[%,()]/g, " ").trim().slice(0, 60);
 
   let pendingQuery = supabase
     .from("visits")
@@ -53,27 +31,47 @@ export default async function EvolucionesPage({
     .order("fecha_realizada", { ascending: false });
   if (!isMedico) pendingQuery = pendingQuery.eq("profesional_id", profile.id);
 
-  let historyQuery = supabase
-    .from("evolutions")
-    .select("id, patient_id, especialidad, respuestas, upp_escala_nova5, firma_profesional_at, conformidad_familiar, created_at, patients(nombre_completo), profiles(full_name)")
-    .order("created_at", { ascending: false })
-    .limit(20);
+  const historyCols = `${EVOLUCION_COLS}, patients!inner(nombre_completo), profiles(full_name)` as const;
+  let historyQuery = supabase.from("evolutions").select(historyCols).order("created_at", { ascending: false }).limit(busqueda ? 50 : 20);
   if (!isMedico) historyQuery = historyQuery.eq("profesional_id", profile.id);
+  if (busqueda) historyQuery = historyQuery.ilike("patients.nombre_completo", `%${busqueda}%`);
 
-  const [{ data: visitsRealizadas }, { data: evolutions }, { data: templates }] = await Promise.all([
+  const [{ data: visitsRealizadas }, { data: evolutions }, { data: templates }, { data: evoVisitLinks }] = await Promise.all([
     pendingQuery,
     historyQuery,
-    supabase.from("discipline_form_templates").select("id, titulo, especialidad, campos").eq("activo", true),
+    supabase.from("discipline_form_templates").select("id, titulo, especialidad, campos, activo"),
+    supabase.from("evolutions").select("visit_id"),
   ]);
 
-  const evolutionVisitIds = new Set((evolutions ?? []).map((e) => e.id));
-  void evolutionVisitIds;
-
-  // Visitas realizadas que todavía no tienen evolución cargada (join en memoria
-  // porque necesitamos cruzar contra la tabla evolutions por visit_id, no por id).
-  const { data: evoVisitLinks } = await supabase.from("evolutions").select("visit_id");
+  // Visitas realizadas que todavía no tienen evolución cargada (se cruza contra evolutions por visit_id).
   const linkedVisitIds = new Set((evoVisitLinks ?? []).map((e) => e.visit_id));
   const pendientes = (visitsRealizadas ?? []).filter((v) => !linkedVisitIds.has(v.id));
+
+  // Notas aclaratorias de las evoluciones que se muestran.
+  const evoIds = (evolutions ?? []).map((e) => e.id);
+  const { data: notasRaw } = evoIds.length
+    ? await supabase.from("evolution_notes").select("id, evolution_id, texto, created_at, profiles(full_name)").in("evolution_id", evoIds).order("created_at", { ascending: true })
+    : { data: [] };
+  const notasPorEvolucion = new Map<string, { id: string; texto: string; created_at: string; autor: string }[]>();
+  for (const n of notasRaw ?? []) {
+    const lista = notasPorEvolucion.get(n.evolution_id) ?? [];
+    lista.push({ id: n.id, texto: n.texto, created_at: n.created_at, autor: (n.profiles as unknown as { full_name: string } | null)?.full_name ?? "Profesional" });
+    notasPorEvolucion.set(n.evolution_id, lista);
+  }
+
+  // Formulario del profesional: matrícula guardada y pacientes que ya tienen valoración de úlceras (solo se pide en la primera).
+  let matricula: string | null = null;
+  const conUppPrevio = new Set<string>();
+  if (!isMedico) {
+    const [{ data: perfil }, { data: previos }] = await Promise.all([
+      supabase.from("profiles").select("matricula").eq("id", profile.id).maybeSingle(),
+      pendientes.length
+        ? supabase.from("evolutions").select("patient_id").not("upp_escala_nova5", "is", null).in("patient_id", [...new Set(pendientes.map((v) => v.patient_id))])
+        : Promise.resolve({ data: [] as { patient_id: string }[] }),
+    ]);
+    matricula = perfil?.matricula ?? null;
+    for (const p of previos ?? []) conUppPrevio.add(p.patient_id);
+  }
 
   // Control (C2): visitas realizadas sin evolución, agrupadas por profesional, la más antigua primero.
   const hoy = new Date().getTime();
@@ -89,18 +87,23 @@ export default async function EvolucionesPage({
     .map((g) => ({ ...g, items: [...g.items].sort((a, b) => (a.fecha_realizada ?? "").localeCompare(b.fecha_realizada ?? "")) }))
     .sort((a, b) => diasDesde(b.items[0]?.fecha_realizada ?? null) - diasDesde(a.items[0]?.fecha_realizada ?? null));
 
+  const titulo = soloLectura ? "Historias clínicas (consulta)" : isMedico ? "Control de evoluciones" : "Historia clínica digital";
+  const linkCls = "inline-flex items-center rounded-lg border border-slate-300 bg-white text-slate-700 text-xs font-medium px-3 py-1.5 hover:bg-slate-50";
+
   return (
     <div className="space-y-8">
       <PageHeader
         icon={<IconSignature className="w-5 h-5" />}
-        title={soloLectura ? "Historias clínicas (consulta)" : isMedico ? "Control de evoluciones" : "Historia clínica digital"}
+        title={titulo}
         section="DF-C2 §5"
         purpose={
-          isMedico
-            ? "Acá ves qué visitas realizadas todavía no tienen su evolución y las últimas evoluciones cargadas por el equipo."
-            : "Cargá la evolución de cada visita que ya realizaste. Abrí la visita pendiente y completá el formulario de tu disciplina."
+          profile.role === "administracion"
+            ? "Consultá las historias clínicas cargadas por el equipo, con sus firmas. Es solo lectura: acá no se modifica nada."
+            : isMedico
+            ? "Acá ves qué visitas realizadas todavía no tienen su evolución, qué evoluciones están sin firmar y las últimas evoluciones cargadas por el equipo."
+            : "Cargá la evolución de cada visita que ya realizaste. Abrí la visita pendiente, completá el formulario de tu disciplina y firmá."
         }
-        description="Formulario dinámico por disciplina — operacionaliza el motor config-driven del sistema viejo (informe-tecnico §3.2)."
+        description="Formulario dinámico por disciplina — operacionaliza el motor config-driven del sistema viejo (informe-tecnico §3.2). Plantillas DF-C2 §5.1-5.5, firmas §4.5, inmutabilidad §9."
       />
 
       {!isMedico && visita && pendientes.some((v) => v.id === visita) && (
@@ -109,7 +112,7 @@ export default async function EvolucionesPage({
             <IconCheck className="w-4 h-4" />
           </span>
           <p className="text-sm text-emerald-900">
-            <span className="font-semibold">Visita marcada como realizada.</span> Último paso: completá la evolución de abajo (ya está abierta) y tocá «Guardar evolución».
+            <span className="font-semibold">Visita marcada como realizada.</span> Último paso: completá la evolución de abajo (ya está abierta), firmá y tocá «Guardar y firmar evolución».
           </p>
         </section>
       )}
@@ -151,126 +154,128 @@ export default async function EvolucionesPage({
         </section>
       )}
 
-      <section className="space-y-3">
-        {!isMedico && pendientes.length === 0 && (
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400 text-sm animate-fade-slide-up">
-            No hay visitas realizadas pendientes de evolución.
-          </div>
-        )}
-        {!isMedico && pendientes.map((v, i) => {
-          const template = (templates ?? []).find((t) => t.especialidad === v.especialidad);
-          const campos = ((template?.campos as unknown as Campo[]) ?? []);
-          return (
-            <details id={`visita-${v.id}`} open={visita === v.id} key={v.id} className={`scroll-mt-6 bg-white rounded-2xl border p-5 card-hover animate-fade-slide-up stagger-${Math.min(i + 1, 8)} ${visita === v.id ? "border-emerald-400 ring-2 ring-emerald-200" : "border-slate-200"}`}>
-              <summary className="cursor-pointer flex items-center justify-between gap-3 flex-wrap">
-                <div>
-                  <span className="font-medium text-slate-900">{(v.patients as unknown as { nombre_completo: string } | null)?.nombre_completo}</span>
-                  <span className="text-xs text-slate-400 ml-2">{SPECIALTY_LABELS[v.especialidad] ?? v.especialidad} · {template?.titulo ?? "sin plantilla"}</span>
-                </div>
-                <span className="text-xs font-medium text-amber-600 bg-amber-50 rounded-full px-2.5 py-1">Pendiente de evolución</span>
-              </summary>
+      {isMedico && <ControlFirmasPlan />}
 
-              <form action={createEvolutionAction} className="mt-4 space-y-3">
-                <input type="hidden" name="visit_id" value={v.id} />
-                <input type="hidden" name="patient_id" value={v.patient_id} />
-                <input type="hidden" name="especialidad" value={v.especialidad} />
-                {template && <input type="hidden" name="template_id" value={template.id} />}
+      {!isMedico && (
+        <section className="space-y-3">
+          {pendientes.length === 0 && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-400 text-sm animate-fade-slide-up">
+              No hay visitas realizadas pendientes de evolución.
+            </div>
+          )}
+          {pendientes.map((v, i) => {
+            const template = (templates ?? []).find((t) => t.especialidad === v.especialidad && t.activo);
+            const campos = parseCampos(template?.campos);
+            return (
+              <details id={`visita-${v.id}`} open={visita === v.id} key={v.id} className={`scroll-mt-6 bg-white rounded-2xl border p-4 sm:p-5 card-hover animate-fade-slide-up stagger-${Math.min(i + 1, 8)} ${visita === v.id ? "border-emerald-400 ring-2 ring-emerald-200" : "border-slate-200"}`}>
+                <summary className="cursor-pointer flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <span className="font-medium text-slate-900">{(v.patients as unknown as { nombre_completo: string } | null)?.nombre_completo}</span>
+                    <span className="text-xs text-slate-400 ml-2">{SPECIALTY_LABELS[v.especialidad] ?? v.especialidad} · {template?.titulo ?? "sin plantilla"}</span>
+                  </div>
+                  <span className="text-xs font-medium text-amber-600 bg-amber-50 rounded-full px-2.5 py-1">Pendiente de evolución</span>
+                </summary>
+                <EvolucionForm
+                  visitId={v.id}
+                  patientId={v.patient_id}
+                  especialidad={v.especialidad}
+                  campos={campos}
+                  mostrarUpp={v.especialidad === "enfermeria" && !conUppPrevio.has(v.patient_id)}
+                  profesionalNombre={profile.full_name}
+                  matriculaInicial={matricula}
+                />
+              </details>
+            );
+          })}
+        </section>
+      )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {campos.map((c) => (
-                    <div key={c.label} className={c.tipo === "Texto largo" ? "sm:col-span-2" : ""}>
-                      <label className="text-[11px] text-slate-500 mb-1 block">
-                        {c.label}
-                        {c.obligatorio && <span className="text-red-500"> *</span>}
-                      </label>
-                      {inputFor(c)}
+      <section id="historial" className="scroll-mt-6 bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-slide-up card-hover">
+        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+          <h2 className="text-sm font-medium text-slate-900">{isMedico ? (busqueda ? `Evoluciones de «${busqueda}»` : "Últimas evoluciones registradas") : "Mi historial reciente"}</h2>
+          {isMedico && (
+            <form method="get" action="/evoluciones#historial" className="flex items-center gap-2">
+              <input name="q" defaultValue={busqueda} placeholder="Buscar por paciente" aria-label="Buscar evoluciones por paciente" className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm w-44" />
+              <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-2 hover:bg-slate-800">Buscar</button>
+              {busqueda && (
+                <Link href="/evoluciones#historial" className="text-xs text-slate-500 underline underline-offset-2">
+                  Ver todas
+                </Link>
+              )}
+            </form>
+          )}
+        </div>
+        <div className="divide-y divide-slate-100">
+          {(evolutions ?? []).map((e) => {
+            const nova = asNova5(e.upp_escala_nova5);
+            const campos = parseCampos((templates ?? []).find((t) => t.id === e.template_id)?.campos ?? (templates ?? []).find((t) => t.especialidad === e.especialidad)?.campos);
+            const paciente = (e.patients as unknown as { nombre_completo: string } | null)?.nombre_completo;
+            const autor = (e.profiles as unknown as { full_name: string } | null)?.full_name;
+            const notas = notasPorEvolucion.get(e.id) ?? [];
+            const puedeNota = profile.role === "coordinador_internacion" || (profile.role === "profesional_asistencial" && e.profesional_id === profile.id);
+            return (
+              <details key={e.id} className="group">
+                <summary className="px-5 py-3.5 flex items-start gap-3 cursor-pointer list-none">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-400 shrink-0">
+                    <IconUser className="w-4 h-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-sm text-slate-900 font-medium">{paciente}</span>
+                      <span className="text-xs text-slate-400">{fechaHoraAR(e.created_at)}</span>
                     </div>
-                  ))}
-                </div>
+                    <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-x-2 gap-y-1 flex-wrap">
+                      <span>
+                        {SPECIALTY_LABELS[e.especialidad] ?? e.especialidad}
+                        {isMedico && autor ? <> · {autor}</> : null}
+                      </span>
+                      {e.firma_profesional_at ? <StatusBadge tone="verde" label="Firmada" /> : <StatusBadge tone="amarillo" label="Sin firma del profesional" />}
+                      {e.conformidad_familiar ? <StatusBadge tone="verde" label="Conformidad familiar" /> : <StatusBadge tone="amarillo" label="Sin conformidad familiar" />}
+                      {e.alerta_cambio && <StatusBadge tone="rojo" label="Cambio de medicación" />}
+                      {nova && <StatusBadge tone={RIESGO_TONE[nova.riesgo] ?? "gris"} label={`Riesgo de úlceras: ${nova.riesgo} (Nova 5 = ${nova.total})`} />}
+                      {notas.length > 0 && <StatusBadge tone="gris" label={`${notas.length} nota${notas.length === 1 ? "" : "s"} aclaratoria${notas.length === 1 ? "" : "s"}`} />}
+                    </div>
+                  </div>
+                  <IconChevronDown className="w-4 h-4 text-slate-400 mt-2 shrink-0 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="px-5 pb-5 pt-1 sm:pl-16 space-y-4">
+                  <EvolucionDetalle e={e} campos={campos} profesionalNombre={autor} />
 
-                {v.especialidad === "enfermeria" && (
-                  <div className="bg-slate-50 rounded-xl p-3">
-                    <div className="text-xs font-medium text-slate-700 mb-2">Escala Nova 5 — riesgo de úlceras por presión</div>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                      {[
-                        ["estado_mental", "Estado mental"],
-                        ["incontinencia", "Incontinencia"],
-                        ["movilidad", "Movilidad"],
-                        ["nutricion", "Nutrición/Ingesta"],
-                        ["actividad", "Actividad"],
-                      ].map(([key, label]) => (
-                        <div key={key}>
-                          <label className="text-[10px] text-slate-500 mb-1 block">{label}</label>
-                          <select name={`nova5__${key}`} className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs w-full">
-                            <option value="0">0</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                          </select>
+                  {notas.length > 0 && (
+                    <div className="space-y-2">
+                      <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Notas aclaratorias</h4>
+                      {notas.map((n) => (
+                        <div key={n.id} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                          <p className="text-sm text-slate-900 whitespace-pre-line">{n.texto}</p>
+                          <p className="text-[11px] text-slate-500 mt-1">
+                            {n.autor} · {fechaHoraAR(n.created_at)}
+                          </p>
                         </div>
                       ))}
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-2">Suma 1–4 riesgo bajo · 5–8 medio · 9–15 alto. Dejar en 0 si no aplica.</p>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-4 flex-wrap pt-1">
-                  <label className="flex items-center gap-1.5 text-xs text-slate-600">
-                    <input type="checkbox" name="firmar" defaultChecked className="rounded border-slate-300" /> Firmar como profesional
-                  </label>
-                  <label className="flex items-center gap-1.5 text-xs text-slate-600">
-                    <input type="checkbox" name="conformidad_familiar" className="rounded border-slate-300" /> Conformidad familiar registrada
-                  </label>
-                  <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-4 py-2 hover:bg-slate-800 transition-colors ml-auto">
-                    Guardar evolución
-                  </button>
-                </div>
-              </form>
-            </details>
-          );
-        })}
-      </section>
-
-      <section id="historial" className="scroll-mt-6 bg-white rounded-2xl border border-slate-200 overflow-hidden animate-fade-slide-up card-hover">
-        <div className="px-5 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-medium text-slate-900">{isMedico ? "Últimas evoluciones registradas" : "Mi historial reciente"}</h2>
-        </div>
-        <div className="divide-y divide-slate-100">
-          {(evolutions ?? []).map((e) => (
-            <div key={e.id} className="px-5 py-3.5 flex items-start gap-3">
-              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-400 shrink-0">
-                <IconUser className="w-4 h-4" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="text-sm text-slate-900 font-medium">{(e.patients as unknown as { nombre_completo: string } | null)?.nombre_completo}</span>
-                  <span className="text-xs text-slate-400">{new Date(e.created_at).toLocaleString("es-AR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
-                </div>
-                <div className="text-xs text-slate-500 mt-0.5">
-                  {SPECIALTY_LABELS[e.especialidad] ?? e.especialidad}
-                  {isMedico && <> · {(e.profiles as unknown as { full_name: string } | null)?.full_name}</>}
-                  {e.firma_profesional_at && (
-                    <span className="inline-flex items-center gap-0.5 text-emerald-600 ml-2"><IconCheck className="w-3 h-3" /> Firmada</span>
                   )}
-                  {e.conformidad_familiar && <span className="text-violet-600 ml-2">· Conformidad familiar</span>}
-                </div>
-                {e.upp_escala_nova5 && (
-                  <div className="text-[11px] mt-1">
-                    <span className={`inline-block rounded-full px-2 py-0.5 font-medium ${
-                      (e.upp_escala_nova5 as { riesgo?: string }).riesgo === "alto"
-                        ? "bg-red-100 text-red-700"
-                        : (e.upp_escala_nova5 as { riesgo?: string }).riesgo === "medio"
-                        ? "bg-amber-100 text-amber-700"
-                        : "bg-emerald-100 text-emerald-700"
-                    }`}>
-                      Riesgo UPP: {(e.upp_escala_nova5 as { riesgo?: string }).riesgo} (Nova5 = {(e.upp_escala_nova5 as { total?: number }).total})
-                    </span>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Link href={`/evoluciones/${e.id}/imprimir`} className={linkCls}>
+                      Imprimir completa
+                    </Link>
+                    {campos.some((c) => c.narrativa) && (
+                      <Link href={`/evoluciones/${e.id}/imprimir?modo=os`} className={linkCls}>
+                        Imprimir para obra social
+                      </Link>
+                    )}
+                    <Link href={`/paciente/${e.patient_id}?tab=clinica`} className={linkCls}>
+                      Ver ficha del paciente
+                    </Link>
                   </div>
-                )}
-              </div>
-            </div>
-          ))}
-          {(evolutions ?? []).length === 0 && <div className="px-5 py-8 text-center text-slate-400 text-xs">Sin evoluciones registradas todavía.</div>}
+                  {puedeNota && <NotaAclaratoria evolutionId={e.id} />}
+                </div>
+              </details>
+            );
+          })}
+          {(evolutions ?? []).length === 0 && (
+            <div className="px-5 py-8 text-center text-slate-400 text-xs">{busqueda ? "No encontramos evoluciones de ese paciente." : "Sin evoluciones registradas todavía."}</div>
+          )}
         </div>
       </section>
     </div>

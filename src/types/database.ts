@@ -434,14 +434,65 @@ export type Database = {
           },
         ]
       }
+      evolution_notes: {
+        Row: {
+          autor_id: string
+          created_at: string
+          evolution_id: string
+          id: string
+          texto: string
+        }
+        Insert: {
+          autor_id?: string
+          created_at?: string
+          evolution_id: string
+          id?: string
+          texto: string
+        }
+        Update: {
+          autor_id?: string
+          created_at?: string
+          evolution_id?: string
+          id?: string
+          texto?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evolution_notes_autor_id_fkey"
+            columns: ["autor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evolution_notes_evolution_id_fkey"
+            columns: ["evolution_id"]
+            isOneToOne: false
+            referencedRelation: "evolutions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evolutions: {
         Row: {
+          alerta_cambio: boolean
+          alerta_motivo: string | null
           conformidad_familiar: boolean | null
           conformidad_familiar_at: string | null
+          conformidad_firma: string | null
+          conformidad_lat: number | null
+          conformidad_lng: number | null
+          conformidad_nombre: string | null
           created_at: string
           especialidad: Database["public"]["Enums"]["specialty"]
+          firma_lat: number | null
+          firma_lng: number | null
           firma_profesional_at: string | null
+          firma_profesional_img: string | null
+          firma_profesional_matricula: string | null
+          firma_profesional_nombre: string | null
           id: string
+          medicacion: Json | null
           patient_id: string
           profesional_id: string
           respuestas: Json
@@ -450,12 +501,24 @@ export type Database = {
           visit_id: string | null
         }
         Insert: {
+          alerta_cambio?: boolean
+          alerta_motivo?: string | null
           conformidad_familiar?: boolean | null
           conformidad_familiar_at?: string | null
+          conformidad_firma?: string | null
+          conformidad_lat?: number | null
+          conformidad_lng?: number | null
+          conformidad_nombre?: string | null
           created_at?: string
           especialidad: Database["public"]["Enums"]["specialty"]
+          firma_lat?: number | null
+          firma_lng?: number | null
           firma_profesional_at?: string | null
+          firma_profesional_img?: string | null
+          firma_profesional_matricula?: string | null
+          firma_profesional_nombre?: string | null
           id?: string
+          medicacion?: Json | null
           patient_id: string
           profesional_id: string
           respuestas?: Json
@@ -464,12 +527,24 @@ export type Database = {
           visit_id?: string | null
         }
         Update: {
+          alerta_cambio?: boolean
+          alerta_motivo?: string | null
           conformidad_familiar?: boolean | null
           conformidad_familiar_at?: string | null
+          conformidad_firma?: string | null
+          conformidad_lat?: number | null
+          conformidad_lng?: number | null
+          conformidad_nombre?: string | null
           created_at?: string
           especialidad?: Database["public"]["Enums"]["specialty"]
+          firma_lat?: number | null
+          firma_lng?: number | null
           firma_profesional_at?: string | null
+          firma_profesional_img?: string | null
+          firma_profesional_matricula?: string | null
+          firma_profesional_nombre?: string | null
           id?: string
+          medicacion?: Json | null
           patient_id?: string
           profesional_id?: string
           respuestas?: Json
@@ -1648,6 +1723,7 @@ export type Database = {
           full_name: string
           id: string
           last_login_at: string | null
+          matricula: string | null
           role: Database["public"]["Enums"]["app_role"]
         }
         Insert: {
@@ -1656,6 +1732,7 @@ export type Database = {
           full_name: string
           id: string
           last_login_at?: string | null
+          matricula?: string | null
           role: Database["public"]["Enums"]["app_role"]
         }
         Update: {
@@ -1664,6 +1741,7 @@ export type Database = {
           full_name?: string
           id?: string
           last_login_at?: string | null
+          matricula?: string | null
           role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
@@ -2578,6 +2656,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      v_hc_sin_firmas: {
+        Row: {
+          created_at: string | null
+          especialidad: Database["public"]["Enums"]["specialty"] | null
+          evolution_id: string | null
+          falta_conformidad: boolean | null
+          falta_firma_profesional: boolean | null
+          patient_id: string | null
+          profesional_id: string | null
+          visit_id: string | null
+        }
+        Relationships: []
+      }
+      v_hc_visitas_vs_plan: {
+        Row: {
+          especialidad: Database["public"]["Enums"]["specialty"] | null
+          esperadas: number | null
+          estado: string | null
+          patient_id: string | null
+          realizadas: number | null
+          semana_desde: string | null
+        }
+        Relationships: []
       }
       v_historial_precios_proveedor: {
         Row: {

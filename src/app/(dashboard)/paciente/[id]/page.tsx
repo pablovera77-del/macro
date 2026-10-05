@@ -13,6 +13,8 @@ import FamilyAccessPanel from "@/components/FamilyAccessPanel";
 import { descripcionFechaHora } from "@/lib/horario";
 import ConsentimientoDetalle from "@/components/agenda/ConsentimientoDetalle";
 import { familyPortalEnabled, type FamilyAccessInfo } from "@/lib/family";
+import HistoriaClinicaFicha from "@/components/hc/HistoriaClinicaFicha";
+import UppFicha from "@/components/hc/UppFicha";
 import { signLegalDocumentAction } from "../../internacion/actions";
 import {
   savePlanAction,
@@ -72,7 +74,7 @@ export default async function FichaPacientePage({
 
   const esAdmin = role === "administracion";
   const puedeEditarPlan = role === "administracion" || role === "coordinador_internacion";
-  const verClinica = role === "profesional_asistencial" || role === "coordinador_internacion";
+  const verClinica = role === "profesional_asistencial" || role === "coordinador_internacion" || role === "administracion" || role === "direccion";
   const verInsumos = role === "administracion" || role === "coordinador_internacion";
   const tabs: { id: Tab; label: string }[] = [
     { id: "resumen", label: "Resumen" },
@@ -195,6 +197,7 @@ export default async function FichaPacientePage({
       <div className="flex items-center gap-3 flex-wrap text-sm">
         <Link href="/internacion" className="text-slate-500 hover:text-slate-900 underline underline-offset-2">← Volver a Pacientes</Link>
         <StatusBadge tone={ESTADO_TONE[p.estado] ?? "gris"} label={ESTADO_LABELS[p.estado]} />
+        {verClinica && <UppFicha patientId={id} />}
         {p.estado !== "dado_de_baja" && puedeEditarPlan && (
           <Link href="/agenda#programar-visita" className={btnGhost}>Programar una visita</Link>
         )}
@@ -389,26 +392,7 @@ export default async function FichaPacientePage({
         </section>
       )}
 
-      {tab === "clinica" && (
-        <section className={card}>
-          <h2 className="text-sm font-semibold text-slate-900 mb-3">Últimas evoluciones</h2>
-          {(evolutions ?? []).length === 0 ? (
-            <p className="text-sm text-slate-400">Sin evoluciones registradas todavía.</p>
-          ) : (
-            <ul className="divide-y divide-slate-100 text-sm">
-              {(evolutions ?? []).map((e) => (
-                <li key={e.id} className="py-2 flex items-center justify-between gap-3 flex-wrap">
-                  <span>{fecha(e.created_at)} · {SPECIALTY_LABELS[e.especialidad] ?? e.especialidad} · {nombreDe(e.profiles)}</span>
-                  <span className="text-xs text-slate-500 flex items-center gap-2">
-                    {e.firma_profesional_at && <span className="inline-flex items-center gap-0.5 text-emerald-700"><IconCheck className="w-3 h-3" /> Firmada</span>}
-                    {e.conformidad_familiar && <span className="text-violet-600">Conformidad familiar</span>}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
+      {tab === "clinica" && <HistoriaClinicaFicha patientId={id} role={role} userId={profile.id} />}
 
       {tab === "insumos" && (
         <div className="grid gap-4 md:grid-cols-2">

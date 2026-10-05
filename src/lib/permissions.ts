@@ -62,6 +62,7 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Agenda", accion: "Generar las visitas de la semana desde el plan", roles: [C], guard: { file: AG, message: "Solo Coordinación genera las visitas de la semana." } },
   { modulo: "Agenda", accion: "Ver productividad y cupos (solo lectura)", roles: [C, A, DIR], guard: { file: "src/app/(dashboard)/productividad/page.tsx", message: "ROLES_PRODUCTIVIDAD.includes(profile.role)" } },
   { modulo: "Historia clínica", accion: "Cargar evoluciones", roles: [P], guard: { file: EVO, message: "Solo el profesional asistencial carga evoluciones." } },
+  { modulo: "Historia clínica", accion: "Agregar una nota aclaratoria a una evolución firmada", roles: [P, C], guard: { file: EVO, message: "Solo el profesional asistencial de la evolución o Coordinación agregan notas aclaratorias." } },
   // Insumos
   { modulo: "Catálogo", accion: "Cargar productos y unidades físicas", roles: [D], guard: { file: CAT, message: "Solo Depósito carga el catálogo." } },
   { modulo: "Catálogo", accion: "Gestionar proveedores del catálogo", roles: [D], guard: { file: CAT, message: "Solo Depósito gestiona proveedores del catálogo." } },

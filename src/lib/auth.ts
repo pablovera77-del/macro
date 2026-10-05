@@ -68,6 +68,7 @@ administracion: [
 { href: "/compras", label: "Compras", icon: "compras", description: "Proyección y cotizaciones" },
 { href: "/obras-sociales", label: "Obras sociales", icon: "obras_sociales", description: "Catálogo y valores" },
 { href: "/facturacion", label: "Facturación", icon: "facturacion", description: "Cierre mensual y débitos" },
+{ href: "/evoluciones", label: "Historias clínicas", icon: "evoluciones", description: "Consulta de solo lectura" },
 { href: "/productividad", label: "Productividad y cupos", icon: "dashboard", description: "Visitas por profesional y cupos" },
 { href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
