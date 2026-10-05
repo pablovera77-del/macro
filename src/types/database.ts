@@ -282,6 +282,8 @@ export type Database = {
           notas: string | null
           patient_id: string | null
           tipo: Database["public"]["Enums"]["asset_movement_type"]
+          lat: number | null
+          lng: number | null
         }
         Insert: {
           asset_id: string
@@ -293,6 +295,8 @@ export type Database = {
           notas?: string | null
           patient_id?: string | null
           tipo: Database["public"]["Enums"]["asset_movement_type"]
+          lat?: number | null
+          lng?: number | null
         }
         Update: {
           asset_id?: string
@@ -304,6 +308,8 @@ export type Database = {
           notas?: string | null
           patient_id?: string | null
           tipo?: Database["public"]["Enums"]["asset_movement_type"]
+          lat?: number | null
+          lng?: number | null
         }
         Relationships: [
           {
@@ -350,6 +356,10 @@ export type Database = {
           id: number
           momento: string
           url: string
+          condicion: string | null
+          lat: number | null
+          lng: number | null
+          tomada_por: string | null
         }
         Insert: {
           asset_id: string
@@ -357,6 +367,10 @@ export type Database = {
           id?: never
           momento: string
           url: string
+          condicion?: string | null
+          lat?: number | null
+          lng?: number | null
+          tomada_por?: string | null
         }
         Update: {
           asset_id?: string
@@ -364,6 +378,10 @@ export type Database = {
           id?: never
           momento?: string
           url?: string
+          condicion?: string | null
+          lat?: number | null
+          lng?: number | null
+          tomada_por?: string | null
         }
         Relationships: [
           {
@@ -645,6 +663,11 @@ export type Database = {
           id: number
           order_id: string
           product_id: string
+          estado_item: string
+          motivo: string | null
+          cantidad_solicitada: number | null
+          revisado_por: string | null
+          revisado_at: string | null
         }
         Insert: {
           cantidad?: number
@@ -652,6 +675,11 @@ export type Database = {
           id?: never
           order_id: string
           product_id: string
+          estado_item?: string
+          motivo?: string | null
+          cantidad_solicitada?: number | null
+          revisado_por?: string | null
+          revisado_at?: string | null
         }
         Update: {
           cantidad?: number
@@ -659,8 +687,20 @@ export type Database = {
           id?: never
           order_id?: string
           product_id?: string
+          estado_item?: string
+          motivo?: string | null
+          cantidad_solicitada?: number | null
+          revisado_por?: string | null
+          revisado_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "order_items_revisado_por_fkey"
+            columns: ["revisado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "order_items_equipment_asset_id_fkey"
             columns: ["equipment_asset_id"]
@@ -716,9 +756,15 @@ export type Database = {
           fecha_autorizacion: string | null
           id: string
           motivo_rechazo: string | null
-          patient_id: string
+          patient_id: string | null
           prioridad: Database["public"]["Enums"]["order_priority"]
           rechazado_por: string | null
+          origen: string
+          motivo_urgencia: string | null
+          profesional_id: string | null
+          fecha_preparado: string | null
+          preparado_por: string | null
+          direccion_entrega: string | null
         }
         Insert: {
           autorizacion_automatica?: boolean
@@ -730,9 +776,15 @@ export type Database = {
           fecha_autorizacion?: string | null
           id?: string
           motivo_rechazo?: string | null
-          patient_id: string
+          patient_id: string | null
           prioridad?: Database["public"]["Enums"]["order_priority"]
           rechazado_por?: string | null
+          origen?: string
+          motivo_urgencia?: string | null
+          profesional_id?: string | null
+          fecha_preparado?: string | null
+          preparado_por?: string | null
+          direccion_entrega?: string | null
         }
         Update: {
           autorizacion_automatica?: boolean
@@ -744,11 +796,31 @@ export type Database = {
           fecha_autorizacion?: string | null
           id?: string
           motivo_rechazo?: string | null
-          patient_id?: string
+          patient_id?: string | null
           prioridad?: Database["public"]["Enums"]["order_priority"]
           rechazado_por?: string | null
+          origen?: string
+          motivo_urgencia?: string | null
+          profesional_id?: string | null
+          fecha_preparado?: string | null
+          preparado_por?: string | null
+          direccion_entrega?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_preparado_por_fkey"
+            columns: ["preparado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_profesional_id_fkey"
+            columns: ["profesional_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_autorizado_por_fkey"
             columns: ["autorizado_por"]
@@ -1580,6 +1652,11 @@ export type Database = {
           notificacion_enviada_at: string | null
           order_id: string
           transportista_id: string | null
+          firmante_nombre: string | null
+          firmante_dni: string | null
+          firmante_vinculo: string | null
+          entrega_lat: number | null
+          entrega_lng: number | null
         }
         Insert: {
           fecha_despacho?: string | null
@@ -1591,6 +1668,11 @@ export type Database = {
           notificacion_enviada_at?: string | null
           order_id: string
           transportista_id?: string | null
+          firmante_nombre?: string | null
+          firmante_dni?: string | null
+          firmante_vinculo?: string | null
+          entrega_lat?: number | null
+          entrega_lng?: number | null
         }
         Update: {
           fecha_despacho?: string | null
@@ -1602,6 +1684,11 @@ export type Database = {
           notificacion_enviada_at?: string | null
           order_id?: string
           transportista_id?: string | null
+          firmante_nombre?: string | null
+          firmante_dni?: string | null
+          firmante_vinculo?: string | null
+          entrega_lat?: number | null
+          entrega_lng?: number | null
         }
         Relationships: [
           {
@@ -2232,6 +2319,217 @@ export type Database = {
         }
         Relationships: []
       }
+      order_notices: {
+        Row: {
+          created_at: string
+          creado_por: string | null
+          detalle: string | null
+          href: string | null
+          id: number
+          leido_at: string | null
+          leido_por: string | null
+          order_id: string | null
+          patient_id: string | null
+          rol_destino: Database["public"]["Enums"]["app_role"] | null
+          tipo: string
+          titulo: string
+          user_destino: string | null
+        }
+        Insert: {
+          created_at?: string
+          creado_por?: string | null
+          detalle?: string | null
+          href?: string | null
+          id?: never
+          leido_at?: string | null
+          leido_por?: string | null
+          order_id?: string | null
+          patient_id?: string | null
+          rol_destino?: Database["public"]["Enums"]["app_role"] | null
+          tipo: string
+          titulo: string
+          user_destino?: string | null
+        }
+        Update: {
+          created_at?: string
+          creado_por?: string | null
+          detalle?: string | null
+          href?: string | null
+          id?: never
+          leido_at?: string | null
+          leido_por?: string | null
+          order_id?: string | null
+          patient_id?: string | null
+          rol_destino?: Database["public"]["Enums"]["app_role"] | null
+          tipo?: string
+          titulo?: string
+          user_destino?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_notices_creado_por_fkey"
+            columns: ["creado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_notices_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_notices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transport_tasks: {
+        Row: {
+          aviso_en_camino_at: string | null
+          completada_at: string | null
+          contacto: string | null
+          created_at: string
+          creado_por: string | null
+          descripcion: string | null
+          dias_semana: number[] | null
+          direccion: string | null
+          duracion_min: number
+          estado: string
+          fecha: string
+          hora: string | null
+          id: string
+          iniciada_at: string | null
+          nota_reprogramacion: string | null
+          order_id: string | null
+          patient_id: string | null
+          permanente: boolean
+          prioridad: string
+          repeticion: string | null
+          reprogramaciones: number
+          reprogramada_desde: string | null
+          telefono: string | null
+          tipo: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          aviso_en_camino_at?: string | null
+          completada_at?: string | null
+          contacto?: string | null
+          created_at?: string
+          creado_por?: string | null
+          descripcion?: string | null
+          dias_semana?: number[] | null
+          direccion?: string | null
+          duracion_min?: number
+          estado?: string
+          fecha?: string
+          hora?: string | null
+          id?: string
+          iniciada_at?: string | null
+          nota_reprogramacion?: string | null
+          order_id?: string | null
+          patient_id?: string | null
+          permanente?: boolean
+          prioridad?: string
+          repeticion?: string | null
+          reprogramaciones?: number
+          reprogramada_desde?: string | null
+          telefono?: string | null
+          tipo?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          aviso_en_camino_at?: string | null
+          completada_at?: string | null
+          contacto?: string | null
+          created_at?: string
+          creado_por?: string | null
+          descripcion?: string | null
+          dias_semana?: number[] | null
+          direccion?: string | null
+          duracion_min?: number
+          estado?: string
+          fecha?: string
+          hora?: string | null
+          id?: string
+          iniciada_at?: string | null
+          nota_reprogramacion?: string | null
+          order_id?: string | null
+          patient_id?: string | null
+          permanente?: boolean
+          prioridad?: string
+          repeticion?: string | null
+          reprogramaciones?: number
+          reprogramada_desde?: string | null
+          telefono?: string | null
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_tasks_creado_por_fkey"
+            columns: ["creado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_tasks_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_tasks_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transport_task_runs: {
+        Row: {
+          completada_at: string
+          completada_por: string | null
+          fecha: string
+          nota: string | null
+          task_id: string
+        }
+        Insert: {
+          completada_at?: string
+          completada_por?: string | null
+          fecha: string
+          nota?: string | null
+          task_id: string
+        }
+        Update: {
+          completada_at?: string
+          completada_por?: string | null
+          fecha?: string
+          nota?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_task_runs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "transport_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       v_costos_por_paciente: {
@@ -2631,6 +2929,7 @@ export type Database = {
       order_status:
         | "borrador"
         | "autorizado"
+        | "preparado"
         | "despachado"
         | "entregado"
         | "cancelado"
@@ -2838,6 +3137,7 @@ export const Constants = {
       order_status: [
         "borrador",
         "autorizado",
+        "preparado",
         "despachado",
         "entregado",
         "cancelado",

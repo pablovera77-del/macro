@@ -189,3 +189,28 @@ body {
   /* Las tarjetas ocupan todo el ancho útil y los botones de acción de una fila bajan debajo del texto. */
   main h1 { line-height: 1.25; }
 }
+
+/* Documentos para imprimir o guardar como PDF (remito, orden de compra): al imprimir sale solo el documento. */
+@media print {
+  .print-doc,
+  .print-doc * {
+    visibility: visible;
+  }
+  .print-doc {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    border: 0;
+  }
+  .no-print {
+    display: none !important;
+  }
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+}

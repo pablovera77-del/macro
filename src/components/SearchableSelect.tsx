@@ -6,6 +6,8 @@ export type SearchableOption = {
   value: string;
   label: string;
   group?: string;
+  /** Texto extra que también se busca (observación, código de barras, código interno…). */
+  keywords?: string;
 };
 
 // DF-C5 §3/§4/§6: reemplaza los `<select>` planos de cientos de opciones que
@@ -49,7 +51,7 @@ export default function SearchableSelect({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return options;
-    return options.filter((o) => o.label.toLowerCase().includes(q));
+    return options.filter((o) => `${o.label} ${o.keywords ?? ""}`.toLowerCase().includes(q));
   }, [query, options]);
 
   const groups = useMemo(() => {

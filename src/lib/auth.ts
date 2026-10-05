@@ -87,6 +87,7 @@ coordinador_internacion: [
 { href: "/internacion", label: "Pacientes", icon: "internacion", description: "Consulta y llegada al domicilio" },
 { href: "/agenda", label: "Agenda", icon: "agenda", description: "Visitas domiciliarias" },
 { href: "/evoluciones", label: "Control de evoluciones", icon: "evoluciones", description: "Visitas sin historia clínica" },
+{ href: "/pedidos", label: "Pedir insumos", icon: "pedidos", description: "Solicitudes a Depósito" },
 { href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
 profesional_asistencial: [
