@@ -1,4 +1,5 @@
 import { TZ } from "@/lib/plan";
+import { fraseCuando, type HorarioVisita } from "@/lib/horario";
 
 // G4: recordatorios de visita por WhatsApp, siempre manuales. La app solo arma el
 // link con el mensaje escrito; una persona lo revisa y toca "Enviar" en WhatsApp.
@@ -25,11 +26,18 @@ export function rangoManiana(ahora = new Date()): { desde: string; hasta: string
   return { desde: desde.toISOString(), hasta: hasta.toISOString(), etiqueta };
 }
 
-export function mensajeRecordatorio(opts: { paciente: string; disciplina: string; fechaIso: string; profesional?: string | null }): string {
-  const hora = new Date(opts.fechaIso).toLocaleTimeString("es-AR", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false });
-  const dia = new Date(opts.fechaIso).toLocaleDateString("es-AR", { timeZone: TZ, weekday: "long", day: "numeric", month: "long" });
+export function mensajeRecordatorio(opts: {
+  paciente: string;
+  disciplina: string;
+  fechaIso: string;
+  profesional?: string | null;
+  /** Franja, rango o «sin hora»: si no viene, se usa la hora exacta de fechaIso. */
+  horario?: Omit<HorarioVisita, "fecha_programada">;
+  ahora?: Date;
+}): string {
+  const cuando = fraseCuando({ fecha_programada: opts.fechaIso, ...opts.horario }, opts.ahora);
   const quien = opts.profesional ? ` con ${opts.profesional}` : "";
-  return `Hola, le escribimos de Profesionales SRL. Le recordamos la visita de ${opts.disciplina.toLowerCase()}${quien} a ${opts.paciente} el ${dia} a las ${hora} hs. Si necesita reprogramarla, por favor respóndanos este mensaje.`;
+  return `Hola, le escribimos de Profesionales SRL. Le recordamos la visita de ${opts.disciplina.toLowerCase()}${quien} a ${opts.paciente} ${cuando}. Si necesita reprogramarla, por favor respóndanos este mensaje.`;
 }
 
 export function linkWhatsapp(telefono: string | null | undefined, mensaje: string): string | null {
