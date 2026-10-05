@@ -170,7 +170,7 @@ Despachado: {new Date(remito.fecha_despacho).toLocaleString("es-AR")}
 {profile.role === "deposito" && order.estado === "borrador" && (
 <ActionDisclosure label="Agregar ítem a este pedido" tone="subtle" className="w-full">
 <form action={addOrderItemAction} className="flex flex-wrap gap-2 items-start">
-<input type="hidden" name="patient_id" value={order.patient_id} />
+<input type="hidden" name="patient_id" value={order.patient_id ?? ""} />
 <SearchableSelect
 name="product_id"
 required
