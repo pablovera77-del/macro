@@ -14,6 +14,189 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_type_recipients: {
+        Row: {
+          alert_type: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"] | null
+          user_id: string | null
+        }
+        Insert: {
+          alert_type: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"] | null
+          user_id?: string | null
+        }
+        Update: {
+          alert_type?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"] | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alert_type_recipients_alert_type_fkey"
+            columns: ["alert_type"]
+            isOneToOne: false
+            referencedRelation: "alert_types"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "alert_type_recipients_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      alert_types: {
+        Row: {
+          activo: boolean
+          canal_app: boolean
+          canal_email: boolean
+          canal_whatsapp: boolean
+          codigo: string
+          created_at: string
+          descripcion: string | null
+          mensaje: string
+          nombre: string
+          parametros: Json
+          urgencia: string
+        }
+        Insert: {
+          activo?: boolean
+          canal_app?: boolean
+          canal_email?: boolean
+          canal_whatsapp?: boolean
+          codigo: string
+          created_at?: string
+          descripcion?: string | null
+          mensaje: string
+          nombre: string
+          parametros?: Json
+          urgencia: string
+        }
+        Update: {
+          activo?: boolean
+          canal_app?: boolean
+          canal_email?: boolean
+          canal_whatsapp?: boolean
+          codigo?: string
+          created_at?: string
+          descripcion?: string | null
+          mensaje?: string
+          nombre?: string
+          parametros?: Json
+          urgencia?: string
+        }
+        Relationships: []
+      }
+      app_settings: {
+        Row: {
+          clave: string
+          descripcion: string | null
+          updated_at: string
+          updated_by: string | null
+          valor: number
+        }
+        Insert: {
+          clave: string
+          descripcion?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          valor: number
+        }
+        Update: {
+          clave?: string
+          descripcion?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      arrival_tokens: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string
+          id: string
+          patient_id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          patient_id: string
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string
+          id?: string
+          patient_id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "arrival_tokens_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arrival_tokens_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "arrival_tokens_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "arrival_tokens_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "arrival_tokens_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "arrival_tokens_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           accion: string
@@ -55,36 +238,165 @@ export type Database = {
           },
         ]
       }
+      authorization_extensions: {
+        Row: {
+          authorization_id: number
+          created_at: string
+          estado: string
+          fecha_hasta_anterior: string | null
+          gestionada_por: string | null
+          id: string
+          nota: string | null
+          nueva_fecha_hasta: string | null
+          patient_id: string
+          pedida_at: string
+          respondida_at: string | null
+        }
+        Insert: {
+          authorization_id: number
+          created_at?: string
+          estado?: string
+          fecha_hasta_anterior?: string | null
+          gestionada_por?: string | null
+          id?: string
+          nota?: string | null
+          nueva_fecha_hasta?: string | null
+          patient_id: string
+          pedida_at?: string
+          respondida_at?: string | null
+        }
+        Update: {
+          authorization_id?: number
+          created_at?: string
+          estado?: string
+          fecha_hasta_anterior?: string | null
+          gestionada_por?: string | null
+          id?: string
+          nota?: string | null
+          nueva_fecha_hasta?: string | null
+          patient_id?: string
+          pedida_at?: string
+          respondida_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "authorization_extensions_authorization_id_fkey"
+            columns: ["authorization_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_authorizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "authorization_extensions_authorization_id_fkey"
+            columns: ["authorization_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["treatment_authorization_id"]
+          },
+          {
+            foreignKeyName: "authorization_extensions_authorization_id_fkey"
+            columns: ["authorization_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["treatment_authorization_id"]
+          },
+          {
+            foreignKeyName: "authorization_extensions_authorization_id_fkey"
+            columns: ["authorization_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["treatment_authorization_id"]
+          },
+          {
+            foreignKeyName: "authorization_extensions_authorization_id_fkey"
+            columns: ["authorization_id"]
+            isOneToOne: false
+            referencedRelation: "v_treatment_authorization_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "authorization_extensions_gestionada_por_fkey"
+            columns: ["gestionada_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "authorization_extensions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "authorization_extensions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "authorization_extensions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "authorization_extensions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "authorization_extensions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+        ]
+      }
       billing_debits: {
         Row: {
           billing_period_id: string
           created_at: string
           estado: Database["public"]["Enums"]["debit_status"]
+          fecha_resubmision: string | null
           gestionado_por: string | null
           id: number
           monto: number
           motivo: string
           patient_id: string | null
+          reclamable: boolean
+          resubmision_notas: string | null
         }
         Insert: {
           billing_period_id: string
           created_at?: string
           estado?: Database["public"]["Enums"]["debit_status"]
+          fecha_resubmision?: string | null
           gestionado_por?: string | null
           id?: never
           monto: number
           motivo: string
           patient_id?: string | null
+          reclamable?: boolean
+          resubmision_notas?: string | null
         }
         Update: {
           billing_period_id?: string
           created_at?: string
           estado?: Database["public"]["Enums"]["debit_status"]
+          fecha_resubmision?: string | null
           gestionado_por?: string | null
           id?: never
           monto?: number
           motivo?: string
           patient_id?: string | null
+          reclamable?: boolean
+          resubmision_notas?: string | null
         }
         Relationships: [
           {
@@ -93,6 +405,20 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "billing_periods"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_debits_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "v_cierre_sugerido"
+            referencedColumns: ["billing_period_id"]
+          },
+          {
+            foreignKeyName: "billing_debits_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["billing_period_id"]
           },
           {
             foreignKeyName: "billing_debits_billing_period_id_fkey"
@@ -124,6 +450,132 @@ export type Database = {
           },
           {
             foreignKeyName: "billing_debits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "billing_debits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "billing_debits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "billing_debits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+        ]
+      }
+      billing_period_exclusions: {
+        Row: {
+          billing_period_id: string
+          created_at: string
+          excluido_por: string | null
+          id: number
+          motivo: string | null
+          patient_id: string
+        }
+        Insert: {
+          billing_period_id: string
+          created_at?: string
+          excluido_por?: string | null
+          id?: never
+          motivo?: string | null
+          patient_id: string
+        }
+        Update: {
+          billing_period_id?: string
+          created_at?: string
+          excluido_por?: string | null
+          id?: never
+          motivo?: string | null
+          patient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_period_exclusions_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "billing_periods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "v_cierre_sugerido"
+            referencedColumns: ["billing_period_id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["billing_period_id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["billing_period_id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_billing_period_id_fkey"
+            columns: ["billing_period_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_resumen"
+            referencedColumns: ["billing_period_id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_excluido_por_fkey"
+            columns: ["excluido_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "billing_period_exclusions_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "v_prevalidacion_facturacion"
@@ -195,6 +647,36 @@ export type Database = {
           },
         ]
       }
+      catalog_items: {
+        Row: {
+          activo: boolean
+          catalogo: string
+          codigo: string
+          created_at: string
+          id: string
+          nombre: string
+          orden: number
+        }
+        Insert: {
+          activo?: boolean
+          catalogo: string
+          codigo: string
+          created_at?: string
+          id?: string
+          nombre: string
+          orden?: number
+        }
+        Update: {
+          activo?: boolean
+          catalogo?: string
+          codigo?: string
+          created_at?: string
+          id?: string
+          nombre?: string
+          orden?: number
+        }
+        Relationships: []
+      }
       discharge_alerts: {
         Row: {
           estado: Database["public"]["Enums"]["discharge_status"]
@@ -234,6 +716,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discharge_alerts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "discharge_alerts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "discharge_alerts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
           },
           {
             foreignKeyName: "discharge_alerts_patient_id_fkey"
@@ -279,6 +782,8 @@ export type Database = {
           domicilio_origen: string | null
           fecha: string
           id: number
+          lat: number | null
+          lng: number | null
           notas: string | null
           patient_id: string | null
           tipo: Database["public"]["Enums"]["asset_movement_type"]
@@ -290,6 +795,8 @@ export type Database = {
           domicilio_origen?: string | null
           fecha?: string
           id?: never
+          lat?: number | null
+          lng?: number | null
           notas?: string | null
           patient_id?: string | null
           tipo: Database["public"]["Enums"]["asset_movement_type"]
@@ -301,6 +808,8 @@ export type Database = {
           domicilio_origen?: string | null
           fecha?: string
           id?: never
+          lat?: number | null
+          lng?: number | null
           notas?: string | null
           patient_id?: string | null
           tipo?: Database["public"]["Enums"]["asset_movement_type"]
@@ -338,6 +847,27 @@ export type Database = {
             foreignKeyName: "equipment_asset_movements_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "equipment_asset_movements_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "equipment_asset_movements_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "equipment_asset_movements_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
             referencedRelation: "v_prevalidacion_facturacion"
             referencedColumns: ["patient_id"]
           },
@@ -346,23 +876,35 @@ export type Database = {
       equipment_asset_photos: {
         Row: {
           asset_id: string
+          condicion: string | null
           created_at: string
           id: number
+          lat: number | null
+          lng: number | null
           momento: string
+          tomada_por: string | null
           url: string
         }
         Insert: {
           asset_id: string
+          condicion?: string | null
           created_at?: string
           id?: never
+          lat?: number | null
+          lng?: number | null
           momento: string
+          tomada_por?: string | null
           url: string
         }
         Update: {
           asset_id?: string
+          condicion?: string | null
           created_at?: string
           id?: never
+          lat?: number | null
+          lng?: number | null
           momento?: string
+          tomada_por?: string | null
           url?: string
         }
         Relationships: [
@@ -379,6 +921,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_equipos_en_domicilio"
             referencedColumns: ["asset_id"]
+          },
+          {
+            foreignKeyName: "equipment_asset_photos_tomada_por_fkey"
+            columns: ["tomada_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -471,6 +1020,20 @@ export type Database = {
             referencedRelation: "evolutions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "evolution_notes_evolution_id_fkey"
+            columns: ["evolution_id"]
+            isOneToOne: false
+            referencedRelation: "v_hc_sin_firmas"
+            referencedColumns: ["evolution_id"]
+          },
+          {
+            foreignKeyName: "evolution_notes_evolution_id_fkey"
+            columns: ["evolution_id"]
+            isOneToOne: false
+            referencedRelation: "v_visit_evolution_discrepancies"
+            referencedColumns: ["evolution_id"]
+          },
         ]
       }
       evolutions: {
@@ -559,6 +1122,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evolutions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "evolutions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "evolutions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
           },
           {
             foreignKeyName: "evolutions_patient_id_fkey"
@@ -654,6 +1238,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "family_access_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "family_access_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "family_access_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
           },
           {
             foreignKeyName: "family_access_patient_id_fkey"
@@ -771,6 +1376,57 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          alert_type: string
+          created_at: string
+          entidad: string | null
+          entidad_id: string | null
+          href: string | null
+          id: string
+          mensaje: string
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          entidad?: string | null
+          entidad_id?: string | null
+          href?: string | null
+          id?: string
+          mensaje: string
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          entidad?: string | null
+          entidad_id?: string | null
+          href?: string | null
+          id?: string
+          mensaje?: string
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_alert_type_fkey"
+            columns: ["alert_type"]
+            isOneToOne: false
+            referencedRelation: "alert_types"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       obra_social_value_history: {
         Row: {
           cargado_por: string | null
@@ -816,31 +1472,49 @@ export type Database = {
       obras_sociales: {
         Row: {
           activa: boolean
+          auditoria_contacto_email: string | null
+          auditoria_contacto_nombre: string | null
+          auditoria_contacto_telefono: string | null
+          coseguro_codigo: string | null
           created_at: string
           cuit: string | null
           dias_para_facturar: number
           id: string
+          modalidad_facturacion: string | null
           nombre: string
+          reglas_facturacion: string | null
           responsable_id: string | null
           valor_modulo: number | null
         }
         Insert: {
           activa?: boolean
+          auditoria_contacto_email?: string | null
+          auditoria_contacto_nombre?: string | null
+          auditoria_contacto_telefono?: string | null
+          coseguro_codigo?: string | null
           created_at?: string
           cuit?: string | null
           dias_para_facturar?: number
           id?: string
+          modalidad_facturacion?: string | null
           nombre: string
+          reglas_facturacion?: string | null
           responsable_id?: string | null
           valor_modulo?: number | null
         }
         Update: {
           activa?: boolean
+          auditoria_contacto_email?: string | null
+          auditoria_contacto_nombre?: string | null
+          auditoria_contacto_telefono?: string | null
+          coseguro_codigo?: string | null
           created_at?: string
           cuit?: string | null
           dias_para_facturar?: number
           id?: string
+          modalidad_facturacion?: string | null
           nombre?: string
+          reglas_facturacion?: string | null
           responsable_id?: string | null
           valor_modulo?: number | null
         }
@@ -857,24 +1531,39 @@ export type Database = {
       order_items: {
         Row: {
           cantidad: number
+          cantidad_solicitada: number | null
           equipment_asset_id: string | null
+          estado_item: string
           id: number
+          motivo: string | null
           order_id: string
           product_id: string
+          revisado_at: string | null
+          revisado_por: string | null
         }
         Insert: {
           cantidad?: number
+          cantidad_solicitada?: number | null
           equipment_asset_id?: string | null
+          estado_item?: string
           id?: never
+          motivo?: string | null
           order_id: string
           product_id: string
+          revisado_at?: string | null
+          revisado_por?: string | null
         }
         Update: {
           cantidad?: number
+          cantidad_solicitada?: number | null
           equipment_asset_id?: string | null
+          estado_item?: string
           id?: never
+          motivo?: string | null
           order_id?: string
           product_id?: string
+          revisado_at?: string | null
+          revisado_por?: string | null
         }
         Relationships: [
           {
@@ -919,6 +1608,125 @@ export type Database = {
             referencedRelation: "v_products_status"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "order_items_revisado_por_fkey"
+            columns: ["revisado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_notices: {
+        Row: {
+          creado_por: string | null
+          created_at: string
+          detalle: string | null
+          href: string | null
+          id: number
+          leido_at: string | null
+          leido_por: string | null
+          order_id: string | null
+          patient_id: string | null
+          rol_destino: Database["public"]["Enums"]["app_role"] | null
+          tipo: string
+          titulo: string
+          user_destino: string | null
+        }
+        Insert: {
+          creado_por?: string | null
+          created_at?: string
+          detalle?: string | null
+          href?: string | null
+          id?: never
+          leido_at?: string | null
+          leido_por?: string | null
+          order_id?: string | null
+          patient_id?: string | null
+          rol_destino?: Database["public"]["Enums"]["app_role"] | null
+          tipo: string
+          titulo: string
+          user_destino?: string | null
+        }
+        Update: {
+          creado_por?: string | null
+          created_at?: string
+          detalle?: string | null
+          href?: string | null
+          id?: never
+          leido_at?: string | null
+          leido_por?: string | null
+          order_id?: string | null
+          patient_id?: string | null
+          rol_destino?: Database["public"]["Enums"]["app_role"] | null
+          tipo?: string
+          titulo?: string
+          user_destino?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_notices_creado_por_fkey"
+            columns: ["creado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_notices_leido_por_fkey"
+            columns: ["leido_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_notices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_notices_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_notices_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "order_notices_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "order_notices_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "order_notices_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "order_notices_user_destino_fkey"
+            columns: ["user_destino"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       orders: {
@@ -928,12 +1736,18 @@ export type Database = {
           canal_entrega: Database["public"]["Enums"]["order_delivery_channel"]
           creado_por: string
           created_at: string
+          direccion_entrega: string | null
           estado: Database["public"]["Enums"]["order_status"]
           fecha_autorizacion: string | null
+          fecha_preparado: string | null
           id: string
           motivo_rechazo: string | null
-          patient_id: string
+          motivo_urgencia: string | null
+          origen: string
+          patient_id: string | null
+          preparado_por: string | null
           prioridad: Database["public"]["Enums"]["order_priority"]
+          profesional_id: string | null
           rechazado_por: string | null
         }
         Insert: {
@@ -942,12 +1756,18 @@ export type Database = {
           canal_entrega?: Database["public"]["Enums"]["order_delivery_channel"]
           creado_por: string
           created_at?: string
+          direccion_entrega?: string | null
           estado?: Database["public"]["Enums"]["order_status"]
           fecha_autorizacion?: string | null
+          fecha_preparado?: string | null
           id?: string
           motivo_rechazo?: string | null
-          patient_id: string
+          motivo_urgencia?: string | null
+          origen?: string
+          patient_id?: string | null
+          preparado_por?: string | null
           prioridad?: Database["public"]["Enums"]["order_priority"]
+          profesional_id?: string | null
           rechazado_por?: string | null
         }
         Update: {
@@ -956,12 +1776,18 @@ export type Database = {
           canal_entrega?: Database["public"]["Enums"]["order_delivery_channel"]
           creado_por?: string
           created_at?: string
+          direccion_entrega?: string | null
           estado?: Database["public"]["Enums"]["order_status"]
           fecha_autorizacion?: string | null
+          fecha_preparado?: string | null
           id?: string
           motivo_rechazo?: string | null
-          patient_id?: string
+          motivo_urgencia?: string | null
+          origen?: string
+          patient_id?: string | null
+          preparado_por?: string | null
           prioridad?: Database["public"]["Enums"]["order_priority"]
+          profesional_id?: string | null
           rechazado_por?: string | null
         }
         Relationships: [
@@ -990,8 +1816,43 @@ export type Database = {
             foreignKeyName: "orders_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "orders_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
             referencedRelation: "v_prevalidacion_facturacion"
             referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "orders_preparado_por_fkey"
+            columns: ["preparado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_profesional_id_fkey"
+            columns: ["profesional_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "orders_rechazado_por_fkey"
@@ -1087,6 +1948,27 @@ export type Database = {
             foreignKeyName: "patient_authorizations_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
             referencedRelation: "v_prevalidacion_facturacion"
             referencedColumns: ["patient_id"]
           },
@@ -1142,6 +2024,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_care_team_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_care_team_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_care_team_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
           },
           {
             foreignKeyName: "patient_care_team_patient_id_fkey"
@@ -1212,6 +2115,27 @@ export type Database = {
             foreignKeyName: "patient_document_signatures_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_document_signatures_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_document_signatures_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_document_signatures_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
             referencedRelation: "v_prevalidacion_facturacion"
             referencedColumns: ["patient_id"]
           },
@@ -1267,6 +2191,128 @@ export type Database = {
           },
           {
             foreignKeyName: "patient_info_checklist_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_info_checklist_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_info_checklist_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_info_checklist_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+        ]
+      }
+      patient_internaciones: {
+        Row: {
+          creado_por: string | null
+          created_at: string
+          diagnostico: string | null
+          egreso_hecho_at: string | null
+          estado: string
+          fecha_egreso: string | null
+          fecha_ingreso: string | null
+          id: string
+          llegada_confirmada_at: string | null
+          motivo_egreso: Database["public"]["Enums"]["discharge_reason"] | null
+          numero: number
+          numero_afiliado: string | null
+          obra_social_id: string | null
+          patient_id: string
+        }
+        Insert: {
+          creado_por?: string | null
+          created_at?: string
+          diagnostico?: string | null
+          egreso_hecho_at?: string | null
+          estado?: string
+          fecha_egreso?: string | null
+          fecha_ingreso?: string | null
+          id?: string
+          llegada_confirmada_at?: string | null
+          motivo_egreso?: Database["public"]["Enums"]["discharge_reason"] | null
+          numero?: number
+          numero_afiliado?: string | null
+          obra_social_id?: string | null
+          patient_id: string
+        }
+        Update: {
+          creado_por?: string | null
+          created_at?: string
+          diagnostico?: string | null
+          egreso_hecho_at?: string | null
+          estado?: string
+          fecha_egreso?: string | null
+          fecha_ingreso?: string | null
+          id?: string
+          llegada_confirmada_at?: string | null
+          motivo_egreso?: Database["public"]["Enums"]["discharge_reason"] | null
+          numero?: number
+          numero_afiliado?: string | null
+          obra_social_id?: string | null
+          patient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_internaciones_creado_por_fkey"
+            columns: ["creado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_internaciones_obra_social_id_fkey"
+            columns: ["obra_social_id"]
+            isOneToOne: false
+            referencedRelation: "obras_sociales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_internaciones_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_internaciones_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_internaciones_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_internaciones_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_internaciones_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "v_prevalidacion_facturacion"
@@ -1327,6 +2373,27 @@ export type Database = {
             foreignKeyName: "patient_medications_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_medications_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_medications_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_medications_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
             referencedRelation: "v_prevalidacion_facturacion"
             referencedColumns: ["patient_id"]
           },
@@ -1368,6 +2435,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_messages_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_messages_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_messages_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
           },
           {
             foreignKeyName: "patient_messages_patient_id_fkey"
@@ -1416,6 +2504,27 @@ export type Database = {
             foreignKeyName: "patient_required_documents_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_required_documents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_required_documents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_required_documents_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
             referencedRelation: "v_prevalidacion_facturacion"
             referencedColumns: ["patient_id"]
           },
@@ -1428,6 +2537,105 @@ export type Database = {
           },
         ]
       }
+      patient_status_history: {
+        Row: {
+          confirmado_por: string | null
+          created_at: string
+          evento: string
+          fecha_evento: string
+          id: string
+          informado_at: string | null
+          informado_por: string | null
+          internacion_id: string | null
+          motivo: Database["public"]["Enums"]["discharge_reason"] | null
+          observaciones: string | null
+          patient_id: string
+        }
+        Insert: {
+          confirmado_por?: string | null
+          created_at?: string
+          evento: string
+          fecha_evento?: string
+          id?: string
+          informado_at?: string | null
+          informado_por?: string | null
+          internacion_id?: string | null
+          motivo?: Database["public"]["Enums"]["discharge_reason"] | null
+          observaciones?: string | null
+          patient_id: string
+        }
+        Update: {
+          confirmado_por?: string | null
+          created_at?: string
+          evento?: string
+          fecha_evento?: string
+          id?: string
+          informado_at?: string | null
+          informado_por?: string | null
+          internacion_id?: string | null
+          motivo?: Database["public"]["Enums"]["discharge_reason"] | null
+          observaciones?: string | null
+          patient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_status_history_confirmado_por_fkey"
+            columns: ["confirmado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_status_history_informado_por_fkey"
+            columns: ["informado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_status_history_internacion_id_fkey"
+            columns: ["internacion_id"]
+            isOneToOne: false
+            referencedRelation: "patient_internaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_status_history_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_status_history_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_status_history_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_status_history_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_status_history_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           contacto_familiar_nombre: string | null
@@ -1437,6 +2645,8 @@ export type Database = {
           diagnostico_principal: string | null
           dni: string
           domicilio: string
+          domicilio_actual: string | null
+          egreso_hecho_at: string | null
           egreso_informado_at: string | null
           egreso_informado_por: string | null
           egreso_motivo_informado:
@@ -1448,15 +2658,24 @@ export type Database = {
           fecha_nacimiento: string | null
           frecuencia_reposicion: Database["public"]["Enums"]["replenishment_frequency"]
           id: string
+          lat: number | null
           llegada_confirmada_at: string | null
+          lng: number | null
+          localidad: string | null
           medicacion_confirmada_at: string | null
           medico_derivante: string | null
+          medico_matricula: string | null
           motivo_egreso: Database["public"]["Enums"]["discharge_reason"] | null
           nombre_completo: string
+          nro_historia_clinica: number | null
           numero_afiliado: string | null
           obra_social: string | null
           obra_social_id: string | null
+          ocupacion: string | null
+          sexo: string | null
+          telefono_actual: string | null
           telefono_contacto: string | null
+          updated_at: string
         }
         Insert: {
           contacto_familiar_nombre?: string | null
@@ -1466,6 +2685,8 @@ export type Database = {
           diagnostico_principal?: string | null
           dni: string
           domicilio: string
+          domicilio_actual?: string | null
+          egreso_hecho_at?: string | null
           egreso_informado_at?: string | null
           egreso_informado_por?: string | null
           egreso_motivo_informado?:
@@ -1477,15 +2698,24 @@ export type Database = {
           fecha_nacimiento?: string | null
           frecuencia_reposicion?: Database["public"]["Enums"]["replenishment_frequency"]
           id?: string
+          lat?: number | null
           llegada_confirmada_at?: string | null
+          lng?: number | null
+          localidad?: string | null
           medicacion_confirmada_at?: string | null
           medico_derivante?: string | null
+          medico_matricula?: string | null
           motivo_egreso?: Database["public"]["Enums"]["discharge_reason"] | null
           nombre_completo: string
+          nro_historia_clinica?: number | null
           numero_afiliado?: string | null
           obra_social?: string | null
           obra_social_id?: string | null
+          ocupacion?: string | null
+          sexo?: string | null
+          telefono_actual?: string | null
           telefono_contacto?: string | null
+          updated_at?: string
         }
         Update: {
           contacto_familiar_nombre?: string | null
@@ -1495,6 +2725,8 @@ export type Database = {
           diagnostico_principal?: string | null
           dni?: string
           domicilio?: string
+          domicilio_actual?: string | null
+          egreso_hecho_at?: string | null
           egreso_informado_at?: string | null
           egreso_informado_por?: string | null
           egreso_motivo_informado?:
@@ -1506,15 +2738,24 @@ export type Database = {
           fecha_nacimiento?: string | null
           frecuencia_reposicion?: Database["public"]["Enums"]["replenishment_frequency"]
           id?: string
+          lat?: number | null
           llegada_confirmada_at?: string | null
+          lng?: number | null
+          localidad?: string | null
           medicacion_confirmada_at?: string | null
           medico_derivante?: string | null
+          medico_matricula?: string | null
           motivo_egreso?: Database["public"]["Enums"]["discharge_reason"] | null
           nombre_completo?: string
+          nro_historia_clinica?: number | null
           numero_afiliado?: string | null
           obra_social?: string | null
           obra_social_id?: string | null
+          ocupacion?: string | null
+          sexo?: string | null
+          telefono_actual?: string | null
           telefono_contacto?: string | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -1720,29 +2961,47 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          dni: string | null
+          email_contacto: string | null
+          especialidad: Database["public"]["Enums"]["specialty"] | null
+          fecha_baja: string | null
+          fecha_ingreso: string | null
           full_name: string
           id: string
           last_login_at: string | null
           matricula: string | null
           role: Database["public"]["Enums"]["app_role"]
+          telefono: string | null
         }
         Insert: {
           active?: boolean
           created_at?: string
+          dni?: string | null
+          email_contacto?: string | null
+          especialidad?: Database["public"]["Enums"]["specialty"] | null
+          fecha_baja?: string | null
+          fecha_ingreso?: string | null
           full_name: string
           id: string
           last_login_at?: string | null
           matricula?: string | null
           role: Database["public"]["Enums"]["app_role"]
+          telefono?: string | null
         }
         Update: {
           active?: boolean
           created_at?: string
+          dni?: string | null
+          email_contacto?: string | null
+          especialidad?: Database["public"]["Enums"]["specialty"] | null
+          fecha_baja?: string | null
+          fecha_ingreso?: string | null
           full_name?: string
           id?: string
           last_login_at?: string | null
           matricula?: string | null
           role?: Database["public"]["Enums"]["app_role"]
+          telefono?: string | null
         }
         Relationships: []
       }
@@ -2029,10 +3288,15 @@ export type Database = {
       }
       remitos: {
         Row: {
+          entrega_lat: number | null
+          entrega_lng: number | null
           fecha_despacho: string | null
           fecha_entrega: string | null
           firma_familiar_url: string | null
           firmado_at: string | null
+          firmante_dni: string | null
+          firmante_nombre: string | null
+          firmante_vinculo: string | null
           id: string
           notificacion_canal: string | null
           notificacion_enviada_at: string | null
@@ -2040,10 +3304,15 @@ export type Database = {
           transportista_id: string | null
         }
         Insert: {
+          entrega_lat?: number | null
+          entrega_lng?: number | null
           fecha_despacho?: string | null
           fecha_entrega?: string | null
           firma_familiar_url?: string | null
           firmado_at?: string | null
+          firmante_dni?: string | null
+          firmante_nombre?: string | null
+          firmante_vinculo?: string | null
           id?: string
           notificacion_canal?: string | null
           notificacion_enviada_at?: string | null
@@ -2051,10 +3320,15 @@ export type Database = {
           transportista_id?: string | null
         }
         Update: {
+          entrega_lat?: number | null
+          entrega_lng?: number | null
           fecha_despacho?: string | null
           fecha_entrega?: string | null
           firma_familiar_url?: string | null
           firmado_at?: string | null
+          firmante_dni?: string | null
+          firmante_nombre?: string | null
+          firmante_vinculo?: string | null
           id?: string
           notificacion_canal?: string | null
           notificacion_enviada_at?: string | null
@@ -2080,6 +3354,9 @@ export type Database = {
       }
       retrieval_checklist: {
         Row: {
+          agregado_por: string | null
+          anulado_at: string | null
+          anulado_por: string | null
           asset_id: string | null
           cantidad: number | null
           discharge_alert_id: string
@@ -2087,11 +3364,22 @@ export type Database = {
           id: number
           llego_deposito_at: string | null
           llego_deposito_confirmado_por: string | null
+          llego_lat: number | null
+          llego_lng: number | null
+          nota: string | null
           product_id: string | null
+          reasignado_at: string | null
+          reasignado_patient_id: string | null
           retirado_at: string | null
           retirado_por: string | null
+          retiro_condicion: string | null
+          retiro_lat: number | null
+          retiro_lng: number | null
         }
         Insert: {
+          agregado_por?: string | null
+          anulado_at?: string | null
+          anulado_por?: string | null
           asset_id?: string | null
           cantidad?: number | null
           discharge_alert_id: string
@@ -2099,11 +3387,22 @@ export type Database = {
           id?: never
           llego_deposito_at?: string | null
           llego_deposito_confirmado_por?: string | null
+          llego_lat?: number | null
+          llego_lng?: number | null
+          nota?: string | null
           product_id?: string | null
+          reasignado_at?: string | null
+          reasignado_patient_id?: string | null
           retirado_at?: string | null
           retirado_por?: string | null
+          retiro_condicion?: string | null
+          retiro_lat?: number | null
+          retiro_lng?: number | null
         }
         Update: {
+          agregado_por?: string | null
+          anulado_at?: string | null
+          anulado_por?: string | null
           asset_id?: string | null
           cantidad?: number | null
           discharge_alert_id?: string
@@ -2111,11 +3410,33 @@ export type Database = {
           id?: never
           llego_deposito_at?: string | null
           llego_deposito_confirmado_por?: string | null
+          llego_lat?: number | null
+          llego_lng?: number | null
+          nota?: string | null
           product_id?: string | null
+          reasignado_at?: string | null
+          reasignado_patient_id?: string | null
           retirado_at?: string | null
           retirado_por?: string | null
+          retiro_condicion?: string | null
+          retiro_lat?: number | null
+          retiro_lng?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "retrieval_checklist_agregado_por_fkey"
+            columns: ["agregado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retrieval_checklist_anulado_por_fkey"
+            columns: ["anulado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "retrieval_checklist_asset_id_fkey"
             columns: ["asset_id"]
@@ -2166,10 +3487,134 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "retrieval_checklist_reasignado_patient_id_fkey"
+            columns: ["reasignado_patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retrieval_checklist_reasignado_patient_id_fkey"
+            columns: ["reasignado_patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "retrieval_checklist_reasignado_patient_id_fkey"
+            columns: ["reasignado_patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "retrieval_checklist_reasignado_patient_id_fkey"
+            columns: ["reasignado_patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "retrieval_checklist_reasignado_patient_id_fkey"
+            columns: ["reasignado_patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+          {
             foreignKeyName: "retrieval_checklist_retirado_por_fkey"
             columns: ["retirado_por"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_quote_items: {
+        Row: {
+          cantidad: number
+          created_at: string
+          descripcion: string
+          id: number
+          orden: number
+          quote_id: string
+          valor_unitario: number
+        }
+        Insert: {
+          cantidad: number
+          created_at?: string
+          descripcion: string
+          id?: never
+          orden?: number
+          quote_id: string
+          valor_unitario: number
+        }
+        Update: {
+          cantidad?: number
+          created_at?: string
+          descripcion?: string
+          id?: never
+          orden?: number
+          quote_id?: string
+          valor_unitario?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "sales_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_quotes: {
+        Row: {
+          creado_por: string | null
+          created_at: string
+          destinatario_particular: string | null
+          fecha: string
+          id: string
+          notas: string | null
+          numero: number
+          obra_social_id: string | null
+          validez_dias: number
+        }
+        Insert: {
+          creado_por?: string | null
+          created_at?: string
+          destinatario_particular?: string | null
+          fecha?: string
+          id?: string
+          notas?: string | null
+          numero?: never
+          obra_social_id?: string | null
+          validez_dias?: number
+        }
+        Update: {
+          creado_por?: string | null
+          created_at?: string
+          destinatario_particular?: string | null
+          fecha?: string
+          id?: string
+          notas?: string | null
+          numero?: never
+          obra_social_id?: string | null
+          validez_dias?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_quotes_creado_por_fkey"
+            columns: ["creado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_quotes_obra_social_id_fkey"
+            columns: ["obra_social_id"]
+            isOneToOne: false
+            referencedRelation: "obras_sociales"
             referencedColumns: ["id"]
           },
         ]
@@ -2342,39 +3787,224 @@ export type Database = {
         }
         Relationships: []
       }
+      transport_task_runs: {
+        Row: {
+          completada_at: string
+          completada_por: string | null
+          fecha: string
+          nota: string | null
+          task_id: string
+        }
+        Insert: {
+          completada_at?: string
+          completada_por?: string | null
+          fecha: string
+          nota?: string | null
+          task_id: string
+        }
+        Update: {
+          completada_at?: string
+          completada_por?: string | null
+          fecha?: string
+          nota?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_task_runs_completada_por_fkey"
+            columns: ["completada_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_task_runs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "transport_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transport_tasks: {
+        Row: {
+          aviso_en_camino_at: string | null
+          completada_at: string | null
+          contacto: string | null
+          creado_por: string | null
+          created_at: string
+          descripcion: string | null
+          dias_semana: number[] | null
+          direccion: string | null
+          duracion_min: number
+          estado: string
+          fecha: string
+          hora: string | null
+          id: string
+          iniciada_at: string | null
+          nota_reprogramacion: string | null
+          order_id: string | null
+          patient_id: string | null
+          permanente: boolean
+          prioridad: string
+          repeticion: string | null
+          reprogramaciones: number
+          reprogramada_desde: string | null
+          telefono: string | null
+          tipo: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          aviso_en_camino_at?: string | null
+          completada_at?: string | null
+          contacto?: string | null
+          creado_por?: string | null
+          created_at?: string
+          descripcion?: string | null
+          dias_semana?: number[] | null
+          direccion?: string | null
+          duracion_min?: number
+          estado?: string
+          fecha?: string
+          hora?: string | null
+          id?: string
+          iniciada_at?: string | null
+          nota_reprogramacion?: string | null
+          order_id?: string | null
+          patient_id?: string | null
+          permanente?: boolean
+          prioridad?: string
+          repeticion?: string | null
+          reprogramaciones?: number
+          reprogramada_desde?: string | null
+          telefono?: string | null
+          tipo?: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          aviso_en_camino_at?: string | null
+          completada_at?: string | null
+          contacto?: string | null
+          creado_por?: string | null
+          created_at?: string
+          descripcion?: string | null
+          dias_semana?: number[] | null
+          direccion?: string | null
+          duracion_min?: number
+          estado?: string
+          fecha?: string
+          hora?: string | null
+          id?: string
+          iniciada_at?: string | null
+          nota_reprogramacion?: string | null
+          order_id?: string | null
+          patient_id?: string | null
+          permanente?: boolean
+          prioridad?: string
+          repeticion?: string | null
+          reprogramaciones?: number
+          reprogramada_desde?: string | null
+          telefono?: string | null
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transport_tasks_creado_por_fkey"
+            columns: ["creado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_tasks_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_tasks_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transport_tasks_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "transport_tasks_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "transport_tasks_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "transport_tasks_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+        ]
+      }
       treatment_authorizations: {
         Row: {
           autorizado_por: string | null
           cantidad_autorizada: number
           created_at: string
+          dias_semana: number[] | null
           especialidad: Database["public"]["Enums"]["specialty"]
+          frecuencia_tipo: string | null
           id: number
           patient_id: string
           periodo_desde: string
           periodo_hasta: string
           practica: string
+          veces_por_dia: number | null
         }
         Insert: {
           autorizado_por?: string | null
           cantidad_autorizada: number
           created_at?: string
+          dias_semana?: number[] | null
           especialidad: Database["public"]["Enums"]["specialty"]
+          frecuencia_tipo?: string | null
           id?: never
           patient_id: string
           periodo_desde?: string
           periodo_hasta: string
           practica: string
+          veces_por_dia?: number | null
         }
         Update: {
           autorizado_por?: string | null
           cantidad_autorizada?: number
           created_at?: string
+          dias_semana?: number[] | null
           especialidad?: Database["public"]["Enums"]["specialty"]
+          frecuencia_tipo?: string | null
           id?: never
           patient_id?: string
           periodo_desde?: string
           periodo_hasta?: string
           practica?: string
+          veces_por_dia?: number | null
         }
         Relationships: [
           {
@@ -2390,6 +4020,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "treatment_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "treatment_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
           },
           {
             foreignKeyName: "treatment_authorizations_patient_id_fkey"
@@ -2465,6 +4116,27 @@ export type Database = {
             foreignKeyName: "treatment_plans_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "treatment_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "treatment_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "treatment_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
             referencedRelation: "v_prevalidacion_facturacion"
             referencedColumns: ["patient_id"]
           },
@@ -2473,6 +4145,145 @@ export type Database = {
             columns: ["reemplaza_id"]
             isOneToOne: false
             referencedRelation: "treatment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      turno_guardia: {
+        Row: {
+          conformidad_firma: string | null
+          conformidad_nombre: string | null
+          created_at: string
+          estado: string
+          firma_profesional_img: string | null
+          firma_profesional_matricula: string | null
+          firma_profesional_nombre: string | null
+          hora_egreso: string | null
+          hora_ingreso: string
+          id: string
+          narrativa: string | null
+          patient_id: string
+          profesional_id: string
+        }
+        Insert: {
+          conformidad_firma?: string | null
+          conformidad_nombre?: string | null
+          created_at?: string
+          estado?: string
+          firma_profesional_img?: string | null
+          firma_profesional_matricula?: string | null
+          firma_profesional_nombre?: string | null
+          hora_egreso?: string | null
+          hora_ingreso?: string
+          id?: string
+          narrativa?: string | null
+          patient_id: string
+          profesional_id?: string
+        }
+        Update: {
+          conformidad_firma?: string | null
+          conformidad_nombre?: string | null
+          created_at?: string
+          estado?: string
+          firma_profesional_img?: string | null
+          firma_profesional_matricula?: string | null
+          firma_profesional_nombre?: string | null
+          hora_egreso?: string | null
+          hora_ingreso?: string
+          id?: string
+          narrativa?: string | null
+          patient_id?: string
+          profesional_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "turno_guardia_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turno_guardia_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "turno_guardia_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "turno_guardia_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "turno_guardia_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "turno_guardia_profesional_id_fkey"
+            columns: ["profesional_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      turno_guardia_controles: {
+        Row: {
+          ax: number | null
+          created_by: string
+          fc: number | null
+          fr: number | null
+          hora: string
+          id: string
+          pa: string | null
+          turno_id: string
+        }
+        Insert: {
+          ax?: number | null
+          created_by?: string
+          fc?: number | null
+          fr?: number | null
+          hora?: string
+          id?: string
+          pa?: string | null
+          turno_id: string
+        }
+        Update: {
+          ax?: number | null
+          created_by?: string
+          fc?: number | null
+          fr?: number | null
+          hora?: string
+          id?: string
+          pa?: string | null
+          turno_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "turno_guardia_controles_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turno_guardia_controles_turno_id_fkey"
+            columns: ["turno_id"]
+            isOneToOne: false
+            referencedRelation: "turno_guardia"
             referencedColumns: ["id"]
           },
         ]
@@ -2493,6 +4304,7 @@ export type Database = {
           hora_desde: string | null
           hora_hasta: string | null
           id: string
+          motivo_reprogramacion: string | null
           observacion_agenda: string | null
           patient_id: string
           profesional_id: string
@@ -2514,6 +4326,7 @@ export type Database = {
           hora_desde?: string | null
           hora_hasta?: string | null
           id?: string
+          motivo_reprogramacion?: string | null
           observacion_agenda?: string | null
           patient_id: string
           profesional_id: string
@@ -2535,6 +4348,7 @@ export type Database = {
           hora_desde?: string | null
           hora_hasta?: string | null
           id?: string
+          motivo_reprogramacion?: string | null
           observacion_agenda?: string | null
           patient_id?: string
           profesional_id?: string
@@ -2560,6 +4374,27 @@ export type Database = {
             foreignKeyName: "visits_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "visits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "visits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "visits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
             referencedRelation: "v_prevalidacion_facturacion"
             referencedColumns: ["patient_id"]
           },
@@ -2574,6 +4409,57 @@ export type Database = {
       }
     }
     Views: {
+      v_cierre_sugerido: {
+        Row: {
+          billing_period_id: string | null
+          modalidad_facturacion: string | null
+          modulos_en_curso: number | null
+          modulos_verdes: number | null
+          obra_social_id: string | null
+          pacientes_excluidos: number | null
+          pacientes_rojos: number | null
+          total_proyectado: number | null
+          total_sugerido: number | null
+          valor_vigente: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_periods_obra_social_id_fkey"
+            columns: ["obra_social_id"]
+            isOneToOne: false
+            referencedRelation: "obras_sociales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_control_frecuencia_diaria: {
+        Row: {
+          cargadas: number | null
+          especialidad: string | null
+          esperadas: number | null
+          fecha: string | null
+          nombre_completo: string | null
+          patient_id: string | null
+          practica: string | null
+          treatment_authorization_id: number | null
+        }
+        Relationships: []
+      }
+      v_control_frecuencia_semanal: {
+        Row: {
+          cargadas: number | null
+          dias_semana: number[] | null
+          especialidad: string | null
+          esperadas: number | null
+          nombre_completo: string | null
+          patient_id: string | null
+          practica: string | null
+          semana_desde: string | null
+          semana_hasta: string | null
+          treatment_authorization_id: number | null
+        }
+        Relationships: []
+      }
       v_costos_por_paciente: {
         Row: {
           costo_estimado: number | null
@@ -2588,6 +4474,27 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
           },
           {
             foreignKeyName: "patient_authorizations_patient_id_fkey"
@@ -2632,6 +4539,27 @@ export type Database = {
             foreignKeyName: "equipment_asset_movements_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "equipment_asset_movements_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "equipment_asset_movements_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "equipment_asset_movements_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
             referencedRelation: "v_prevalidacion_facturacion"
             referencedColumns: ["patient_id"]
           },
@@ -2668,7 +4596,84 @@ export type Database = {
           profesional_id: string | null
           visit_id: string | null
         }
-        Relationships: []
+        Insert: {
+          created_at?: string | null
+          especialidad?: Database["public"]["Enums"]["specialty"] | null
+          evolution_id?: string | null
+          falta_conformidad?: never
+          falta_firma_profesional?: never
+          patient_id?: string | null
+          profesional_id?: string | null
+          visit_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          especialidad?: Database["public"]["Enums"]["specialty"] | null
+          evolution_id?: string | null
+          falta_conformidad?: never
+          falta_firma_profesional?: never
+          patient_id?: string | null
+          profesional_id?: string | null
+          visit_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evolutions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evolutions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "evolutions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "evolutions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "evolutions_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "evolutions_profesional_id_fkey"
+            columns: ["profesional_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evolutions_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "v_visit_evolution_discrepancies"
+            referencedColumns: ["visit_id"]
+          },
+          {
+            foreignKeyName: "evolutions_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "visits"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_hc_visitas_vs_plan: {
         Row: {
@@ -2679,7 +4684,43 @@ export type Database = {
           realizadas: number | null
           semana_desde: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "treatment_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "treatment_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "treatment_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "treatment_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+        ]
       }
       v_historial_precios_proveedor: {
         Row: {
@@ -2702,24 +4743,56 @@ export type Database = {
         }
         Relationships: []
       }
+      v_prevalidacion_controles: {
+        Row: {
+          billing_period_id: string | null
+          evoluciones_mes: number | null
+          nombre_completo: string | null
+          patient_id: string | null
+          sin_conformidad_familiar: number | null
+          sin_firma_profesional: number | null
+          visitas_sin_evolucion: number | null
+        }
+        Relationships: []
+      }
       v_prevalidacion_facturacion: {
         Row: {
           billing_period_id: string | null
           cantidad_autorizada: number | null
+          dia_corte: string | null
+          dias_aun_no_llego: number | null
+          dias_semana: number[] | null
+          dias_sin_evolucion_inicio: number | null
+          egreso_informado_at: string | null
           especialidad: Database["public"]["Enums"]["specialty"] | null
+          estado_control: string | null
           estado_prevalidacion: string | null
           evoluciones_cargadas_mes: number | null
+          evoluciones_cargadas_ventana: number | null
+          evoluciones_dia_no_autorizado: number | null
+          evoluciones_esperadas_ajustadas: number | null
           evoluciones_esperadas_mes: number | null
+          evoluciones_exceso: number | null
+          evoluciones_post_egreso: number | null
+          frecuencia_tipo: string | null
+          llegada_confirmada_at: string | null
+          motivo_faltante: string | null
           nombre_completo: string | null
           obra_social_id: string | null
           overlap_desde: string | null
           overlap_hasta: string | null
+          paciente_estado: string | null
+          paciente_fecha_egreso: string | null
+          paciente_fecha_ingreso: string | null
           patient_id: string | null
           periodo: string | null
           periodo_desde: string | null
           periodo_hasta: string | null
           practica: string | null
           treatment_authorization_id: number | null
+          veces_por_dia: number | null
+          ventana_desde: string | null
+          ventana_hasta: string | null
         }
         Relationships: [
           {
@@ -2731,11 +4804,31 @@ export type Database = {
           },
         ]
       }
+      v_prevalidacion_insumos: {
+        Row: {
+          billing_period_id: string | null
+          cantidad_autorizada: number | null
+          cantidad_entregada: number | null
+          codigo: string | null
+          descripcion: string | null
+          estado_control: string | null
+          nombre_completo: string | null
+          patient_id: string | null
+          product_id: string | null
+          tipo: string | null
+        }
+        Relationships: []
+      }
       v_prevalidacion_resumen: {
         Row: {
           amarillos: number | null
           billing_period_id: string | null
           bloqueado: boolean | null
+          bloqueado_efectivo: boolean | null
+          pacientes_rojos: number | null
+          pacientes_rojos_excluidos: number | null
+          pacientes_rojos_pendientes: number | null
+          pacientes_total: number | null
           rojos: number | null
           verdes: number | null
         }
@@ -2887,6 +4980,27 @@ export type Database = {
             foreignKeyName: "treatment_authorizations_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "treatment_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "treatment_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "treatment_authorizations_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
             referencedRelation: "v_prevalidacion_facturacion"
             referencedColumns: ["patient_id"]
           },
@@ -2914,6 +5028,27 @@ export type Database = {
             foreignKeyName: "visits_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "visits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "visits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "visits_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
             referencedRelation: "v_prevalidacion_facturacion"
             referencedColumns: ["patient_id"]
           },
@@ -2928,10 +5063,48 @@ export type Database = {
       }
     }
     Functions: {
+      admin_set_active: {
+        Args: { p_active: boolean; p_id: string }
+        Returns: undefined
+      }
+      admin_set_role: {
+        Args: { p_id: string; p_role: Database["public"]["Enums"]["app_role"] }
+        Returns: undefined
+      }
+      admin_update_legajo: {
+        Args: {
+          p_dni: string
+          p_email_contacto: string
+          p_especialidad: Database["public"]["Enums"]["specialty"]
+          p_fecha_baja: string
+          p_fecha_ingreso: string
+          p_full_name: string
+          p_id: string
+          p_matricula: string
+          p_telefono: string
+        }
+        Returns: undefined
+      }
       fn__family_check: {
         Args: { p_pin: string; p_token: string }
         Returns: Record<string, unknown>
       }
+      fn_arrival_confirm: { Args: { p_token: string }; Returns: Json }
+      fn_arrival_info: { Args: { p_token: string }; Returns: Json }
+      fn_arrival_link_create: { Args: { p_patient: string }; Returns: Json }
+      fn_buscar_pacientes_similares: {
+        Args: { p_dni?: string; p_nombre: string; p_telefono?: string }
+        Returns: {
+          dni: string
+          estado: string
+          id: string
+          motivo: string
+          nombre_completo: string
+          nro_historia_clinica: number
+          puntaje: number
+        }[]
+      }
+      fn_digitos: { Args: { t: string }; Returns: string }
       fn_family_access_create: { Args: { p_patient: string }; Returns: Json }
       fn_family_access_list: { Args: { p_patient: string }; Returns: Json }
       fn_family_access_revoke: {
@@ -2951,10 +5124,23 @@ export type Database = {
         Args: { p_pin: string; p_token: string }
         Returns: Json
       }
+      fn_norm_texto: { Args: { t: string }; Returns: string }
+      fn_notificar: {
+        Args: {
+          p_entidad?: string
+          p_entidad_id?: string
+          p_extra_users?: string[]
+          p_href?: string
+          p_tipo: string
+          p_vars?: Json
+        }
+        Returns: number
+      }
       get_current_app_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      touch_last_login: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role:
@@ -2983,7 +5169,14 @@ export type Database = {
         | "debitada"
         | "en_gestion"
       debit_status: "pendiente" | "en_gestion" | "resuelto" | "perdido"
-      discharge_reason: "alta" | "fallecimiento" | "fin_internacion"
+      discharge_reason:
+        | "alta"
+        | "fallecimiento"
+        | "fin_internacion"
+        | "alta_medica"
+        | "traslado_otro_domicilio"
+        | "traslado_otra_institucion"
+        | "internacion_otro"
       discharge_status: "pendiente_retiro" | "retiro_informado" | "cerrado"
       iva_category:
         | "21%"
@@ -2998,6 +5191,7 @@ export type Database = {
       order_status:
         | "borrador"
         | "autorizado"
+        | "preparado"
         | "despachado"
         | "entregado"
         | "cancelado"
@@ -3189,7 +5383,15 @@ export const Constants = {
         "en_gestion",
       ],
       debit_status: ["pendiente", "en_gestion", "resuelto", "perdido"],
-      discharge_reason: ["alta", "fallecimiento", "fin_internacion"],
+      discharge_reason: [
+        "alta",
+        "fallecimiento",
+        "fin_internacion",
+        "alta_medica",
+        "traslado_otro_domicilio",
+        "traslado_otra_institucion",
+        "internacion_otro",
+      ],
       discharge_status: ["pendiente_retiro", "retiro_informado", "cerrado"],
       iva_category: [
         "21%",
@@ -3205,6 +5407,7 @@ export const Constants = {
       order_status: [
         "borrador",
         "autorizado",
+        "preparado",
         "despachado",
         "entregado",
         "cancelado",

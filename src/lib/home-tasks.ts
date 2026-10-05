@@ -366,8 +366,8 @@ const DESPACHAR_PEDIDOS: HomeTask = {
   steps: [
     "Entrá a Pedidos y tocá «+ Iniciar pedido» (arriba a la derecha) para un paciente nuevo, o «Agregar ítem a este pedido» si ya tiene uno.",
     "Si el paciente tiene el ítem autorizado, se aprueba solo; si no, espera a Administración («Autorizar pedido»).",
-    "Una vez autorizado, tocá «Despachar (generar remito)»: queda el remito digital.",
-    "Se entrega y el familiar firma la recepción.",
+    "Una vez autorizado, tocá «Marcar como preparado» cuando tengas todo listo.",
+    "Elegí el día de entrega y tocá «Despachar (generar remito)»: queda el remito digital y la tarea en la agenda de Transporte. Si lo retira el familiar en el local, confirmá el retiro con su firma.",
   ],
   href: "/pedidos",
   cta: "Ir a Pedidos",
@@ -379,12 +379,40 @@ const ENTREGAR_PEDIDOS: HomeTask = {
   title: "Entregar un pedido en el domicilio",
   summary: "Llevar los insumos o equipos y registrar quién los recibió.",
   steps: [
-    "Entrá a Pedidos y buscá los pedidos despachados.",
-    "Al entregar, tocá «Confirmar entrega y firma» (o «Confirmar retiro y firma» si lo retira el familiar en el local).",
+    "Entrá a la Agenda de Transporte: ahí está lo de hoy, ordenado por prioridad, con teléfono y mapa.",
+    "Tocá «Salir hacia el domicilio» y, en Pedidos, tocá «Confirmar entrega y firma» (o «Confirmar retiro y firma» si lo retira el familiar en el local).",
   ],
   href: "/pedidos",
   cta: "Ir a Pedidos",
   doc: "DF-C5 §4",
+};
+
+const AGENDA_TRANSPORTE: HomeTask = {
+  id: "agenda-transporte",
+  title: "Ver y agendar las tareas del día",
+  summary: "Entregas, retiros y tareas propias, con prioridad alta, media o baja.",
+  steps: [
+    "Entrá a la Agenda de Transporte: ves lo pendiente de hoy. Con las flechas o el calendario mirás otros días.",
+    "Para una tarea nueva (por ejemplo llevar un equipo a service) tocá «+ Nueva tarea». Puede repetirse todos los días, algunos días o una vez por mes.",
+    "Si no pudiste hacer una tarea, tocá «No se pudo hacer hoy», contá el motivo y pasa sola al día siguiente.",
+  ],
+  href: "/agenda-transporte",
+  cta: "Ir a la Agenda de Transporte",
+  doc: "DF-C5 §4.4",
+};
+
+const PEDIR_INSUMOS: HomeTask = {
+  id: "pedir-insumos",
+  title: "Pedir insumos o equipos para un paciente",
+  summary: "Armar la solicitud; Depósito la revisa ítem por ítem y te avisa qué aceptó.",
+  steps: [
+    "Entrá a «Pedir insumos» y tocá «+ Pedir insumos».",
+    "Elegí el paciente y cargá cada producto con su cantidad. Si es urgente, escribí el motivo.",
+    "Depósito acepta, ajusta o rechaza cada ítem y vas a ver el resultado en tus avisos.",
+  ],
+  href: "/pedidos",
+  cta: "Ir a Pedir insumos",
+  doc: "DF-C5 §2",
 };
 
 const PRODUCTIVIDAD: HomeTask = {
@@ -418,7 +446,7 @@ const DASHBOARD: HomeTask = {
 };
 
 export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
-  coordinador_internacion: [CONFIRMAR_LLEGADA, PLAN_TRATAMIENTO, ARMAR_AGENDA, RECORDATORIOS, ACCESO_FAMILIA, MENSAJES_EQUIPO, CONTROL_EVOLUCIONES, PRODUCTIVIDAD, INFORMAR_EGRESO],
+  coordinador_internacion: [PEDIR_INSUMOS, CONFIRMAR_LLEGADA, PLAN_TRATAMIENTO, ARMAR_AGENDA, RECORDATORIOS, ACCESO_FAMILIA, MENSAJES_EQUIPO, CONTROL_EVOLUCIONES, PRODUCTIVIDAD, INFORMAR_EGRESO],
   profesional_asistencial: [MI_AGENDA, CARGAR_EVOLUCION, MENSAJES_EQUIPO, INFORMAR_EGRESO],
   administracion: [
     ALTA_PACIENTE,
@@ -438,8 +466,8 @@ export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
     CONSULTAR_HC,
     PRODUCTIVIDAD,
   ],
-  deposito: [DESPACHAR_PEDIDOS, SEGUIMIENTO, CARGAR_PRODUCTO, COMPRAS],
-  transporte: [ENTREGAR_PEDIDOS, SEGUIMIENTO],
+  deposito: [DESPACHAR_PEDIDOS, AGENDA_TRANSPORTE, SEGUIMIENTO, CARGAR_PRODUCTO, COMPRAS],
+  transporte: [AGENDA_TRANSPORTE, ENTREGAR_PEDIDOS, SEGUIMIENTO],
   direccion: [DASHBOARD, PRODUCTIVIDAD, AUDITORIA],
 };
 

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { flash } from "@/lib/flash";
+import { avisar } from "@/lib/order-notices";
 import type { Enums } from "@/types/database";
 
 // El alta de pacientes se hace desde Internación (createAdmissionAction,
@@ -36,6 +37,21 @@ export async function addAuthorizationAction(formData: FormData) {
   });
 
   if (error) throw new Error(error.message);
+
+  // R03: la carga avisa a Depósito (queda en su panel de avisos de Pedidos).
+  const [{ data: pac }, { data: prod }] = await Promise.all([
+    supabase.from("patients").select("nombre_completo").eq("id", patient_id).maybeSingle(),
+    supabase.from("products").select("descripcion").eq("id", product_id).maybeSingle(),
+  ]);
+  await avisar(supabase, profile.id, {
+    rol: "deposito",
+    tipo: "autorizacion_nueva",
+    titulo: `Nueva autorización de stock: ${pac?.nombre_completo ?? "paciente"}`,
+    detalle: `${cantidad_autorizada}x ${prod?.descripcion ?? "producto"}${vigente_hasta ? ` (hasta ${vigente_hasta})` : ""}. Ya podés armar el pedido.`,
+    href: "/pedidos",
+    patient_id,
+  });
+
   revalidatePath("/pacientes");
   await flash("Autorización de stock cargada. Depósito ya puede armar el pedido.");
   return;
