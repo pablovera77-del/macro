@@ -18,8 +18,7 @@ type Alerta = {
  * Administración y Coordinación ven todos; cada profesional ve los de los pacientes de su equipo.
  * Si no hay ninguno (o la consulta falla), no muestra nada.
  */
-export default async function AlertasCambioMedicacion({ role, userId }: { role: AppRole; userId: string }) {
-  if (role !== "administracion" && role !== "coordinador_internacion" && role !== "profesional_asistencial") return null;
+async function cargarAlertas(role: AppRole, userId: string): Promise<Alerta[]> {
   const supabase = await createClient();
   try {
     const desde = new Date(Date.now() - 7 * 86400000).toISOString();
@@ -27,7 +26,7 @@ export default async function AlertasCambioMedicacion({ role, userId }: { role: 
     if (role === "profesional_asistencial") {
       const { data: equipo } = await supabase.from("patient_care_team").select("patient_id").eq("profesional_id", userId);
       ids = [...new Set((equipo ?? []).map((t) => t.patient_id))];
-      if (ids.length === 0) return null;
+      if (ids.length === 0) return [];
     }
     let q = supabase
       .from("evolutions")
@@ -38,9 +37,18 @@ export default async function AlertasCambioMedicacion({ role, userId }: { role: 
       .limit(8);
     if (ids) q = q.in("patient_id", ids);
     const { data, error } = await q;
-    const alertas = (data ?? []) as unknown as Alerta[];
-    if (error || alertas.length === 0) return null;
+    if (error) return [];
+    return (data ?? []) as unknown as Alerta[];
+  } catch {
+    return [];
+  }
+}
 
+export default async function AlertasCambioMedicacion({ role, userId }: { role: AppRole; userId: string }) {
+  if (role !== "administracion" && role !== "coordinador_internacion" && role !== "profesional_asistencial") return null;
+  const alertas = await cargarAlertas(role, userId);
+  if (alertas.length === 0) return null;
+  {
     return (
       <section className="animate-fade-slide-up">
         <h2 className="text-sm font-semibold text-slate-900 mb-3">Cambios de medicación avisados</h2>
@@ -68,7 +76,5 @@ export default async function AlertasCambioMedicacion({ role, userId }: { role: 
         </ul>
       </section>
     );
-  } catch {
-    return null;
   }
 }
