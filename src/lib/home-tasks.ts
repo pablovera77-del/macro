@@ -495,12 +495,28 @@ const PRODUCTIVIDAD: HomeTask = {
   steps: [
     "Entrá a Productividad y cupos.",
     "En «Cupos de la semana» ves cada paciente con visitas hechas, programadas, faltantes y de más. Los cupos completos quedan aparte.",
-    "En «Visitas por día de cada profesional» ves el promedio de los últimos 30 días y se marca a quien está por debajo de lo esperado.",
+    "Arriba de todo ves el cupo contratado de cada profesional: verde dentro del cupo, amarillo cerca y rojo excedido. Es una guía, no bloquea la agenda.",
+    "En «Visitas por día de cada profesional» ves el promedio de los últimos 30 días, solo como dato.",
     "Podés filtrar por disciplina.",
   ],
   href: "/productividad",
   cta: "Ir a Productividad y cupos",
   doc: "DF-C2 §7",
+};
+
+const GUARDIAS: HomeTask = {
+  id: "guardias",
+  title: "Armar las guardias del mes",
+  summary: "Cargar las guardias por tramos de la semana o por día y cantidad, sin cargar visita por visita, y ver cuáles quedaron sin profesional.",
+  steps: [
+    "Entrá a Guardias del mes y tocá «+ Cargar guardias».",
+    "Elegí el paciente y, si ya lo sabés, el profesional (si no, queda «Sin profesional» y lo asignás después).",
+    "Elegí «Por tramo de la semana» (lunes a viernes, fin de semana o todos los días) con fecha de inicio y fin, o «Por día y cantidad».",
+    "Arriba te avisa si hay un turno de guardia abierto hace demasiado tiempo.",
+  ],
+  href: "/guardias",
+  cta: "Ir a Guardias del mes",
+  doc: "DF-C2 (H12)",
 };
 
 const DASHBOARD: HomeTask = {
@@ -519,7 +535,7 @@ const DASHBOARD: HomeTask = {
 };
 
 export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
-  coordinador_internacion: [PEDIR_INSUMOS, CONFIRMAR_LLEGADA, PLAN_TRATAMIENTO, ARMAR_AGENDA, RECORDATORIOS, ACCESO_FAMILIA, MENSAJES_EQUIPO, CONTROL_EVOLUCIONES, PRODUCTIVIDAD, INFORMAR_EGRESO],
+  coordinador_internacion: [PEDIR_INSUMOS, CONFIRMAR_LLEGADA, PLAN_TRATAMIENTO, ARMAR_AGENDA, RECORDATORIOS, ACCESO_FAMILIA, MENSAJES_EQUIPO, CONTROL_EVOLUCIONES, PRODUCTIVIDAD, GUARDIAS, INFORMAR_EGRESO],
   profesional_asistencial: [MI_AGENDA, CARGAR_EVOLUCION, MENSAJES_EQUIPO, INFORMAR_EGRESO],
   administracion: [
     ALTA_PACIENTE,
@@ -538,10 +554,11 @@ export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
     MENSAJES_EQUIPO,
     CONSULTAR_HC,
     PRODUCTIVIDAD,
+    GUARDIAS,
   ],
   deposito: [DESPACHAR_PEDIDOS, AGENDA_TRANSPORTE, SEGUIMIENTO, CARGAR_PRODUCTO, COMPRAS],
   transporte: [AGENDA_TRANSPORTE, ENTREGAR_PEDIDOS, SEGUIMIENTO],
-  direccion: [DASHBOARD, PRODUCTIVIDAD, HONORARIOS, PRESUPUESTOS, AUDITORIA],
+  direccion: [DASHBOARD, PRODUCTIVIDAD, GUARDIAS, HONORARIOS, PRESUPUESTOS, AUDITORIA],
   facturacion: [REVISAR_LISTOS, CIERRE_MENSUAL, OBRAS_SOCIALES_FACT, PRESUPUESTOS, CONSULTAR_HC],
 };
 

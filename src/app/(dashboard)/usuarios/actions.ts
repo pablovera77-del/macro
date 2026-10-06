@@ -6,6 +6,7 @@ import { requireProfile } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { flash } from "@/lib/flash";
 import { ROLES_ASIGNABLES, passwordProvisoria } from "@/lib/usuarios";
+import { esCupo } from "@/lib/cupos";
 import type { AppRole } from "@/lib/roles";
 import type { Enums } from "@/types/database";
 
@@ -136,5 +137,22 @@ export async function guardarLegajoAction(_prev: UsuarioResult, formData: FormDa
   if (error) return fail(error.message);
   revalidatePath("/usuarios");
   await flash("Legajo guardado.");
+  return null;
+}
+
+// H11: cupo contratado del profesional (enfermería, kinesiología). Es una guía para Coordinación.
+export async function guardarCupoAction(_prev: UsuarioResult, formData: FormData): Promise<UsuarioResult> {
+  const yo = await soloAdmin();
+  if (!yo) return fail(SOLO_ADMIN);
+  const id = String(formData.get("id") || "");
+  const cupo = String(formData.get("cupo") || "");
+  if (!id) return fail("Falta la persona.");
+  if (cupo && !esCupo(cupo)) return fail("Elegí un cupo de la lista.");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_cupo", { p_id: id, p_cupo: cupo });
+  if (error) return fail(error.message);
+  revalidatePath("/usuarios");
+  revalidatePath("/productividad");
+  await flash(cupo ? "Cupo guardado." : "Cupo quitado.");
   return null;
 }

@@ -1405,6 +1405,92 @@ export type Database = {
           },
         ]
       }
+      guardias_programadas: {
+        Row: {
+          created_at: string
+          created_by: string
+          desde: string
+          fecha: string
+          hasta: string
+          id: string
+          nota: string | null
+          patient_id: string
+          profesional_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          desde?: string
+          fecha: string
+          hasta?: string
+          id?: string
+          nota?: string | null
+          patient_id: string
+          profesional_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          desde?: string
+          fecha?: string
+          hasta?: string
+          id?: string
+          nota?: string | null
+          patient_id?: string
+          profesional_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guardias_programadas_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guardias_programadas_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guardias_programadas_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "guardias_programadas_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "guardias_programadas_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "guardias_programadas_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "guardias_programadas_profesional_id_fkey"
+            columns: ["profesional_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       honorarios_prestacion: {
         Row: {
           costo_unitario: number
@@ -3267,6 +3353,7 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          cupo_modulo: string | null
           dni: string | null
           email_contacto: string | null
           especialidad: Database["public"]["Enums"]["specialty"] | null
@@ -3282,6 +3369,7 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          cupo_modulo?: string | null
           dni?: string | null
           email_contacto?: string | null
           especialidad?: Database["public"]["Enums"]["specialty"] | null
@@ -3297,6 +3385,7 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          cupo_modulo?: string | null
           dni?: string | null
           email_contacto?: string | null
           especialidad?: Database["public"]["Enums"]["specialty"] | null
@@ -5438,6 +5527,10 @@ export type Database = {
         Args: { p_active: boolean; p_id: string }
         Returns: undefined
       }
+      admin_set_cupo: {
+        Args: { p_cupo: string; p_id: string }
+        Returns: undefined
+      }
       admin_set_role: {
         Args: { p_id: string; p_role: Database["public"]["Enums"]["app_role"] }
         Returns: undefined
@@ -5455,6 +5548,14 @@ export type Database = {
           p_telefono: string
         }
         Returns: undefined
+      }
+      asignar_coordinador: {
+        Args: { p_coord: string; p_patient: string }
+        Returns: undefined
+      }
+      avisar_ingreso: {
+        Args: { p_especialidades: string[]; p_patient: string }
+        Returns: number
       }
       fn__family_check: {
         Args: { p_pin: string; p_token: string }

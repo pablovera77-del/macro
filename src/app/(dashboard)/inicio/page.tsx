@@ -4,6 +4,9 @@ import { requireProfile, ROLE_LABELS, type AppRole } from "@/lib/auth";
 import { TASKS_BY_ROLE, ROLE_WELCOME } from "@/lib/home-tasks";
 import PageHeader from "@/components/PageHeader";
 import MiDia from "@/components/agenda/MiDia";
+import { turnosOlvidados } from "@/lib/guardias";
+import { hoyAR } from "@/lib/plan";
+import { calcularSinAsignar } from "@/lib/sin-asignar";
 import { contarFaltanProgramar, contarAtrasadas } from "@/lib/agenda-pendientes";
 import { IconGrid, IconArrowRight, IconAlert, IconCheck } from "@/components/icons";
 import AlertasCambioMedicacion from "@/components/hc/AlertasCambioMedicacion";
@@ -36,12 +39,20 @@ async function getPendientes(role: AppRole, userId: string): Promise<Pendiente[]
       await count(supabase.from("patients").select("id", { count: "exact", head: true }).eq("estado", "admitido_pendiente_llegada")),
       "/internacion"
     );
+    push("pacientes con prácticas autorizadas todavía sin profesional asignado", (await calcularSinAsignar(supabase)).length, "/internacion#sin-asignar", true);
     push(
       "visitas realizadas todavía sin evolución cargada",
       await count(supabase.from("v_visit_evolution_discrepancies").select("*", { count: "exact", head: true })),
       "/evoluciones",
       true
     );
+    push("guardias de hoy en adelante todavía sin profesional", await count(supabase.from("guardias_programadas").select("id", { count: "exact", head: true }).is("profesional_id", null).gte("fecha", hoyAR())), "/guardias", true);
+    try {
+      const { data: abiertos } = await supabase.from("turno_guardia").select("hora_ingreso").eq("estado", "abierto");
+      push("turnos de guardia abiertos hace demasiado tiempo", turnosOlvidados(abiertos ?? []).length, "/guardias", true);
+    } catch {
+      // el contador se omite
+    }
     push("planes con visitas todavía sin programar esta semana", await contarFaltanProgramar(), "/agenda#faltan-programar");
     push("visitas atrasadas: la fecha pasó y nadie las cerró", await contarAtrasadas(), "/agenda#atrasadas", true);
   }
@@ -51,6 +62,7 @@ async function getPendientes(role: AppRole, userId: string): Promise<Pendiente[]
       await count(supabase.from("patients").select("id", { count: "exact", head: true }).eq("estado", "admitido_pendiente_llegada")),
       "/internacion#ingresos"
     );
+    push("pacientes con prácticas autorizadas todavía sin profesional asignado", (await calcularSinAsignar(supabase)).length, "/internacion#sin-asignar", true);
     push(
       "pedidos esperan tu autorización",
       await count(supabase.from("orders").select("id", { count: "exact", head: true }).eq("estado", "borrador")),

@@ -6,6 +6,7 @@ import {
   confirmArrivalAction,
   reportarEgresoAction,
   assignCareTeamAction,
+  asignarCoordinadorAction,
   signLegalDocumentAction,
 } from "./actions";
 import PageHeader from "@/components/PageHeader";
@@ -23,6 +24,7 @@ import { MOTIVOS_EGRESO_OPCIONES, motivoEgresoLabel, datetimeLocalAR } from "@/l
 import StatusBadge from "@/components/StatusBadge";
 import AutorizacionesForm, { type RenglonInicial } from "@/components/pacientes/AutorizacionesForm";
 import { frecuenciaTexto } from "@/lib/autorizaciones";
+import { calcularSinAsignar } from "@/lib/sin-asignar";
 
 const ESTADO_LABELS: Record<string, string> = {
   admitido_pendiente_llegada: "Admitido, pendiente de llegada",
@@ -115,6 +117,11 @@ export default async function InternacionPage({
     supabase.from("patient_document_signatures").select("patient_id, legal_document_id, firmante_nombre, firmado_at, profesional_id"),
   ]);
 
+  // H6: pacientes con prácticas autorizadas que todavía no tienen profesional o coordinador. Lo ven Administración y Coordinación.
+  const sinAsignar = canArrival ? await calcularSinAsignar(supabase) : [];
+  const { data: coordinadores } = canAdmit
+    ? await supabase.from("profiles").select("id, full_name").eq("role", "coordinador_internacion").eq("active", true).order("full_name")
+    : { data: [] as { id: string; full_name: string }[] };
   const vencenPronto = (authorizations ?? []).filter((a) => a.estado_semaforo !== "vigente");
   const detallePorId = new Map((authDetalle ?? []).map((d) => [d.id, d]));
   const hoyStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/San_Juan" }).format(new Date());
@@ -325,6 +332,48 @@ export default async function InternacionPage({
                   )}
                   {patient?.nombre_completo ?? "—"}
                   {o.motivo_rechazo && <span className="text-xs text-slate-400">— {o.motivo_rechazo}</span>}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {sinAsignar.length > 0 && (
+        <section id="sin-asignar" className="scroll-mt-6 bg-rose-50 border border-rose-300 rounded-2xl p-5 animate-fade-slide-up">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-rose-100 text-rose-600">
+              <IconAlert className="w-4 h-4" />
+            </span>
+            <h2 className="text-sm font-semibold text-rose-900">Prácticas autorizadas sin profesional asignado ({sinAsignar.length})</h2>
+          </div>
+          <p className="text-xs text-rose-800 mb-3">
+            Estos pacientes tienen prácticas vigentes y todavía nadie las atiende. La alerta se va cuando el equipo tiene a alguien de la disciplina
+            {canAdmit ? " (cargalo en «Asignar al equipo» del paciente) o, en cuidadores y guardias, cuando elegís un coordinador." : "; la asignación la hace Administración, y la agenda de visitas la armás vos."}
+          </p>
+          <ul className="space-y-2">
+            {sinAsignar.map((s) => {
+              const necesitaCoord = s.faltantes.some((f) => f.tipo === "coordinador");
+              return (
+                <li key={s.patient_id} className="bg-white rounded-xl border border-rose-200 p-3 text-sm space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <a href={`#paciente-${s.patient_id}`} className="font-medium text-slate-900 hover:underline underline-offset-2">{s.nombre}</a>
+                    {s.faltantes.map((f) => (
+                      <StatusBadge key={f.practica} tone="rojo" label={f.tipo === "coordinador" ? `${f.practica}: falta coordinador` : `${f.practica}: falta ${SPECIALTY_LABELS[f.especialidad]?.toLowerCase() ?? f.especialidad}`} />
+                    ))}
+                  </div>
+                  {canAdmit && necesitaCoord && (
+                    <form action={asignarCoordinadorAction} className="flex flex-wrap gap-2">
+                      <input type="hidden" name="patient_id" value={s.patient_id} />
+                      <select name="coordinador_id" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs flex-1 min-w-[180px]">
+                        <option value="">Elegir coordinador…</option>
+                        {(coordinadores ?? []).map((c) => (
+                          <option key={c.id} value={c.id}>{c.full_name}</option>
+                        ))}
+                      </select>
+                      <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Asignar coordinador</button>
+                    </form>
+                  )}
                 </li>
               );
             })}

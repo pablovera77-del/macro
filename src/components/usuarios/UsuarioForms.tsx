@@ -3,9 +3,10 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import ConfirmButton from "@/components/ConfirmButton";
-import { crearUsuarioAction, cambiarRolAction, activarUsuarioAction, guardarLegajoAction, type UsuarioResult } from "@/app/(dashboard)/usuarios/actions";
+import { crearUsuarioAction, cambiarRolAction, activarUsuarioAction, guardarLegajoAction, guardarCupoAction, type UsuarioResult } from "@/app/(dashboard)/usuarios/actions";
 import { ROLES_ASIGNABLES, ROL_DESCRIPCION } from "@/lib/usuarios";
 import { ROLE_LABELS, SPECIALTY_LABELS } from "@/lib/roles";
+import { CUPOS, CUPO_CODIGOS } from "@/lib/cupos";
 
 const inputCls = "w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/40";
 const labelCls = "block text-xs font-medium text-slate-600 mb-1";
@@ -216,6 +217,26 @@ export function LegajoForm({ p }: { p: LegajoDatos }) {
         <ErrorBox state={state} />
         <Enviar>Guardar legajo</Enviar>
       </div>
+    </form>
+  );
+}
+
+export function CupoForm({ id, cupo }: { id: string; cupo: string | null }) {
+  const [state, action] = useActionState(guardarCupoAction, null as UsuarioResult);
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-2">
+      <input type="hidden" name="id" value={id} />
+      <div className="min-w-0 flex-1">
+        <label className={labelCls}>Cupo contratado (guía para Coordinación)</label>
+        <select name="cupo" defaultValue={cupo ?? ""} className={inputCls}>
+          <option value="">— Sin cupo definido —</option>
+          {CUPO_CODIGOS.map((c) => (
+            <option key={c} value={c}>{CUPOS[c].nombre} ({CUPOS[c].detalle})</option>
+          ))}
+        </select>
+      </div>
+      <Enviar>Guardar cupo</Enviar>
+      <div className="basis-full"><ErrorBox state={state} /></div>
     </form>
   );
 }

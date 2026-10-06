@@ -12,6 +12,7 @@ import { MOTIVOS_EGRESO_OPCIONES, motivoEgresoLabel, parseDatetimeLocalAR } from
 import type { AppRole } from "@/lib/auth";
 import { leerLegajo, leerContactosExtra, txt, PARTICULAR } from "@/lib/legajo";
 import { leerRenglones } from "@/lib/autorizaciones";
+import { calcularSinAsignar } from "@/lib/sin-asignar";
 
 // DF-C3 §2 y §3: el alta, el legajo, las firmas de ingreso y las autorizaciones
 // los gestiona Administración. Coordinación confirma la llegada al domicilio
@@ -328,10 +329,37 @@ export async function cargarAutorizacionesAction(_prev: AutorizacionState, formD
     }))
   );
   if (error) return { error: `No se pudo guardar la autorización: ${error.message}` };
+  await avisarIngresoSinAsignar(supabase, patient_id);
   revalidatePath("/internacion");
   revalidatePath(`/paciente/${patient_id}`);
   await flash(leido.renglones.length === 1 ? "Práctica autorizada." : `${leido.renglones.length} prácticas autorizadas.`);
   return { error: null, ok: true };
+}
+
+// H6: si tras cargar las prácticas falta profesional o coordinador, se avisa a Coordinación (queda además la alerta visible en Inicio y Pacientes).
+async function avisarIngresoSinAsignar(supabase: Awaited<ReturnType<typeof createClient>>, patientId: string) {
+  try {
+    const [p] = await calcularSinAsignar(supabase, patientId);
+    if (!p) return;
+    await supabase.rpc("avisar_ingreso", { p_patient: patientId, p_especialidades: [...new Set(p.faltantes.map((f) => f.especialidad))] });
+  } catch {
+    // El aviso es un extra: si falla, la alerta de la pantalla sigue visible.
+  }
+}
+
+// H6: Administración elige el coordinador de un paciente (cuidadores y guardias).
+export async function asignarCoordinadorAction(formData: FormData) {
+  const { profile } = await requireProfile();
+  if (!ROLES_ALTA.includes(profile.role)) throw new Error("Solo Administración elige el coordinador de un paciente.");
+  const patient_id = String(formData.get("patient_id") || "");
+  const coord = String(formData.get("coordinador_id") || "");
+  if (!patient_id || !coord) throw new Error("Elegí un coordinador de la lista.");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("asignar_coordinador", { p_patient: patient_id, p_coord: coord });
+  if (error) throw new Error(error.message);
+  revalidatePath("/internacion");
+  revalidatePath("/inicio");
+  await flash("Coordinador asignado.");
 }
 
 // H4 (Vanina 06/10): la renovación crea autorizaciones NUEVAS con su propio período, sin pisar las anteriores,
@@ -409,6 +437,7 @@ export async function renovarAutorizacionesAction(_prev: AutorizacionState, form
       heredados = vigentes.length;
     }
   }
+  await avisarIngresoSinAsignar(supabase, patient_id);
   revalidatePath("/internacion");
   revalidatePath("/pacientes");
   revalidatePath(`/paciente/${patient_id}`);

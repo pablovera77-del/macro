@@ -73,6 +73,9 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Agenda", accion: "Marcar un recordatorio de WhatsApp como enviado", roles: [C], guard: { file: AG, message: "Solo Coordinación marca los recordatorios como enviados." } },
   { modulo: "Agenda", accion: "Generar las visitas de la semana desde el plan", roles: [C], guard: { file: AG, message: "Solo Coordinación genera las visitas de la semana." } },
   { modulo: "Agenda", accion: "Ver productividad y cupos (solo lectura)", roles: [C, A, DIR], guard: { file: "src/app/(dashboard)/productividad/page.tsx", message: "ROLES_PRODUCTIVIDAD.includes(profile.role)" } },
+  { modulo: "Agenda", accion: "Armar las guardias del mes (por tramos o por día y cantidad) y asignar profesional", roles: [C, A], guard: { file: "src/app/(dashboard)/guardias/actions.ts", message: "Solo Coordinación y Administración arman las guardias." } },
+  { modulo: "Agenda", accion: "Ver las guardias del mes (solo lectura)", roles: [C, A, DIR], guard: { file: "src/app/(dashboard)/guardias/page.tsx", message: "ROLES_VER as readonly string[]).includes(profile.role)" } },
+  { modulo: "Pacientes", accion: "Elegir el coordinador de un paciente (cuidadores y guardias)", roles: [A], guard: { file: INTER, message: "Solo Administración elige el coordinador de un paciente." } },
   { modulo: "Historia clínica", accion: "Cargar evoluciones", roles: [P], guard: { file: EVO, message: "Solo el profesional asistencial carga evoluciones." } },
   { modulo: "Historia clínica", accion: "Agregar una nota aclaratoria a una evolución firmada", roles: [P, C], guard: { file: EVO, message: "Solo el profesional asistencial de la evolución o Coordinación agregan notas aclaratorias." } },
   // Insumos
@@ -113,7 +116,7 @@ export const PERMISOS: Permiso[] = [
   // Dirección (solo lectura)
   { modulo: "Auditoría", accion: "Ver el registro de auditoría", roles: [DIR], guard: { file: "src/app/(dashboard)/auditoria/page.tsx", message: 'profile.role !== "direccion"' } },
   // Usuarios y configuración
-  { modulo: "Usuarios", accion: "Crear usuarios, asignar roles, editar el legajo y desactivar cuentas", roles: [A], guard: { file: USR, message: "Solo Administración gestiona los usuarios." } },
+  { modulo: "Usuarios", accion: "Crear usuarios, asignar roles, definir el cupo contratado, editar el legajo y desactivar cuentas", roles: [A], guard: { file: USR, message: "Solo Administración gestiona los usuarios." } },
   { modulo: "Configuración", accion: "Editar parámetros, catálogos y alertas", roles: [A], guard: { file: CFG, message: "Solo Administración configura la plataforma." } },
 ];
 

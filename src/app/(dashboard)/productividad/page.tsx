@@ -5,7 +5,8 @@ import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import StatusBadge from "@/components/StatusBadge";
 import { IconChart } from "@/components/icons";
-import { calcularCumplimiento, describirPlan, semanaActual, UMBRAL_VISITAS_DIA, TZ, DISCIPLINAS_PLAN, type Plan } from "@/lib/plan";
+import { calcularCumplimiento, describirPlan, hoyAR, ymdAR, semanaActual, UMBRAL_VISITAS_DIA, TZ, DISCIPLINAS_PLAN, type Plan } from "@/lib/plan";
+import { CUPOS, contarCupo, esCupo, type Semaforo } from "@/lib/cupos";
 import { calcularProductividad, DIAS_PRODUCTIVIDAD, ROLES_PRODUCTIVIDAD, type VisitaProd } from "@/lib/productividad";
 
 const campo = "rounded-xl border border-slate-300 px-3 py-2.5 text-sm";
@@ -29,7 +30,7 @@ export default async function ProductividadPage({ searchParams }: { searchParams
     supabase.from("patients").select("id, nombre_completo").eq("estado", "activo").order("nombre_completo"),
     supabase.from("treatment_plans").select("id, patient_id, especialidad, cantidad, unidad, dias_semana, desde, hasta, activo, nota").eq("activo", true),
     supabase.from("visits").select("patient_id, profesional_id, especialidad, estado, fecha_programada, fecha_realizada").gte("fecha_programada", hace40),
-    supabase.from("profiles").select("id, full_name").eq("role", "profesional_asistencial").eq("active", true).order("full_name"),
+    supabase.from("profiles").select("id, full_name, cupo_modulo").eq("role", "profesional_asistencial").eq("active", true).order("full_name"),
   ]);
   const nombres = new Map((pacientes ?? []).map((p) => [p.id, p.nombre_completo]));
   const todas = visitas ?? [];
@@ -55,6 +56,17 @@ export default async function ProductividadPage({ searchParams }: { searchParams
   const umbral = umbralRow?.valor != null ? Number(umbralRow.valor) : UMBRAL_VISITAS_DIA;
   const filas = calcularProductividad((todas as VisitaProd[]).filter((v) => !disciplina || v.especialidad === disciplina), ahora, undefined, umbral);
   const nombreProf = new Map((profes ?? []).map((p) => [p.id, p.full_name]));
+  const hoy = hoyAR();
+  const tonos: Record<Semaforo, "verde" | "amarillo" | "rojo"> = { verde: "verde", amarillo: "amarillo", rojo: "rojo" };
+  const textoSemaforo: Record<Semaforo, string> = { verde: "Dentro del cupo", amarillo: "Cerca del cupo", rojo: "Cupo excedido" };
+  const filasCupo = (profes ?? [])
+    .filter((p) => p.cupo_modulo && esCupo(p.cupo_modulo))
+    .map((p) => {
+      const cupo = p.cupo_modulo as keyof typeof CUPOS;
+      return { id: p.id, nombre: p.full_name, cupo, def: CUPOS[cupo], ...contarCupo(cupo, todas.filter((v) => v.profesional_id === p.id), hoy, sem, ymdAR) };
+    })
+    .sort((a, b) => b.asignadas / b.tope - a.asignadas / a.tope);
+  const sinCupo = (profes ?? []).filter((p) => !p.cupo_modulo).length;
   const sinVisitas = disciplina ? [] : (profes ?? []).filter((p) => !filas.some((f) => f.profesional_id === p.id));
 
   const fila = (c: (typeof cupos)[number]) => (
@@ -109,6 +121,46 @@ export default async function ProductividadPage({ searchParams }: { searchParams
 
       <section className="space-y-3">
         <div>
+          <h2 className="text-sm font-semibold text-slate-900">Cupo contratado de cada profesional</h2>
+          <p className="text-xs text-slate-500">
+            Asignado = visitas programadas, confirmadas o realizadas del día (enfermería) o de la semana de lunes a viernes (kinesiología). Verde: dentro del cupo; amarillo: cerca (80 % o más); rojo: excedido.
+            Es una guía: no bloquea la agenda. {sinCupo > 0 ? `Falta definir el cupo de ${sinCupo} profesional${sinCupo === 1 ? "" : "es"} (Administración lo carga en Usuarios).` : ""}
+          </p>
+        </div>
+        {filasCupo.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 text-center text-slate-400 text-sm">Todavía no hay profesionales con cupo definido.</div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wide">
+                <tr>
+                  <th className="text-left px-4 py-2.5 font-medium">Profesional</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Módulo</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Período</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Asignado</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Realizado</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Estado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filasCupo.map((f) => (
+                  <tr key={f.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-2.5 text-slate-900">{f.nombre}</td>
+                    <td className="px-4 py-2.5 text-slate-600">{f.def.nombre}</td>
+                    <td className="px-4 py-2.5 text-slate-500 text-xs">{f.def.periodo === "dia" ? "Hoy" : "Esta semana (lun a vie)"}</td>
+                    <td className="px-4 py-2.5 text-slate-900 font-medium">{f.asignadas} de {f.tope}</td>
+                    <td className="px-4 py-2.5 text-slate-600">{f.realizadas}</td>
+                    <td className="px-4 py-2.5"><StatusBadge tone={tonos[f.semaforo]} label={textoSemaforo[f.semaforo]} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <div>
           <h2 className="text-sm font-semibold text-slate-900">Cupos de la semana</h2>
           <p className="text-xs text-slate-500">Semana del {fechaCorta(sem.desde)} al {fechaCorta(new Date(new Date(sem.hasta).getTime() - 86400000).toISOString())}. Cada lunes se recalcula sola.</p>
         </div>
@@ -154,8 +206,7 @@ export default async function ProductividadPage({ searchParams }: { searchParams
         <div>
           <h2 className="text-sm font-semibold text-slate-900">Visitas por día de cada profesional</h2>
           <p className="text-xs text-slate-500">
-            Últimos {DIAS_PRODUCTIVIDAD} días. El promedio es de visitas realizadas por cada día en que el profesional hizo al menos una. Se marca cuando está por debajo de {umbral} visitas por día
-            (valor provisorio; más adelante se podrá editar).
+            Últimos {DIAS_PRODUCTIVIDAD} días. El promedio es de visitas realizadas por cada día en que el profesional hizo al menos una. Es informativo: el semáforo de arriba mide el cupo contratado, no un mínimo.
           </p>
         </div>
         {filas.length === 0 && sinVisitas.length === 0 ? (
@@ -182,7 +233,7 @@ export default async function ProductividadPage({ searchParams }: { searchParams
                     <td className="px-4 py-2.5 text-slate-600">{f.diasActivos}</td>
                     <td className="px-4 py-2.5">
                       <span className="font-semibold text-slate-900 mr-2">{f.promedioDiario.toLocaleString("es-AR")}</span>
-                      {f.bajoUmbral ? <StatusBadge tone="amarillo" label={`Menos de ${umbral} por día`} /> : <StatusBadge tone="verde" label="En el nivel esperado" />}
+                      {f.bajoUmbral && <span className="text-xs text-slate-400">por debajo de {umbral} por día</span>}
                     </td>
                     <td className="px-4 py-2.5 text-slate-900">{f.realizadasSemana}</td>
                   </tr>

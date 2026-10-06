@@ -4,7 +4,8 @@ import { requireProfile, ROLE_LABELS } from "@/lib/auth";
 import PageHeader from "@/components/PageHeader";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconUsers } from "@/components/icons";
-import { CrearUsuarioForm, CambiarRolForm, ActivarForm, LegajoForm } from "@/components/usuarios/UsuarioForms";
+import { CUPOS, type CupoCodigo } from "@/lib/cupos";
+import { CrearUsuarioForm, CambiarRolForm, ActivarForm, LegajoForm, CupoForm } from "@/components/usuarios/UsuarioForms";
 import { puedeCrearUsuarios } from "@/lib/supabase/admin";
 import { SPECIALTY_LABELS } from "@/lib/roles";
 import type { AppRole } from "@/lib/roles";
@@ -23,7 +24,7 @@ export default async function UsuariosPage({ searchParams }: { searchParams: Pro
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, role, active, last_login_at, especialidad, dni, matricula, telefono, email_contacto, fecha_ingreso, fecha_baja")
+    .select("id, full_name, role, active, last_login_at, especialidad, dni, matricula, telefono, email_contacto, fecha_ingreso, fecha_baja, cupo_modulo")
     .neq("role", "medico_coordinador")
     .order("active", { ascending: false })
     .order("full_name");
@@ -73,6 +74,7 @@ export default async function UsuariosPage({ searchParams }: { searchParams: Pro
                     {ROLE_LABELS[rol] ?? u.role}
                     {u.especialidad ? ` · ${SPECIALTY_LABELS[u.especialidad] ?? u.especialidad}` : ""}
                     {u.matricula ? ` · Mat. ${u.matricula}` : ""}
+                    {u.cupo_modulo && u.cupo_modulo in CUPOS ? ` · Cupo: ${CUPOS[u.cupo_modulo as CupoCodigo].nombre}` : ""}
                   </div>
                   <div className="text-xs text-slate-500 mt-0.5">
                     {u.email_contacto ?? "Sin email cargado"}
@@ -88,6 +90,12 @@ export default async function UsuariosPage({ searchParams }: { searchParams: Pro
               <ActionDisclosure label="Editar" tone="subtle">
                 <div className="space-y-4 rounded-xl bg-slate-50 border border-slate-200 p-4">
                   <LegajoForm p={u} />
+                  {u.role === "profesional_asistencial" && (
+                    <>
+                      <hr className="border-slate-200" />
+                      <CupoForm id={u.id} cupo={u.cupo_modulo} />
+                    </>
+                  )}
                   <hr className="border-slate-200" />
                   <CambiarRolForm id={u.id} rol={u.role} esYo={esYo} />
                   <hr className="border-slate-200" />
