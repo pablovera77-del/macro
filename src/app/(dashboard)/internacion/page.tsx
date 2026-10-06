@@ -5,7 +5,6 @@ import { requireProfile, SPECIALTY_LABELS, ROLES_ALTA } from "@/lib/auth";
 import {
   confirmArrivalAction,
   reportarEgresoAction,
-  addTreatmentAuthorizationAction,
   assignCareTeamAction,
   signLegalDocumentAction,
 } from "./actions";
@@ -22,6 +21,8 @@ import SemaforoBadge from "@/components/pacientes/SemaforoBadge";
 import { semaforoPaciente, semaforoPorDias, diasRestantes } from "@/lib/semaforo";
 import { MOTIVOS_EGRESO_OPCIONES, motivoEgresoLabel, datetimeLocalAR } from "@/lib/egreso";
 import StatusBadge from "@/components/StatusBadge";
+import AutorizacionesForm, { type RenglonInicial } from "@/components/pacientes/AutorizacionesForm";
+import { frecuenciaTexto } from "@/lib/autorizaciones";
 
 const ESTADO_LABELS: Record<string, string> = {
   admitido_pendiente_llegada: "Admitido, pendiente de llegada",
@@ -75,6 +76,8 @@ export default async function InternacionPage({
     { data: patients },
     { data: obrasSociales },
     { data: authorizations },
+    { data: authDetalle },
+    { data: stockAuths },
     { data: careTeam },
     { data: profesionales },
     { data: orderNews },
@@ -91,6 +94,8 @@ export default async function InternacionPage({
     // abajo) hacia la persona de Administración a cargo de cada obra social.
     supabase.from("obras_sociales").select("id, nombre, responsable_id, profiles:responsable_id(full_name)").eq("activa", true).order("nombre"),
     supabase.from("v_treatment_authorization_status").select("*").order("periodo_hasta"),
+    supabase.from("treatment_authorizations").select("id, patient_id, practica_tipo, practica_aclaracion, frecuencia_cantidad, frecuencia_unidad, frecuencia_periodo, dias_semana, periodo_desde, periodo_hasta, renueva_a"),
+    supabase.from("patient_authorizations").select("patient_id, vigente_hasta"),
     supabase.from("patient_care_team").select("id, patient_id, profesional_id, especialidad, profiles(full_name)"),
     supabase.from("profiles").select("id, full_name, role").in("role", ["profesional_asistencial"]).eq("active", true),
     isCoord
@@ -111,6 +116,28 @@ export default async function InternacionPage({
   ]);
 
   const vencenPronto = (authorizations ?? []).filter((a) => a.estado_semaforo !== "vigente");
+  const detallePorId = new Map((authDetalle ?? []).map((d) => [d.id, d]));
+  const hoyStr = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/San_Juan" }).format(new Date());
+  const masUnDia = (iso: string) => new Date(Date.parse(`${iso}T00:00:00Z`) + 86400000).toISOString().slice(0, 10);
+  // H4: la renovación parte de la autorización más reciente del paciente (las prácticas con el último vencimiento).
+  const base_renovacion = (patientId: string): { renglones: RenglonInicial[]; desde: string } | null => {
+    const filas = (authDetalle ?? []).filter((d) => d.patient_id === patientId);
+    if (filas.length === 0) return null;
+    const ultimo = filas.map((d) => d.periodo_hasta).sort().pop()!;
+    const vigentes = filas.filter((d) => d.periodo_hasta === ultimo);
+    return {
+      desde: masUnDia(ultimo) > hoyStr ? masUnDia(ultimo) : hoyStr,
+      renglones: vigentes.map((d) => ({
+        renueva: d.id,
+        practica_tipo: d.practica_tipo ?? "",
+        aclaracion: d.practica_aclaracion ?? "",
+        cantidad: d.frecuencia_cantidad ?? 1,
+        unidad: d.frecuencia_unidad ?? "visita",
+        periodo: d.frecuencia_periodo ?? "semana",
+        dias: d.dias_semana ?? [],
+      })),
+    };
+  };
   // DF-C3 §2: nombre del responsable de Administración por obra social, para
   // saber a quién avisar cuando el semáforo de abajo marca por_vencer/vencida.
   const responsableByObraSocial = new Map(
@@ -448,8 +475,8 @@ export default async function InternacionPage({
                 {auths.map((a) => (
                   <li key={a.id} className="flex items-center gap-2 flex-wrap">
                     {a.periodo_hasta ? <StatusBadge tone={semaforoPorDias(diasRestantes(a.periodo_hasta)).tone} label={semaforoPorDias(diasRestantes(a.periodo_hasta)).label} /> : null}
-                    {a.practica} · {a.cantidad_autorizada}x {SPECIALTY_LABELS[a.especialidad ?? ""] ?? a.especialidad}
-                    <span className="text-xs text-slate-400">(hasta {a.periodo_hasta})</span>
+                    {a.practica} · {(() => { const d = a.id !== null ? detallePorId.get(a.id) : null; return (d && frecuenciaTexto(d)) ?? `${a.cantidad_autorizada}x ${SPECIALTY_LABELS[a.especialidad ?? ""] ?? a.especialidad}`; })()}
+                    <span className="text-xs text-slate-400">(del {a.periodo_desde} al {a.periodo_hasta})</span>
                   </li>
                 ))}
                 {auths.length === 0 && <li className="text-slate-400 text-xs">Sin autorizaciones de práctica cargadas.</li>}
@@ -520,39 +547,21 @@ export default async function InternacionPage({
               {canAdmit && p.estado !== "dado_de_baja" && (
                 <ActionDisclosure label="Gestionar" tone="subtle">
                   <div className="space-y-3">
-                    <form action={addTreatmentAuthorizationAction} className="flex flex-wrap gap-2">
-                      <input type="hidden" name="patient_id" value={p.id} />
-                      <input name="practica" placeholder="Práctica (ej. Enfermería 3v/sem)" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs flex-1 min-w-[180px]" />
-                      <select name="especialidad" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
-                        {Object.entries(SPECIALTY_LABELS).map(([v, l]) => (
-                          <option key={v} value={v}>{l}</option>
-                        ))}
-                      </select>
-                      <input name="cantidad_autorizada" type="number" min="1" defaultValue="1" className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
-                      <input name="periodo_hasta" type="date" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
-                      <details className="basis-full text-xs text-slate-600">
-                        <summary className="cursor-pointer text-slate-500">Frecuencia autorizada por la obra social (opcional, la usan los controles de Facturación)</summary>
-                        <div className="flex flex-wrap items-end gap-2 mt-2">
-                          <label>Tipo
-                            <select name="frecuencia_tipo" defaultValue="" className="block mt-0.5 rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
-                              <option value="">Sin definir</option>
-                              <option value="diaria">Diaria (los días marcados)</option>
-                              <option value="semanal">Semanal (N por semana)</option>
-                            </select>
-                          </label>
-                          <label>Veces por día
-                            <input name="veces_por_dia" type="number" min="1" max="6" defaultValue="1" className="block mt-0.5 w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
-                          </label>
-                          <fieldset className="flex items-center gap-2">
-                            <legend className="sr-only">Días de la semana</legend>
-                            {[["1", "L"], ["2", "M"], ["3", "X"], ["4", "J"], ["5", "V"], ["6", "S"], ["7", "D"]].map(([v, l]) => (
-                              <label key={v} className="flex items-center gap-0.5"><input type="checkbox" name="dias_semana" value={v} /> {l}</label>
-                            ))}
-                          </fieldset>
-                        </div>
-                      </details>
-                      <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Autorizar</button>
-                    </form>
+                    <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
+                      <h4 className="text-xs font-semibold text-slate-700">Autorizar prácticas</h4>
+                      <AutorizacionesForm patientId={p.id} modo="cargar" desdeSugerido={p.fecha_ingreso ?? undefined} />
+                    </div>
+                    {(() => {
+                      const base = base_renovacion(p.id);
+                      if (!base) return null;
+                      const conStock = (stockAuths ?? []).some((x) => x.patient_id === p.id && (!x.vigente_hasta || x.vigente_hasta >= hoyStr));
+                      return (
+                        <ActionDisclosure label="Renovar autorización (nuevo período)" tone="subtle">
+                          <p className="text-[11px] text-slate-500 mb-2">Crea una autorización nueva con su período; la anterior queda en el historial. Las prácticas vienen de la autorización anterior y se pueden editar. Si solo cambia la fecha, usá la prórroga de más abajo.</p>
+                          <AutorizacionesForm patientId={p.id} modo="renovar" inicial={base.renglones} desdeSugerido={base.desde} conStock={conStock} />
+                        </ActionDisclosure>
+                      );
+                    })()}
 
                     <ProrrogasPanel
                       patientId={p.id}

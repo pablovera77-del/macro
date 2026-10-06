@@ -4161,12 +4161,18 @@ export type Database = {
           created_at: string
           dias_semana: number[] | null
           especialidad: Database["public"]["Enums"]["specialty"]
+          frecuencia_cantidad: number | null
+          frecuencia_periodo: string | null
           frecuencia_tipo: string | null
+          frecuencia_unidad: string | null
           id: number
           patient_id: string
           periodo_desde: string
           periodo_hasta: string
           practica: string
+          practica_aclaracion: string | null
+          practica_tipo: string | null
+          renueva_a: number | null
           veces_por_dia: number | null
         }
         Insert: {
@@ -4175,12 +4181,18 @@ export type Database = {
           created_at?: string
           dias_semana?: number[] | null
           especialidad: Database["public"]["Enums"]["specialty"]
+          frecuencia_cantidad?: number | null
+          frecuencia_periodo?: string | null
           frecuencia_tipo?: string | null
+          frecuencia_unidad?: string | null
           id?: never
           patient_id: string
           periodo_desde?: string
           periodo_hasta: string
           practica: string
+          practica_aclaracion?: string | null
+          practica_tipo?: string | null
+          renueva_a?: number | null
           veces_por_dia?: number | null
         }
         Update: {
@@ -4189,12 +4201,18 @@ export type Database = {
           created_at?: string
           dias_semana?: number[] | null
           especialidad?: Database["public"]["Enums"]["specialty"]
+          frecuencia_cantidad?: number | null
+          frecuencia_periodo?: string | null
           frecuencia_tipo?: string | null
+          frecuencia_unidad?: string | null
           id?: never
           patient_id?: string
           periodo_desde?: string
           periodo_hasta?: string
           practica?: string
+          practica_aclaracion?: string | null
+          practica_tipo?: string | null
+          renueva_a?: number | null
           veces_por_dia?: number | null
         }
         Relationships: [
@@ -4239,6 +4257,41 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_prevalidacion_facturacion"
             referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "treatment_authorizations_renueva_a_fkey"
+            columns: ["renueva_a"]
+            isOneToOne: false
+            referencedRelation: "treatment_authorizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_authorizations_renueva_a_fkey"
+            columns: ["renueva_a"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["treatment_authorization_id"]
+          },
+          {
+            foreignKeyName: "treatment_authorizations_renueva_a_fkey"
+            columns: ["renueva_a"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["treatment_authorization_id"]
+          },
+          {
+            foreignKeyName: "treatment_authorizations_renueva_a_fkey"
+            columns: ["renueva_a"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["treatment_authorization_id"]
+          },
+          {
+            foreignKeyName: "treatment_authorizations_renueva_a_fkey"
+            columns: ["renueva_a"]
+            isOneToOne: false
+            referencedRelation: "v_treatment_authorization_status"
+            referencedColumns: ["id"]
           },
         ]
       }

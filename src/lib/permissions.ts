@@ -43,6 +43,7 @@ export const PERMISOS: Permiso[] = [
   // Pacientes e ingreso
   { modulo: "Pacientes", accion: "Dar de alta un paciente", roles: [A], guard: { file: INTER, message: "Solo Administración da de alta pacientes." } },
   { modulo: "Pacientes", accion: "Cargar autorizaciones de práctica", roles: [A], guard: { file: INTER, message: "Solo Administración carga las autorizaciones de práctica." } },
+  { modulo: "Pacientes", accion: "Renovar una autorización (nuevo período con historial)", roles: [A], guard: { file: INTER, message: "Solo Administración carga las autorizaciones de práctica." } },
   { modulo: "Pacientes", accion: "Registrar consentimientos firmados", roles: [A], guard: { file: INTER, message: "Solo Administración registra las firmas de ingreso." } },
   { modulo: "Pacientes", accion: "Armar el equipo asistencial", roles: [A, C], guard: { file: INTER, message: "Solo Administración o Coordinación arman el equipo asistencial." } },
   { modulo: "Pacientes", accion: "Quitar a un profesional del equipo asistencial", roles: [A, C], guard: { file: INTER, message: "Solo Administración o Coordinación arman el equipo asistencial." } },

@@ -11,6 +11,7 @@ import { ESTADO_PACIENTE_LABELS } from "@/lib/paciente";
 import { MOTIVOS_EGRESO_OPCIONES, motivoEgresoLabel, parseDatetimeLocalAR } from "@/lib/egreso";
 import type { AppRole } from "@/lib/auth";
 import { leerLegajo, leerContactosExtra, txt, PARTICULAR } from "@/lib/legajo";
+import { leerRenglones } from "@/lib/autorizaciones";
 
 // DF-C3 §2 y §3: el alta, el legajo, las firmas de ingreso y las autorizaciones
 // los gestiona Administración. Coordinación confirma la llegada al domicilio
@@ -290,44 +291,129 @@ export async function reportarEgresoAction(formData: FormData) {
   return;
 }
 
-// DF-C3 §7 / DF-C4 §3: autorización de práctica por obra social — la base
-// del semáforo de vencimientos.
-export async function addTreatmentAuthorizationAction(formData: FormData) {
+export type AutorizacionState = { error: string | null; ok?: boolean };
+
+// DF-C3 §7 / DF-C4 §3 y H3 (Vanina 06/10): autorización de prácticas por obra social, con lista de prácticas y
+// frecuencia estandarizada (cantidad, unidad y período). Cada renglón es una práctica; comparten el período.
+// Es la base del semáforo de vencimientos y de los controles de frecuencia de Facturación.
+export async function cargarAutorizacionesAction(_prev: AutorizacionState, formData: FormData): Promise<AutorizacionState> {
   const { profile } = await requireProfile();
-  if (!ROLES_ALTA.includes(profile.role)) throw new Error("Solo Administración carga las autorizaciones de práctica.");
+  if (!ROLES_ALTA.includes(profile.role)) return { error: "Solo Administración carga las autorizaciones de práctica." };
 
   const supabase = await createClient();
   const patient_id = String(formData.get("patient_id") || "");
-  const practica = String(formData.get("practica") || "").trim();
-  const especialidad = String(formData.get("especialidad") || "") as Enums<"specialty">;
-  const cantidad_autorizada = Number(formData.get("cantidad_autorizada") || 1);
-  const periodo_hasta = String(formData.get("periodo_hasta") || "");
+  const desde = String(formData.get("periodo_desde") || "");
+  const hasta = String(formData.get("periodo_hasta") || "");
+  if (!patient_id) return { error: "Falta el paciente de la autorización." };
+  const leido = leerRenglones(formData, desde, hasta);
+  if ("error" in leido) return { error: leido.error };
 
-  if (!patient_id || !practica || !especialidad || !periodo_hasta) throw new Error("Faltan datos de la autorización.");
-
-  // Frecuencia autorizada (opcional): alimenta los controles de Facturación (DF-C4 §4). Días con la numeración ISO: 1 = lunes … 7 = domingo.
-  const frecuenciaRaw = String(formData.get("frecuencia_tipo") || "");
-  const frecuencia_tipo = frecuenciaRaw === "diaria" || frecuenciaRaw === "semanal" ? frecuenciaRaw : null;
-  const dias = [...new Set(formData.getAll("dias_semana").map((x) => Number(x)).filter((n) => Number.isInteger(n) && n >= 1 && n <= 7))].sort();
-  const veces = Number(formData.get("veces_por_dia") || 1);
-  if (frecuencia_tipo === "semanal" && dias.length === 0) throw new Error("Para una frecuencia semanal marcá los días de la semana autorizados.");
-
-  const { error } = await supabase.from("treatment_authorizations").insert({
-    patient_id,
-    practica,
-    especialidad,
-    cantidad_autorizada,
-    periodo_hasta,
-    autorizado_por: profile.id,
-    frecuencia_tipo,
-    dias_semana: frecuencia_tipo && dias.length > 0 ? dias : null,
-    veces_por_dia: frecuencia_tipo && Number.isInteger(veces) && veces >= 1 && veces <= 10 ? veces : null,
-  });
-
-  if (error) throw new Error(error.message);
+  const { error } = await supabase.from("treatment_authorizations").insert(
+    leido.renglones.map((r) => ({
+      patient_id,
+      practica: r.practica,
+      practica_tipo: r.practica_tipo,
+      practica_aclaracion: r.practica_aclaracion,
+      especialidad: r.especialidad,
+      cantidad_autorizada: r.cantidad_autorizada,
+      periodo_desde: desde,
+      periodo_hasta: hasta,
+      autorizado_por: profile.id,
+      frecuencia_cantidad: r.frecuencia_cantidad,
+      frecuencia_unidad: r.frecuencia_unidad,
+      frecuencia_periodo: r.frecuencia_periodo,
+      frecuencia_tipo: r.frecuencia_tipo,
+      dias_semana: r.dias_semana.length > 0 ? r.dias_semana : null,
+      veces_por_dia: r.veces_por_dia,
+    }))
+  );
+  if (error) return { error: `No se pudo guardar la autorización: ${error.message}` };
   revalidatePath("/internacion");
-  await flash("Práctica autorizada.");
-  return;
+  revalidatePath(`/paciente/${patient_id}`);
+  await flash(leido.renglones.length === 1 ? "Práctica autorizada." : `${leido.renglones.length} prácticas autorizadas.`);
+  return { error: null, ok: true };
+}
+
+// H4 (Vanina 06/10): la renovación crea autorizaciones NUEVAS con su propio período, sin pisar las anteriores,
+// para que el cierre de Facturación pueda tener varios períodos con autorizaciones distintas.
+// Hereda las prácticas (editables) y, si se pide, los insumos, el alimento y los equipos autorizados.
+export async function renovarAutorizacionesAction(_prev: AutorizacionState, formData: FormData): Promise<AutorizacionState> {
+  const { profile } = await requireProfile();
+  if (!ROLES_ALTA.includes(profile.role)) return { error: "Solo Administración carga las autorizaciones de práctica." };
+
+  const supabase = await createClient();
+  const patient_id = String(formData.get("patient_id") || "");
+  const desde = String(formData.get("periodo_desde") || "");
+  const hasta = String(formData.get("periodo_hasta") || "");
+  const heredarStock = formData.get("heredar_stock") === "on";
+  if (!patient_id) return { error: "Falta el paciente de la renovación." };
+  const leido = leerRenglones(formData, desde, hasta);
+  if ("error" in leido) return { error: leido.error };
+
+  // Cada renglón puede venir de una autorización anterior (campo r<n>_renueva): queda el vínculo para el historial.
+  const renuevaPorIndice = new Map<number, number>();
+  const orden = [...new Set([...formData.keys()].map((k) => /^r(\d+)_tipo$/.exec(k)?.[1]).filter((x): x is string => !!x))].sort((a, b) => Number(a) - Number(b));
+  let pos = 0;
+  for (const n of orden) {
+    const tipo = String(formData.get(`r${n}_tipo`) || "");
+    const aclaracion = String(formData.get(`r${n}_aclaracion`) || "").trim();
+    const cantidad = Number(formData.get(`r${n}_cantidad`) || 0);
+    if (!tipo && !aclaracion && !cantidad) continue;
+    const prev = Number(formData.get(`r${n}_renueva`) || 0);
+    if (prev) renuevaPorIndice.set(pos, prev);
+    pos++;
+  }
+  const prevIds = [...new Set(renuevaPorIndice.values())];
+  if (prevIds.length > 0) {
+    const { data: prev } = await supabase.from("treatment_authorizations").select("id, patient_id, periodo_desde").in("id", prevIds);
+    if ((prev ?? []).some((x) => x.patient_id !== patient_id)) return { error: "Una de las autorizaciones a renovar no es de este paciente." };
+    const ultimoInicio = (prev ?? []).map((x) => x.periodo_desde).sort().pop();
+    if (ultimoInicio && desde <= ultimoInicio) return { error: "El inicio de la renovación tiene que ser posterior al inicio de la autorización que renueva." };
+  }
+
+  const { error } = await supabase.from("treatment_authorizations").insert(
+    leido.renglones.map((r, i) => ({
+      patient_id,
+      practica: r.practica,
+      practica_tipo: r.practica_tipo,
+      practica_aclaracion: r.practica_aclaracion,
+      especialidad: r.especialidad,
+      cantidad_autorizada: r.cantidad_autorizada,
+      periodo_desde: desde,
+      periodo_hasta: hasta,
+      autorizado_por: profile.id,
+      frecuencia_cantidad: r.frecuencia_cantidad,
+      frecuencia_unidad: r.frecuencia_unidad,
+      frecuencia_periodo: r.frecuencia_periodo,
+      frecuencia_tipo: r.frecuencia_tipo,
+      dias_semana: r.dias_semana.length > 0 ? r.dias_semana : null,
+      veces_por_dia: r.veces_por_dia,
+      renueva_a: renuevaPorIndice.get(i) ?? null,
+    }))
+  );
+  if (error) return { error: `No se pudo guardar la renovación: ${error.message}` };
+
+  let heredados = 0;
+  if (heredarStock) {
+    const hoy = hoyAR();
+    const { data: stock } = await supabase
+      .from("patient_authorizations")
+      .select("product_id, cantidad_autorizada, vigente_hasta")
+      .eq("patient_id", patient_id);
+    const vigentes = (stock ?? []).filter((x) => !x.vigente_hasta || x.vigente_hasta >= hoy);
+    if (vigentes.length > 0) {
+      const { error: e2 } = await supabase.from("patient_authorizations").insert(
+        vigentes.map((x) => ({ patient_id, product_id: x.product_id, cantidad_autorizada: x.cantidad_autorizada, vigente_desde: desde, vigente_hasta: hasta, cargado_por: profile.id }))
+      );
+      if (e2) return { error: `Se guardaron las prácticas, pero no se pudieron renovar los insumos y equipos: ${e2.message}. Cargalos desde «Insumos».` };
+      heredados = vigentes.length;
+    }
+  }
+  revalidatePath("/internacion");
+  revalidatePath("/pacientes");
+  revalidatePath(`/paciente/${patient_id}`);
+  await flash(`Renovación cargada: ${leido.renglones.length} práctica(s) con vigencia del ${desde} al ${hasta}${heredados ? ` y ${heredados} insumo(s) o equipo(s) heredados` : ""}. La autorización anterior queda en el historial.`);
+  return { error: null, ok: true };
 }
 
 // DF-C2 §6, resuelto legal hoy (Roy, vía Vanina): no se puede usar una firma

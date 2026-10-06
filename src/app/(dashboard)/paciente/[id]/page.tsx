@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { frecuenciaTexto } from "@/lib/autorizaciones";
 import ConfirmButton from "@/components/ConfirmButton";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -100,10 +101,11 @@ export default async function FichaPacientePage({
     .maybeSingle();
   if (!p) notFound();
 
-  const [{ data: team }, { data: visits }, { data: auths }, { data: legalDocs }, { data: sigs }, { data: plansRaw }] = await Promise.all([
+  const [{ data: team }, { data: visits }, { data: auths }, { data: authDet }, { data: legalDocs }, { data: sigs }, { data: plansRaw }] = await Promise.all([
     supabase.from("patient_care_team").select("id, especialidad, profesional_id, profiles(full_name)").eq("patient_id", id),
     supabase.from("visits").select("id, patient_id, especialidad, fecha_programada, sin_hora, franja, hora_desde, hora_hasta, estado, profiles!visits_profesional_id_fkey(full_name)").eq("patient_id", id).order("fecha_programada", { ascending: false }).limit(80),
     supabase.from("v_treatment_authorization_status").select("*").eq("patient_id", id).order("periodo_hasta"),
+    supabase.from("treatment_authorizations").select("id, frecuencia_cantidad, frecuencia_unidad, frecuencia_periodo, dias_semana, renueva_a").eq("patient_id", id),
     supabase.from("legal_documents").select("id, codigo, titulo, resumen, requiere_firma_profesional").eq("activo", true).order("orden"),
     supabase.from("patient_document_signatures").select("legal_document_id, firmante_nombre, firmado_at, profesional_id").eq("patient_id", id),
     supabase.from("treatment_plans").select("id, patient_id, especialidad, cantidad, unidad, dias_semana, desde, hasta, activo, nota, created_at").eq("patient_id", id).order("created_at", { ascending: false }),
@@ -708,14 +710,42 @@ export default async function FichaPacientePage({
             {(auths ?? []).length === 0 ? (
               <p className="text-sm text-slate-400">Sin autorizaciones cargadas.</p>
             ) : (
-              <ul className="text-sm space-y-1.5">
-                {(auths ?? []).map((a) => (
-                  <li key={a.id} className="flex items-center gap-2 flex-wrap">
-                    <StatusBadge tone={SEMAFORO_TONE[a.estado_semaforo ?? "vigente"] ?? "gris"} label={SEMAFORO_LABELS[a.estado_semaforo ?? "vigente"]} />
-                    {a.practica} · {a.cantidad_autorizada}x {SPECIALTY_LABELS[a.especialidad ?? ""] ?? a.especialidad} <span className="text-xs text-slate-400">(hasta {fecha(a.periodo_hasta)})</span>
-                  </li>
-                ))}
-              </ul>
+              (() => {
+                // H4: cada renovación es un período propio; se muestran de la más nueva a la más vieja.
+                const detalle = new Map((authDet ?? []).map((d) => [d.id, d]));
+                const periodos = new Map<string, NonNullable<typeof auths>>();
+                for (const a of auths ?? []) {
+                  const k = `${a.periodo_desde}|${a.periodo_hasta}`;
+                  periodos.set(k, [...(periodos.get(k) ?? []), a]);
+                }
+                const orden = [...periodos.entries()].sort((x, y) => y[0].split("|")[1].localeCompare(x[0].split("|")[1]));
+                return (
+                  <div className="space-y-4">
+                    {orden.map(([k, filas], i) => {
+                      const [desde, hasta] = k.split("|");
+                      return (
+                        <div key={k}>
+                          <div className="text-xs font-medium text-slate-500 mb-1.5">
+                            {i === 0 ? "Autorización actual" : "Autorización anterior"} · del {fecha(desde)} al {fecha(hasta)}
+                            {filas.some((a) => a.id !== null && detalle.get(a.id)?.renueva_a) && <span className="text-slate-400"> · renovación</span>}
+                          </div>
+                          <ul className="text-sm space-y-1.5">
+                            {filas.map((a) => {
+                              const d = a.id !== null ? detalle.get(a.id) : null;
+                              return (
+                                <li key={a.id} className="flex items-center gap-2 flex-wrap">
+                                  <StatusBadge tone={SEMAFORO_TONE[a.estado_semaforo ?? "vigente"] ?? "gris"} label={SEMAFORO_LABELS[a.estado_semaforo ?? "vigente"]} />
+                                  {a.practica} · {(d && frecuenciaTexto(d)) ?? `${a.cantidad_autorizada}x ${SPECIALTY_LABELS[a.especialidad ?? ""] ?? a.especialidad}`}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()
             )}
             {p.estado === "dado_de_baja" ? (
               <p className="text-sm text-slate-600 mt-4">Egreso: {p.motivo_egreso ?? "—"} el {fecha(p.fecha_egreso)}.</p>
