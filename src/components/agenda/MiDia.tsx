@@ -4,11 +4,14 @@ import { SPECIALTY_LABELS } from "@/lib/roles";
 import StatusBadge from "@/components/StatusBadge";
 import ConfirmButton from "@/components/ConfirmButton";
 import IniciarVisitaButton from "@/components/agenda/IniciarVisitaButton";
-import { updateVisitStatusAction } from "@/app/(dashboard)/agenda/actions";
+import { updateVisitStatusAction, noMeAtendieronAction } from "@/app/(dashboard)/agenda/actions";
+import ActionDisclosure from "@/components/ActionDisclosure";
+import PhotoField from "@/components/stock/PhotoField";
+import { linkWhatsapp } from "@/lib/reminders";
 import { IconCheck, IconMapPin } from "@/components/icons";
 import { calcularCumplimiento, describirPlan, semanaActual, hoyAR, TZ, type Plan } from "@/lib/plan";
 import { descripcionHorario, horaAR } from "@/lib/horario";
-import { telHref, urlMapa } from "@/lib/mapa";
+import { telHref, urlMapa, urlRuta } from "@/lib/mapa";
 import { COLUMNAS_VISITA_AGENDA, type VisitaAgenda } from "@/lib/agenda-tipos";
 
 // Inicio de día (00:00 en San Juan, UTC-3 sin horario de verano) como instante ISO.
@@ -81,6 +84,9 @@ export default async function MiDia({ userId }: { userId: string }) {
     cumplimiento = calcularCumplimiento((planes.data ?? []) as unknown as Plan[], semana.data ?? [], sem);
   }
 
+  const recorridoHoy = visitas.filter((v) => v.fecha_programada >= hoyInicio && v.fecha_programada < mananaInicio);
+  const rutaHoy = urlRuta(recorridoHoy.map((v) => ({ lat: null, lng: null, domicilio: v.patients?.domicilio ?? null })));
+
   const grupos = [
     { titulo: "Atrasadas — cerralas como realizadas o no realizadas", items: visitas.filter((v) => v.fecha_programada < hoyInicio), tone: "rojo" as const },
     { titulo: "Hoy", items: visitas.filter((v) => v.fecha_programada >= hoyInicio && v.fecha_programada < mananaInicio), tone: "verde" as const },
@@ -96,6 +102,38 @@ export default async function MiDia({ userId }: { userId: string }) {
         </div>
       ) : (
         <div className="space-y-5">
+          {recorridoHoy.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">Recorrido de hoy ({recorridoHoy.length})</h3>
+                  <p className="text-xs text-slate-500">En el orden de la agenda. Abrí la ruta en el mapa y avisá a las familias que salís.</p>
+                </div>
+                {rutaHoy && (
+                  <a href={rutaHoy} target="_blank" rel="noopener noreferrer" className="rounded-xl bg-slate-900 text-white text-sm font-medium px-4 py-2 hover:bg-slate-800">Ver recorrido en el mapa</a>
+                )}
+              </div>
+              <ul className="divide-y divide-slate-100 text-sm">
+                {recorridoHoy.map((v) => {
+                  const wa = linkWhatsapp(
+                    v.patients?.contacto_familiar_telefono ?? v.patients?.telefono_contacto,
+                    `Hola, le escribimos de Profesionales SRL. Salimos hacia el domicilio de ${v.patients?.nombre_completo ?? "su familiar"} para la visita de ${(SPECIALTY_LABELS[v.especialidad] ?? v.especialidad).toLowerCase()} de hoy. Cualquier inconveniente, por favor avísenos por este medio.`
+                  );
+                  return (
+                    <li key={v.id} className="py-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <span className="text-xs text-slate-500 w-28">{descripcionHorario(v)}</span>
+                      <span className="font-medium text-slate-900">{v.patients?.nombre_completo}</span>
+                      {wa ? (
+                        <a href={wa} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-700 underline underline-offset-2 ml-auto">Avisar a la familia por WhatsApp</a>
+                      ) : (
+                        <span className="text-xs text-slate-400 ml-auto">Sin teléfono de la familia cargado</span>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
           {grupos.filter((g) => g.items.length > 0).map((g) => (
             <div key={g.titulo}>
               <div className="mb-2 flex items-center gap-2">
@@ -204,6 +242,22 @@ export default async function MiDia({ userId }: { userId: string }) {
                           </ConfirmButton>
                         </form>
                       </div>
+                      <ActionDisclosure label="No me atendieron en el domicilio" tone="subtle">
+                        <form action={noMeAtendieronAction} className="mt-2 space-y-3 rounded-xl bg-slate-50 border border-slate-200 p-3">
+                          <input type="hidden" name="visit_id" value={v.id} />
+                          <p className="text-xs text-slate-600">Dejá constancia con una foto de la fachada. La visita queda como no realizada y Coordinación la reprograma.</p>
+                          <label className="block text-xs font-medium text-slate-600">
+                            Motivo
+                            <select name="motivo" defaultValue="no_atendieron" className="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm">
+                              <option value="no_atendieron">Nadie atendió en el domicilio</option>
+                              <option value="paciente_ausente">El paciente no estaba</option>
+                              <option value="otro">Otro motivo</option>
+                            </select>
+                          </label>
+                          <PhotoField name="foto_fachada" label="Foto de la fachada" required />
+                          <button className={`${btn} bg-slate-900 text-white hover:bg-slate-800`}>Registrar y cerrar la visita</button>
+                        </form>
+                      </ActionDisclosure>
                     </li>
                   );
                 })}

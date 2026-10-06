@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import type { Enums, TablesUpdate } from "@/types/database";
 import { FRANJAS, descripcionHorario, instanteSanJuan, leerHorarioDeForm, type Franja } from "@/lib/horario";
 import { cargarPropuestasSemana } from "@/lib/agenda-semana";
+import { esDataUrlImagen, subirFoto } from "@/lib/fotos";
 
 function refrescar() {
   revalidatePath("/agenda");
@@ -223,4 +224,30 @@ export async function generarVisitasSemanaAction(formData: FormData) {
     `Se crearon ${filas.length} ${filas.length === 1 ? "visita" : "visitas"} (${horarioTxt}).${omitidas > 0 ? ` ${omitidas} no se crearon porque ya estaban programadas o no tienen profesional.` : ""} Podés ajustar el horario de cada una desde la agenda.`
   );
   return;
+}
+
+// H14 (Vanina 06/10): «no me atendieron». El profesional deja constancia con una foto de la fachada y el motivo.
+export async function noMeAtendieronAction(formData: FormData) {
+  const { profile } = await requireProfile();
+  if (profile.role !== "profesional_asistencial") throw new Error("Solo el profesional asistencial de la visita informa que no lo atendieron.");
+  const supabase = await createClient();
+  const visit_id = String(formData.get("visit_id") || "");
+  const motivo = String(formData.get("motivo") || "no_atendieron");
+  const foto = String(formData.get("foto_fachada") || "");
+  if (!visit_id) throw new Error("Falta indicar la visita.");
+  if (!["no_atendieron", "paciente_ausente", "otro"].includes(motivo)) throw new Error("Elegí un motivo de la lista.");
+  if (!esDataUrlImagen(foto)) throw new Error("Sacá la foto de la fachada antes de enviar: es la constancia de que fuiste al domicilio.");
+
+  const { data: visita } = await supabase.from("visits").select("profesional_id, estado").eq("id", visit_id).maybeSingle();
+  if (!visita || visita.profesional_id !== profile.id) throw new Error("Solo el profesional asignado a la visita puede informarlo.");
+  if (visita.estado !== "programada" && visita.estado !== "confirmada") throw new Error("Esa visita ya está cerrada o cancelada.");
+
+  const ruta = await subirFoto(supabase, foto, `visitas/${visit_id}`);
+  const { error } = await supabase
+    .from("visits")
+    .update({ estado: "no_realizada", cerrada_at: new Date().toISOString(), motivo_no_atencion: motivo, foto_fachada: ruta })
+    .eq("id", visit_id);
+  if (error) throw new Error(`No se pudo guardar: ${error.message}`);
+  refrescar();
+  await flash("Quedó registrado con la foto de la fachada. Coordinación la va a ver para reprogramarla.");
 }

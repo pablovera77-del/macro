@@ -32,7 +32,7 @@ export default async function ConfiguracionPage({ searchParams }: { searchParams
   const supabase = await createClient();
 
   const [{ data: params }, { data: items }, { data: alertas }, { data: destinatarios }] = await Promise.all([
-    seccion === "parametros" ? supabase.from("app_settings").select("clave, valor, descripcion, updated_at").order("clave") : Promise.resolve({ data: [] }),
+    seccion === "parametros" ? supabase.from("app_settings").select("clave, valor, descripcion, updated_at").neq("clave", "usuario_familiar_habilitado").order("clave") : Promise.resolve({ data: [] }),
     seccion === "catalogos" ? supabase.from("catalog_items").select("id, catalogo, nombre, activo, orden").order("orden") : Promise.resolve({ data: [] }),
     seccion === "alertas" ? supabase.from("alert_types").select("codigo, nombre, descripcion, urgencia, mensaje, canal_app, canal_email, canal_whatsapp, activo").order("urgencia").order("nombre") : Promise.resolve({ data: [] }),
     seccion === "alertas" ? supabase.from("alert_type_recipients").select("alert_type, role").not("role", "is", null) : Promise.resolve({ data: [] }),
@@ -46,6 +46,7 @@ export default async function ConfiguracionPage({ searchParams }: { searchParams
     dias_aviso_autorizacion: "Días de aviso antes de que venza una autorización",
     horas_ubicacion_no_confirmada: "Horas para marcar en rojo un equipo que no llegó a depósito",
     umbral_visitas_dia: "Visitas por día esperadas de cada profesional",
+    iva_presupuestos: "IVA de los presupuestos (%)",
   };
 
   return (

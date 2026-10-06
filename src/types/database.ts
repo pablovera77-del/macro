@@ -4760,10 +4760,12 @@ export type Database = {
           estado: Database["public"]["Enums"]["visit_status"]
           fecha_programada: string
           fecha_realizada: string | null
+          foto_fachada: string | null
           franja: string | null
           hora_desde: string | null
           hora_hasta: string | null
           id: string
+          motivo_no_atencion: string | null
           motivo_reprogramacion: string | null
           observacion_agenda: string | null
           patient_id: string
@@ -4782,10 +4784,12 @@ export type Database = {
           estado?: Database["public"]["Enums"]["visit_status"]
           fecha_programada: string
           fecha_realizada?: string | null
+          foto_fachada?: string | null
           franja?: string | null
           hora_desde?: string | null
           hora_hasta?: string | null
           id?: string
+          motivo_no_atencion?: string | null
           motivo_reprogramacion?: string | null
           observacion_agenda?: string | null
           patient_id: string
@@ -4804,10 +4808,12 @@ export type Database = {
           estado?: Database["public"]["Enums"]["visit_status"]
           fecha_programada?: string
           fecha_realizada?: string | null
+          foto_fachada?: string | null
           franja?: string | null
           hora_desde?: string | null
           hora_hasta?: string | null
           id?: string
+          motivo_no_atencion?: string | null
           motivo_reprogramacion?: string | null
           observacion_agenda?: string | null
           patient_id?: string

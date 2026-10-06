@@ -19,6 +19,8 @@ import UppFicha from "@/components/hc/UppFicha";
 import EditarDatosPaciente, { type DatosEditables } from "@/components/pacientes/EditarDatosPaciente";
 import { SIN_EMERGENCIAS, TIPOS_INTERNACION, UNIDADES_TRABAJO, edadEnAnios, SEXO_LABELS } from "@/lib/paciente";
 import { motivoEgresoLabel } from "@/lib/egreso";
+import { urlPunto, urlMapa } from "@/lib/mapa";
+import { urlsDeFotos } from "@/lib/fotos";
 import { signLegalDocumentAction } from "../../internacion/actions";
 import {
   savePlanAction,
@@ -39,6 +41,7 @@ const ESTADO_LABELS: Record<string, string> = {
 };
 const ESTADO_TONE: Record<string, SemanticTone> = { admitido_pendiente_llegada: "amarillo", activo: "verde", dado_de_baja: "gris" };
 const VISITA_LABELS: Record<string, string> = { programada: "Programada", confirmada: "Confirmada", realizada: "Realizada", no_realizada: "No realizada", cancelada: "Cancelada" };
+const MOTIVO_NO_ATENCION: Record<string, string> = { no_atendieron: "Nadie atendió en el domicilio", paciente_ausente: "El paciente no estaba", otro: "Otro motivo" };
 const VISITA_TONE: Record<string, SemanticTone> = { programada: "amarillo", confirmada: "verde", realizada: "verde", no_realizada: "rojo", cancelada: "gris" };
 const ORDER_LABELS: Record<string, string> = { borrador: "Esperando autorización", autorizado: "Autorizado", despachado: "Despachado", entregado: "Entregado", cancelado: "No autorizado" };
 const ORDER_TONE: Record<string, SemanticTone> = { borrador: "amarillo", autorizado: "amarillo", despachado: "amarillo", entregado: "verde", cancelado: "gris" };
@@ -96,14 +99,14 @@ export default async function FichaPacientePage({
   const supabase = await createClient();
   const { data: p } = await supabase
     .from("patients")
-    .select("id, nombre_completo, nro_historia_clinica, apellido, nombre, dni, fecha_nacimiento, sexo, ocupacion, localidad, domicilio, domicilio_actual, telefono_actual, email_responsable, es_particular, tiene_coseguro, coseguro_detalle, institucion_derivante, unidad_trabajo, tipo_internacion, tiene_emergencias, emergencias_nombre, emergencias_telefono, en_tratamiento_atb, requiere_curaciones, medico_matricula, egreso_solicitud_firmante, egreso_solicitud_firmada_at, telefono_contacto, contacto_familiar_nombre, contacto_familiar_telefono, diagnostico_principal, obra_social, obra_social_id, numero_afiliado, medico_derivante, estado, fecha_ingreso, fecha_egreso, motivo_egreso, llegada_confirmada_at, egreso_informado_at, medicacion_confirmada_at, obras_sociales(nombre)")
+    .select("id, nombre_completo, nro_historia_clinica, apellido, nombre, dni, fecha_nacimiento, sexo, ocupacion, localidad, domicilio, domicilio_actual, telefono_actual, email_responsable, es_particular, tiene_coseguro, coseguro_detalle, institucion_derivante, unidad_trabajo, tipo_internacion, tiene_emergencias, emergencias_nombre, emergencias_telefono, en_tratamiento_atb, requiere_curaciones, medico_matricula, egreso_solicitud_firmante, egreso_solicitud_firmada_at, telefono_contacto, contacto_familiar_nombre, contacto_familiar_telefono, diagnostico_principal, obra_social, obra_social_id, numero_afiliado, medico_derivante, estado, fecha_ingreso, fecha_egreso, motivo_egreso, llegada_confirmada_at, egreso_informado_at, medicacion_confirmada_at, lat, lng, obras_sociales(nombre)")
     .eq("id", id)
     .maybeSingle();
   if (!p) notFound();
 
   const [{ data: team }, { data: visits }, { data: auths }, { data: authDet }, { data: legalDocs }, { data: sigs }, { data: plansRaw }] = await Promise.all([
     supabase.from("patient_care_team").select("id, especialidad, profesional_id, profiles(full_name)").eq("patient_id", id),
-    supabase.from("visits").select("id, patient_id, especialidad, fecha_programada, sin_hora, franja, hora_desde, hora_hasta, estado, profiles!visits_profesional_id_fkey(full_name)").eq("patient_id", id).order("fecha_programada", { ascending: false }).limit(80),
+    supabase.from("visits").select("id, patient_id, especialidad, fecha_programada, sin_hora, franja, hora_desde, hora_hasta, estado, motivo_no_atencion, foto_fachada, profiles!visits_profesional_id_fkey(full_name)").eq("patient_id", id).order("fecha_programada", { ascending: false }).limit(80),
     supabase.from("v_treatment_authorization_status").select("*").eq("patient_id", id).order("periodo_hasta"),
     supabase.from("treatment_authorizations").select("id, frecuencia_cantidad, frecuencia_unidad, frecuencia_periodo, dias_semana, renueva_a").eq("patient_id", id),
     supabase.from("legal_documents").select("id, codigo, titulo, resumen, requiere_firma_profesional").eq("activo", true).order("orden"),
@@ -143,6 +146,7 @@ export default async function FichaPacientePage({
       ])
     : [{ data: null }, { data: null }];
   const accesos = (accesosRaw ?? []) as unknown as FamilyAccessInfo[];
+  const fotosFachada = await urlsDeFotos(supabase, (visits ?? []).map((v) => v.foto_fachada));
   const visitasPorId = new Map((visits ?? []).map((v) => [v.id, v]));
   const confirmacionesDelPaciente = (confirmacionesFam ?? []).filter((c) => visitasPorId.has(c.visit_id));
 
@@ -254,6 +258,11 @@ export default async function FichaPacientePage({
                 ["Ocupación", p.ocupacion ?? "—"],
                 ["Localidad", p.localidad ?? "—"],
                 ["Domicilio", p.domicilio],
+                ["Ubicación capturada", p.lat != null && p.lng != null ? (
+                  <a key="ubic" href={urlPunto(p.lat, p.lng)} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 text-teal-700">Ver en el mapa</a>
+                ) : (
+                  <span key="ubic" className="text-amber-700">Todavía no se capturó la ubicación{p.domicilio ? <> · <a href={urlMapa(p.domicilio)} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">ver el domicilio en el mapa</a></> : null}</span>
+                )],
                 ["Domicilio actual", p.domicilio_actual ? `${p.domicilio_actual}${p.telefono_actual ? ` · ${p.telefono_actual}` : ""}` : "El mismo"],
                 ["Teléfono", p.telefono_contacto ?? "—"],
                 ["Persona responsable", `${p.contacto_familiar_nombre ?? "—"}${p.contacto_familiar_telefono ? ` · ${p.contacto_familiar_telefono}` : ""}${p.email_responsable ? ` · ${p.email_responsable}` : ""}`],
@@ -505,7 +514,13 @@ export default async function FichaPacientePage({
               {(visits ?? []).slice(0, 30).map((v) => (
                 <li key={v.id} className="py-2 flex items-center justify-between gap-3 flex-wrap">
                   <span>{descripcionFechaHora(v)} · {SPECIALTY_LABELS[v.especialidad] ?? v.especialidad} · {nombreDe(v.profiles)}</span>
-                  <StatusBadge tone={VISITA_TONE[v.estado] ?? "gris"} label={VISITA_LABELS[v.estado] ?? v.estado} />
+                  <span className="flex items-center gap-2 flex-wrap">
+                    {v.motivo_no_atencion && <span className="text-xs text-slate-500">{MOTIVO_NO_ATENCION[v.motivo_no_atencion] ?? v.motivo_no_atencion}</span>}
+                    {v.foto_fachada && fotosFachada.get(v.foto_fachada) && (
+                      <a href={fotosFachada.get(v.foto_fachada)} target="_blank" rel="noopener noreferrer" className="text-xs underline underline-offset-2 text-teal-700">Ver foto de la fachada</a>
+                    )}
+                    <StatusBadge tone={VISITA_TONE[v.estado] ?? "gris"} label={VISITA_LABELS[v.estado] ?? v.estado} />
+                  </span>
                 </li>
               ))}
             </ul>
