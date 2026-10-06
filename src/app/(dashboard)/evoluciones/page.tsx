@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile, SPECIALTY_LABELS } from "@/lib/auth";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import PageHeader from "@/components/PageHeader";
 import StatusBadge from "@/components/StatusBadge";
 import EvolucionForm from "@/components/hc/EvolucionForm";
@@ -17,6 +18,8 @@ export default async function EvolucionesPage({
 }) {
   const { visita, q } = await searchParams;
   const { profile } = await requireProfile();
+  // La historia clínica es solo para roles clínicos y de control; Depósito y Transporte vuelven al inicio.
+  if (!["administracion", "coordinador_internacion", "profesional_asistencial", "direccion"].includes(profile.role)) redirect("/inicio");
   const supabase = await createClient();
 
   // Coordinación controla y Administración/Dirección consultan (solo lectura); quien carga es el profesional.

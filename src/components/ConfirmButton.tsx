@@ -33,6 +33,9 @@ export default function ConfirmButton({
         if (!armed) {
           e.preventDefault();
           setArmed(true);
+        } else {
+          // El segundo toque envía el formulario; el botón vuelve a su estado normal para que no quede «armado».
+          setTimeout(() => setArmed(false), 0);
         }
       }}
       className={armed ? `${className} ${armedClassName}` : className}
