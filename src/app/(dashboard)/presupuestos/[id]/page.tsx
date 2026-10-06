@@ -6,8 +6,10 @@ import ActionDisclosure from "@/components/ActionDisclosure";
 import ConfirmButton from "@/components/ConfirmButton";
 import PresupuestoForm from "@/components/presupuestos/PresupuestoForm";
 import ImprimirButton from "@/components/presupuestos/ImprimirButton";
-import { ROLES_PRESUPUESTOS, formatARS, fechaCorta, totalPresupuesto, vencimientoPresupuesto, numeroPresupuesto } from "@/lib/facturacion";
-import { deleteSalesQuoteAction } from "../actions";
+import { ROLES_PRESUPUESTOS, ESTADOS_PRESUPUESTO, costoConIvaPresupuesto, rentabilidadSobreBruto, formatARS, fechaCorta, totalPresupuesto, vencimientoPresupuesto, numeroPresupuesto } from "@/lib/facturacion";
+import StatusBadge from "@/components/StatusBadge";
+import { PRACTICA_POR_CODIGO } from "@/lib/autorizaciones";
+import { deleteSalesQuoteAction, cambiarEstadoPresupuestoAction } from "../actions";
 
 export default async function PresupuestoDetallePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,17 +20,24 @@ export default async function PresupuestoDetallePage({ params }: { params: Promi
 
   const { data: quote } = await supabase
     .from("sales_quotes")
-    .select("id, numero, obra_social_id, destinatario_particular, fecha, validez_dias, notas, obras_sociales(nombre, cuit)")
+    .select("id, numero, obra_social_id, destinatario_particular, fecha, validez_dias, notas, estado, iva_pct, obras_sociales(nombre, cuit)")
     .eq("id", id)
     .maybeSingle();
   if (!quote) notFound();
-  const [{ data: items }, { data: obrasSociales }] = await Promise.all([
-    supabase.from("sales_quote_items").select("descripcion, cantidad, valor_unitario").eq("quote_id", id).order("orden"),
+  const [{ data: items }, { data: obrasSociales }, { data: honorarios }] = await Promise.all([
+    supabase.from("sales_quote_items").select("descripcion, cantidad, valor_unitario, costo_unitario").eq("quote_id", id).order("orden"),
     canManage ? supabase.from("obras_sociales").select("id, nombre, valor_modulo").eq("activa", true).order("nombre") : Promise.resolve({ data: [] }),
+    canManage ? supabase.from("honorarios_prestacion").select("practica_tipo, costo_unitario") : Promise.resolve({ data: [] as { practica_tipo: string; costo_unitario: number }[] }),
   ]);
-  const lineas = (items ?? []).map((i) => ({ descripcion: i.descripcion, cantidad: Number(i.cantidad), valor_unitario: Number(i.valor_unitario) }));
+  const lineas = (items ?? []).map((i) => ({ descripcion: i.descripcion, cantidad: Number(i.cantidad), valor_unitario: Number(i.valor_unitario), costo_unitario: i.costo_unitario != null ? Number(i.costo_unitario) : null }));
   const os = quote.obras_sociales as unknown as { nombre: string; cuit: string | null } | null;
   const total = totalPresupuesto(lineas);
+  const ivaPct = Number(quote.iva_pct ?? 21);
+  const costoIva = costoConIvaPresupuesto(lineas, ivaPct);
+  const conCosto = lineas.some((l) => l.costo_unitario != null);
+  const rentab = conCosto ? rentabilidadSobreBruto(total, costoIva) : null;
+  const honorariosOpts = (honorarios ?? []).map((h) => ({ label: PRACTICA_POR_CODIGO[h.practica_tipo]?.label ?? h.practica_tipo, costo: Number(h.costo_unitario) }));
+  const est = ESTADOS_PRESUPUESTO[quote.estado] ?? ESTADOS_PRESUPUESTO.borrador;
 
   return (
     <div className="space-y-6">
@@ -39,6 +48,28 @@ export default async function PresupuestoDetallePage({ params }: { params: Promi
         <Link href="/presupuestos" className="text-sm text-slate-500 underline">← Volver a presupuestos</Link>
         <ImprimirButton />
       </div>
+
+      <section className="print:hidden max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
+        <div className="flex items-center gap-2 flex-wrap text-sm">
+          <span className="font-medium text-slate-700">Estado:</span>
+          <StatusBadge tone={est.tone} label={est.label} />
+          {canManage && (
+            <form action={cambiarEstadoPresupuestoAction} className="flex items-center gap-1.5 flex-wrap">
+              <input type="hidden" name="quote_id" value={quote.id} />
+              {Object.entries(ESTADOS_PRESUPUESTO).filter(([k]) => k !== quote.estado).map(([k, v]) => (
+                <button key={k} name="estado" value={k} className="rounded-lg border border-slate-300 bg-white text-xs font-medium text-slate-700 px-2.5 py-1.5 hover:bg-slate-50">Marcar {v.label.toLowerCase()}</button>
+              ))}
+            </form>
+          )}
+        </div>
+        <div className="text-xs text-slate-600 tabular-nums">
+          {conCosto ? (
+            <>Costo con IVA ({ivaPct}%): <strong>{formatARS(costoIva)}</strong> · Venta: <strong>{formatARS(total)}</strong>{rentab !== null && <> · Rentabilidad sobre el bruto: <strong className={rentab < 0 ? "text-red-700" : "text-emerald-700"}>{(rentab * 100).toFixed(1)}%</strong></>}</>
+          ) : (
+            "Sin costos cargados: agregá el costo de cada línea (editar presupuesto) para ver la rentabilidad."
+          )}
+        </div>
+      </section>
 
       <article className="print-quote bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 max-w-3xl">
         <header className="flex items-start justify-between gap-4 flex-wrap border-b border-slate-200 pb-4">
@@ -97,6 +128,8 @@ export default async function PresupuestoDetallePage({ params }: { params: Promi
           <ActionDisclosure label="Editar presupuesto" tone="subtle">
             <PresupuestoForm
               obrasSociales={obrasSociales ?? []}
+              honorarios={honorariosOpts}
+              ivaPct={ivaPct}
               quoteId={quote.id}
               inicial={{
                 obra_social_id: quote.obra_social_id,

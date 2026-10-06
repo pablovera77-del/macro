@@ -43,3 +43,26 @@ create policy insert_billing_ready on public.billing_ready for insert with check
 create policy update_billing_ready on public.billing_ready for update using (public.get_current_app_role() in ('administracion','facturacion')) with check (public.get_current_app_role() in ('administracion','facturacion'));
 create policy delete_billing_ready on public.billing_ready for delete using (public.get_current_app_role() = 'administracion');
 create trigger trg_audit_billing_ready after insert or update or delete on public.billing_ready for each row execute function public.fn_audit_log();
+
+-- H9: presupuestos con costo (con IVA), rentabilidad y estados; honorarios cargados por Dirección.
+alter table public.sales_quotes
+  add column if not exists estado text not null default 'borrador',
+  add column if not exists estado_at timestamptz,
+  add column if not exists iva_pct numeric(5,2) not null default 21;
+alter table public.sales_quotes add constraint sq_estado_chk check (estado in ('borrador','enviado','aceptado','rechazado')) not valid;
+alter table public.sales_quote_items add column if not exists costo_unitario numeric(14,2);
+create table if not exists public.honorarios_prestacion (
+  id uuid primary key default gen_random_uuid(),
+  practica_tipo text not null unique,
+  costo_unitario numeric(14,2) not null check (costo_unitario >= 0),
+  updated_at timestamptz not null default now(),
+  updated_by uuid references public.profiles(id)
+);
+alter table public.honorarios_prestacion enable row level security;
+create policy select_honorarios on public.honorarios_prestacion for select using (public.get_current_app_role() in ('direccion','facturacion'));
+create policy insert_honorarios on public.honorarios_prestacion for insert with check (public.get_current_app_role() = 'direccion');
+create policy update_honorarios on public.honorarios_prestacion for update using (public.get_current_app_role() = 'direccion') with check (public.get_current_app_role() = 'direccion');
+create trigger trg_audit_honorarios after insert or update or delete on public.honorarios_prestacion for each row execute function public.fn_audit_log();
+alter policy select_authenticated on public.sales_quotes using (public.get_current_app_role() in ('facturacion','direccion'));
+alter policy select_authenticated on public.sales_quote_items using (public.get_current_app_role() in ('facturacion','direccion'));
+insert into public.app_settings(clave, descripcion, valor) values ('iva_presupuestos','IVA (%) que se suma al costo en los presupuestos de venta',21) on conflict (clave) do nothing;

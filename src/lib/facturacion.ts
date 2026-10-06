@@ -74,6 +74,24 @@ export const MODALIDAD_LABELS: Record<string, string> = {
 // Presupuestos de venta (C4-15/16): Facturación los arma (H8, Vanina 06/10); Dirección solo los consulta.
 export const ROLES_PRESUPUESTOS: AppRole[] = ["facturacion", "direccion"];
 
+export const ESTADOS_PRESUPUESTO: Record<string, { label: string; tone: "gris" | "amarillo" | "verde" | "rojo" }> = {
+  borrador: { label: "Borrador", tone: "gris" },
+  enviado: { label: "Enviado", tone: "amarillo" },
+  aceptado: { label: "Aceptado", tone: "verde" },
+  rechazado: { label: "Rechazado", tone: "rojo" },
+};
+
+/** Costo total del presupuesto con IVA (H9). Las líneas sin costo cargado no suman. */
+export function costoConIvaPresupuesto(items: { cantidad: number; costo_unitario: number | null }[], ivaPct: number): number {
+  const neto = items.reduce((acc, i) => acc + Number(i.cantidad) * Number(i.costo_unitario ?? 0), 0);
+  return neto * (1 + ivaPct / 100);
+}
+
+/** Rentabilidad sobre el bruto: (venta − costo con IVA) / venta. Null si no hay venta. */
+export function rentabilidadSobreBruto(venta: number, costoConIva: number): number | null {
+  return venta > 0 ? (venta - costoConIva) / venta : null;
+}
+
 export function totalPresupuesto(items: { cantidad: number; valor_unitario: number }[]): number {
   return items.reduce((acc, i) => acc + Number(i.cantidad) * Number(i.valor_unitario), 0);
 }

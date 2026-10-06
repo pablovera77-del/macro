@@ -7,8 +7,9 @@ import SidePanel from "@/components/SidePanel";
 import StatusBadge from "@/components/StatusBadge";
 import { IconCash } from "@/components/icons";
 import PresupuestoForm from "@/components/presupuestos/PresupuestoForm";
-import { ROLES_PRESUPUESTOS, formatARS, fechaCorta, totalPresupuesto, vencimientoPresupuesto, numeroPresupuesto } from "@/lib/facturacion";
+import { ROLES_PRESUPUESTOS, ESTADOS_PRESUPUESTO, formatARS, fechaCorta, totalPresupuesto, vencimientoPresupuesto, numeroPresupuesto } from "@/lib/facturacion";
 import { hoyAR } from "@/lib/plan";
+import { PRACTICA_POR_CODIGO } from "@/lib/autorizaciones";
 
 export default async function PresupuestosPage() {
   const { profile } = await requireProfile();
@@ -16,15 +17,19 @@ export default async function PresupuestosPage() {
   const canManage = profile.role === "facturacion";
   const supabase = await createClient();
 
-  const [{ data: quotes }, { data: items }, { data: obrasSociales }] = await Promise.all([
+  const [{ data: quotes }, { data: items }, { data: obrasSociales }, { data: honorarios }, { data: ivaCfg }] = await Promise.all([
     supabase
       .from("sales_quotes")
-      .select("id, numero, obra_social_id, destinatario_particular, fecha, validez_dias, obras_sociales(nombre)")
+      .select("id, numero, obra_social_id, destinatario_particular, fecha, validez_dias, estado, obras_sociales(nombre)")
       .order("numero", { ascending: false }),
     supabase.from("sales_quote_items").select("quote_id, cantidad, valor_unitario"),
     supabase.from("obras_sociales").select("id, nombre, valor_modulo").eq("activa", true).order("nombre"),
+    supabase.from("honorarios_prestacion").select("practica_tipo, costo_unitario"),
+    supabase.from("app_settings").select("valor").eq("clave", "iva_presupuestos").maybeSingle(),
   ]);
   const hoy = hoyAR();
+  const honorariosOpts = (honorarios ?? []).map((h) => ({ label: PRACTICA_POR_CODIGO[h.practica_tipo]?.label ?? h.practica_tipo, costo: Number(h.costo_unitario) }));
+  const ivaPct = Number(ivaCfg?.valor ?? 21);
 
   return (
     <div className="space-y-8">
@@ -36,7 +41,7 @@ export default async function PresupuestosPage() {
         purpose={
           canManage
             ? "Armá un presupuesto para una obra social o para un particular, con los valores vigentes, e imprimilo o guardalo en PDF."
-            : "Acá consultás los presupuestos de venta que armó Administración."
+            : "Acá consultás los presupuestos de venta que armó Facturación."
         }
         description="Presupuestos a obra social o particular con vista imprimible."
       />
@@ -62,7 +67,10 @@ export default async function PresupuestosPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-base font-semibold text-slate-900 tabular-nums">{formatARS(total)}</div>
-                  <StatusBadge tone={vigente ? "verde" : "gris"} label={vigente ? `Vigente hasta ${fechaCorta(vence)}` : `Venció el ${fechaCorta(vence)}`} />
+                  <div className="flex items-center gap-1.5 justify-end flex-wrap">
+                    <StatusBadge tone={ESTADOS_PRESUPUESTO[q.estado]?.tone ?? "gris"} label={ESTADOS_PRESUPUESTO[q.estado]?.label ?? q.estado} />
+                    <StatusBadge tone={vigente ? "verde" : "gris"} label={vigente ? `Vigente hasta ${fechaCorta(vence)}` : `Venció el ${fechaCorta(vence)}`} />
+                  </div>
                 </div>
               </div>
             </Link>
@@ -77,7 +85,7 @@ export default async function PresupuestosPage() {
 
       {canManage && (
         <SidePanel id="nuevo-presupuesto" title="Nuevo presupuesto">
-          <PresupuestoForm obrasSociales={obrasSociales ?? []} />
+          <PresupuestoForm obrasSociales={obrasSociales ?? []} honorarios={honorariosOpts} ivaPct={ivaPct} />
         </SidePanel>
       )}
     </div>

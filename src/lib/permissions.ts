@@ -40,6 +40,7 @@ const PRES = "src/app/(dashboard)/presupuestos/actions.ts";
 const USR = "src/app/(dashboard)/usuarios/actions.ts";
 const CFG = "src/app/(dashboard)/configuracion/actions.ts";
 const LPF = "src/app/(dashboard)/listo-para-facturar/actions.ts";
+const HON = "src/app/(dashboard)/honorarios/actions.ts";
 
 export const PERMISOS: Permiso[] = [
   // Pacientes e ingreso
@@ -107,6 +108,7 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Facturación", accion: "Dejar pacientes fuera del cierre mensual", roles: [F], guard: { file: FAC, message: "Solo Facturación deja pacientes fuera del cierre mensual." } },
   { modulo: "Facturación", accion: "Registrar el reclamo de un débito", roles: [F], guard: { file: FAC, message: "Solo Facturación registra el reclamo de un débito." } },
   { modulo: "Presupuestos", accion: "Armar y editar presupuestos de venta", roles: [F], guard: { file: PRES, message: "Solo Facturación arma presupuestos de venta." } },
+  { modulo: "Presupuestos", accion: "Cargar los honorarios por prestación (base del costo)", roles: [DIR], guard: { file: HON, message: "Solo Dirección carga los honorarios." } },
   { modulo: "Presupuestos", accion: "Ver presupuestos de venta (solo lectura)", roles: [F, DIR], guard: { file: "src/app/(dashboard)/presupuestos/page.tsx", message: "ROLES_PRESUPUESTOS.includes(profile.role)" } },
   // Dirección (solo lectura)
   { modulo: "Auditoría", accion: "Ver el registro de auditoría", roles: [DIR], guard: { file: "src/app/(dashboard)/auditoria/page.tsx", message: 'profile.role !== "direccion"' } },

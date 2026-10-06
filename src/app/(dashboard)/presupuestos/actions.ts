@@ -10,12 +10,13 @@ import type { ActionResult } from "@/lib/facturacion";
 // C4-15/16: presupuestos de venta a una obra social o a un particular.
 // Supuesto: validez simple en días (DF §3.3 deja pendiente validez y conversión a facturación).
 
-type Linea = { descripcion: string; cantidad: number; valor_unitario: number };
+type Linea = { descripcion: string; cantidad: number; valor_unitario: number; costo_unitario: number | null };
 
 function leerLineas(formData: FormData): { lineas: Linea[]; error?: string } {
   const desc = formData.getAll("item_descripcion").map((v) => String(v).trim());
   const cant = formData.getAll("item_cantidad").map((v) => String(v).replace(",", "."));
   const val = formData.getAll("item_valor").map((v) => String(v).replace(",", "."));
+  const cos = formData.getAll("item_costo").map((v) => String(v).replace(",", ".").trim());
   const lineas: Linea[] = [];
   for (let i = 0; i < desc.length; i++) {
     // una línea totalmente vacía se ignora (el formulario siempre deja una fila libre)
@@ -25,7 +26,9 @@ function leerLineas(formData: FormData): { lineas: Linea[]; error?: string } {
     if (!desc[i]) return { lineas, error: `A la línea ${i + 1} le falta la descripción.` };
     if (!(cantidad > 0)) return { lineas, error: `La cantidad de la línea ${i + 1} tiene que ser mayor a cero.` };
     if (!(valor_unitario >= 0) || Number.isNaN(valor_unitario)) return { lineas, error: `El valor de la línea ${i + 1} no es un número válido.` };
-    lineas.push({ descripcion: desc[i], cantidad, valor_unitario });
+    const costo_unitario = cos[i] ? Number(cos[i]) : null;
+    if (costo_unitario !== null && (!(costo_unitario >= 0) || Number.isNaN(costo_unitario))) return { lineas, error: `El costo de la línea ${i + 1} no es un número válido.` };
+    lineas.push({ descripcion: desc[i], cantidad, valor_unitario, costo_unitario });
   }
   if (lineas.length === 0) return { lineas, error: "Agregá al menos una línea al presupuesto (descripción, cantidad y valor)." };
   return { lineas };
@@ -48,11 +51,14 @@ export async function saveSalesQuoteAction(_prev: ActionResult, formData: FormDa
   const { lineas, error: errLineas } = leerLineas(formData);
   if (errLineas) return { error: errLineas };
 
+  const { data: ivaCfg } = await supabase.from("app_settings").select("valor").eq("clave", "iva_presupuestos").maybeSingle();
+  const iva_pct = Number(ivaCfg?.valor ?? 21);
+
   let id = quoteId;
   if (quoteId) {
     const { error } = await supabase
       .from("sales_quotes")
-      .update({ obra_social_id, destinatario_particular: particular || null, validez_dias: validez, notas })
+      .update({ obra_social_id, destinatario_particular: particular || null, validez_dias: validez, notas, iva_pct })
       .eq("id", quoteId);
     if (error) return { error: `No se pudo guardar el presupuesto: ${error.message}.` };
     const { error: errDel } = await supabase.from("sales_quote_items").delete().eq("quote_id", quoteId);
@@ -60,7 +66,7 @@ export async function saveSalesQuoteAction(_prev: ActionResult, formData: FormDa
   } else {
     const { data, error } = await supabase
       .from("sales_quotes")
-      .insert({ obra_social_id, destinatario_particular: particular || null, validez_dias: validez, notas, creado_por: profile.id })
+      .insert({ obra_social_id, destinatario_particular: particular || null, validez_dias: validez, notas, iva_pct, creado_por: profile.id })
       .select("id")
       .single();
     if (error || !data) return { error: `No se pudo crear el presupuesto: ${error?.message ?? "intentá de nuevo"}.` };
@@ -96,4 +102,20 @@ export async function deleteSalesQuoteAction(formData: FormData) {
   revalidatePath("/presupuestos");
   await flash("Presupuesto borrado.");
   redirect("/presupuestos");
+}
+
+// H9: el presupuesto pasa por enviado, aceptado o rechazado (antes no existían estados).
+export async function cambiarEstadoPresupuestoAction(formData: FormData) {
+  const { profile } = await requireProfile();
+  if (profile.role !== "facturacion") throw new Error("Solo Facturación arma presupuestos de venta.");
+  const id = String(formData.get("quote_id") || "");
+  const estado = String(formData.get("estado") || "");
+  if (!id) throw new Error("Falta el presupuesto. Recargá la página.");
+  if (!["borrador", "enviado", "aceptado", "rechazado"].includes(estado)) throw new Error("El estado no es válido.");
+  const supabase = await createClient();
+  const { error } = await supabase.from("sales_quotes").update({ estado, estado_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw new Error(`No se pudo cambiar el estado: ${error.message}.`);
+  revalidatePath("/presupuestos");
+  revalidatePath(`/presupuestos/${id}`);
+  await flash(`Presupuesto marcado como ${estado}.`);
 }

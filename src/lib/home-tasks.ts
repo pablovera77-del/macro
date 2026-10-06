@@ -375,6 +375,20 @@ const PRESUPUESTOS: HomeTask = {
   doc: "DF-C4 §3.3",
 };
 
+const HONORARIOS: HomeTask = {
+  id: "honorarios",
+  title: "Cargar los honorarios por prestación",
+  summary: "Definir cuánto cuesta cada prestación para que Facturación calcule costo y rentabilidad.",
+  steps: [
+    "Entrá a Honorarios.",
+    "Escribí el costo de cada prestación (sin IVA) y tocá «Guardar honorarios».",
+    "Facturación los ve en los presupuestos, con el costo con IVA y la rentabilidad.",
+  ],
+  href: "/honorarios",
+  cta: "Ir a Honorarios",
+  doc: "DF-C4 §3.3",
+};
+
 const COMPRAS: HomeTask = {
   id: "compras",
   title: "Pedir cotizaciones y comprar insumos",
@@ -527,7 +541,7 @@ export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
   ],
   deposito: [DESPACHAR_PEDIDOS, AGENDA_TRANSPORTE, SEGUIMIENTO, CARGAR_PRODUCTO, COMPRAS],
   transporte: [AGENDA_TRANSPORTE, ENTREGAR_PEDIDOS, SEGUIMIENTO],
-  direccion: [DASHBOARD, PRODUCTIVIDAD, PRESUPUESTOS, AUDITORIA],
+  direccion: [DASHBOARD, PRODUCTIVIDAD, HONORARIOS, PRESUPUESTOS, AUDITORIA],
   facturacion: [REVISAR_LISTOS, CIERRE_MENSUAL, OBRAS_SOCIALES_FACT, PRESUPUESTOS, CONSULTAR_HC],
 };
 

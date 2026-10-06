@@ -1405,6 +1405,38 @@ export type Database = {
           },
         ]
       }
+      honorarios_prestacion: {
+        Row: {
+          costo_unitario: number
+          id: string
+          practica_tipo: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          costo_unitario: number
+          id?: string
+          practica_tipo: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          costo_unitario?: number
+          id?: string
+          practica_tipo?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "honorarios_prestacion_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       info_checklist_items: {
         Row: {
           activo: boolean
@@ -3807,6 +3839,7 @@ export type Database = {
       sales_quote_items: {
         Row: {
           cantidad: number
+          costo_unitario: number | null
           created_at: string
           descripcion: string
           id: number
@@ -3816,6 +3849,7 @@ export type Database = {
         }
         Insert: {
           cantidad: number
+          costo_unitario?: number | null
           created_at?: string
           descripcion: string
           id?: never
@@ -3825,6 +3859,7 @@ export type Database = {
         }
         Update: {
           cantidad?: number
+          costo_unitario?: number | null
           created_at?: string
           descripcion?: string
           id?: never
@@ -3847,8 +3882,11 @@ export type Database = {
           creado_por: string | null
           created_at: string
           destinatario_particular: string | null
+          estado: string
+          estado_at: string | null
           fecha: string
           id: string
+          iva_pct: number
           notas: string | null
           numero: number
           obra_social_id: string | null
@@ -3858,8 +3896,11 @@ export type Database = {
           creado_por?: string | null
           created_at?: string
           destinatario_particular?: string | null
+          estado?: string
+          estado_at?: string | null
           fecha?: string
           id?: string
+          iva_pct?: number
           notas?: string | null
           numero?: never
           obra_social_id?: string | null
@@ -3869,8 +3910,11 @@ export type Database = {
           creado_por?: string | null
           created_at?: string
           destinatario_particular?: string | null
+          estado?: string
+          estado_at?: string | null
           fecha?: string
           id?: string
+          iva_pct?: number
           notas?: string | null
           numero?: never
           obra_social_id?: string | null
