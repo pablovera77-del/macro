@@ -8,6 +8,15 @@ import { IconGrid } from "@/components/icons";
 import { hoyAR } from "@/lib/plan";
 import { fechaCorta } from "@/lib/paciente";
 
+function Kpi({ card, label, value, tone }: { card: string; label: string; value: number; tone: "verde" | "amarillo" | "rojo" | "gris" }) {
+  return (
+    <div className={card}>
+      <div className="text-xs text-slate-500">{label}</div>
+      <div className="mt-1 flex items-center gap-2"><span className="text-2xl font-semibold text-slate-900 tabular-nums">{value}</span><StatusBadge tone={value === 0 ? "verde" : tone} label={value === 0 ? "Al día" : "Revisar"} /></div>
+    </div>
+  );
+}
+
 /**
  * Panel de Administración (H10, Vanina 06/10): qué falta. Evoluciones incompletas, ingresos y egresos del mes
  * y prácticas autorizadas que todavía no tienen profesional asignado.
@@ -37,13 +46,6 @@ export default async function PanelAdministracionPage() {
   const sinProfesional = (autor ?? []).filter((a) => nombre.has(a.patient_id) && a.especialidad !== "otra" && !tieneEquipo.has(`${a.patient_id}:${a.especialidad}`));
 
   const card = "bg-white border border-slate-200 rounded-2xl p-5";
-  const Kpi = ({ label, value, tone }: { label: string; value: number; tone: "verde" | "amarillo" | "rojo" | "gris" }) => (
-    <div className={card}>
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className="mt-1 flex items-center gap-2"><span className="text-2xl font-semibold text-slate-900 tabular-nums">{value}</span><StatusBadge tone={value === 0 ? "verde" : tone} label={value === 0 ? "Al día" : "Revisar"} /></div>
-    </div>
-  );
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -54,9 +56,9 @@ export default async function PanelAdministracionPage() {
         description="Tablero de control de Administración (feedback de Vanina, 06/10)."
       />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Kpi label="Visitas realizadas sin evolución" value={(sinEvo ?? []).length} tone="rojo" />
-        <Kpi label="Evoluciones sin firma del profesional" value={(sinFirma ?? []).length} tone="amarillo" />
-        <Kpi label="Prácticas sin profesional asignado" value={sinProfesional.length} tone="rojo" />
+        <Kpi card={card} label="Visitas realizadas sin evolución" value={(sinEvo ?? []).length} tone="rojo" />
+        <Kpi card={card} label="Evoluciones sin firma del profesional" value={(sinFirma ?? []).length} tone="amarillo" />
+        <Kpi card={card} label="Prácticas sin profesional asignado" value={sinProfesional.length} tone="rojo" />
         <div className={card}>
           <div className="text-xs text-slate-500">Ingresos y egresos de este mes</div>
           <div className="mt-1 text-2xl font-semibold text-slate-900 tabular-nums">{(ingresos ?? []).length} / {(egresos ?? []).length}</div>
