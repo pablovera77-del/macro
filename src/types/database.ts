@@ -5124,6 +5124,10 @@ export type Database = {
         Args: { p_pin: string; p_token: string }
         Returns: Json
       }
+      fn_informar_egreso: {
+        Args: { p_hecho?: string; p_motivo: Database["public"]["Enums"]["discharge_reason"]; p_patient: string }
+        Returns: undefined
+      }
       fn_norm_texto: { Args: { t: string }; Returns: string }
       fn_notificar: {
         Args: {

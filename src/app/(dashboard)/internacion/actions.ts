@@ -343,15 +343,9 @@ export async function reportarEgresoAction(formData: FormData) {
   let hecho = parseDatetimeLocalAR(String(formData.get("hecho_at") || ""));
   if (!hecho || new Date(hecho) > ahora) hecho = ahora.toISOString();
 
-  const { error } = await supabase
-    .from("patients")
-    .update({
-      egreso_informado_at: ahora.toISOString(),
-      egreso_informado_por: profile.id,
-      egreso_motivo_informado: motivo,
-      egreso_hecho_at: hecho,
-    })
-    .eq("id", patient_id);
+  // La escritura pasa por una función de la base: un profesional asistencial no puede modificar `patients`
+  // directamente, y la función valida que sea del equipo tratante del paciente.
+  const { error } = await supabase.rpc("fn_informar_egreso", { p_patient: patient_id, p_motivo: motivo, p_hecho: hecho });
   if (error) throw new Error(error.message);
 
   // Aviso dentro de la plataforma (Configuración → Alertas). Si falla, el egreso ya quedó informado.
@@ -386,6 +380,13 @@ export async function addTreatmentAuthorizationAction(formData: FormData) {
 
   if (!patient_id || !practica || !especialidad || !periodo_hasta) throw new Error("Faltan datos de la autorización.");
 
+  // Frecuencia autorizada (opcional): alimenta los controles de Facturación (DF-C4 §4). Días con la numeración ISO: 1 = lunes … 7 = domingo.
+  const frecuenciaRaw = String(formData.get("frecuencia_tipo") || "");
+  const frecuencia_tipo = frecuenciaRaw === "diaria" || frecuenciaRaw === "semanal" ? frecuenciaRaw : null;
+  const dias = [...new Set(formData.getAll("dias_semana").map((x) => Number(x)).filter((n) => Number.isInteger(n) && n >= 1 && n <= 7))].sort();
+  const veces = Number(formData.get("veces_por_dia") || 1);
+  if (frecuencia_tipo === "semanal" && dias.length === 0) throw new Error("Para una frecuencia semanal marcá los días de la semana autorizados.");
+
   const { error } = await supabase.from("treatment_authorizations").insert({
     patient_id,
     practica,
@@ -393,6 +394,9 @@ export async function addTreatmentAuthorizationAction(formData: FormData) {
     cantidad_autorizada,
     periodo_hasta,
     autorizado_por: profile.id,
+    frecuencia_tipo,
+    dias_semana: frecuencia_tipo && dias.length > 0 ? dias : null,
+    veces_por_dia: frecuencia_tipo && Number.isInteger(veces) && veces >= 1 && veces <= 10 ? veces : null,
   });
 
   if (error) throw new Error(error.message);

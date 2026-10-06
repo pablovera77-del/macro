@@ -15,6 +15,13 @@ import ConsentDocumentRow from "@/components/ConsentDocumentRow";
 import AdmissionWizard from "@/components/AdmissionWizard";
 import { IconClipboard, IconUser, IconMapPin, IconAlert, IconCheck, IconClock, IconSignature } from "@/components/icons";
 import { SEMANTIC_TONE_BADGE_STYLES, SemanticTone } from "@/lib/semantic-status";
+import ProrrogasPanel from "@/components/pacientes/ProrrogasPanel";
+import LinkLlegada from "@/components/pacientes/LinkLlegada";
+import HistorialInternaciones from "@/components/pacientes/HistorialInternaciones";
+import SemaforoBadge from "@/components/pacientes/SemaforoBadge";
+import { semaforoPaciente, semaforoPorDias, diasRestantes } from "@/lib/semaforo";
+import { MOTIVOS_EGRESO_OPCIONES, motivoEgresoLabel, datetimeLocalAR } from "@/lib/egreso";
+import StatusBadge from "@/components/StatusBadge";
 
 const ESTADO_LABELS: Record<string, string> = {
   admitido_pendiente_llegada: "Admitido, pendiente de llegada",
@@ -30,11 +37,6 @@ const ESTADO_TONE: Record<string, SemanticTone> = {
 const ESTADO_STYLES: Record<string, string> = Object.fromEntries(
   Object.entries(ESTADO_TONE).map(([k, tone]) => [k, SEMANTIC_TONE_BADGE_STYLES[tone]])
 );
-const MOTIVO_LABELS: Record<string, string> = {
-  alta: "Alta médica",
-  fallecimiento: "Fallecimiento",
-  fin_internacion: "Fin de internación",
-};
 // Semáforo de vencimientos de autorizaciones (DF-C3 §10) — mismo tono que el resto
 // de los semáforos de la plataforma (DF-C4 §9, DF-C5 §3), ver DF-C1 §10.
 const SEMAFORO_TONE: Record<string, SemanticTone> = {
@@ -82,7 +84,7 @@ export default async function InternacionPage({
     supabase
       .from("patients")
       .select(
-        "id, nombre_completo, dni, domicilio, obra_social, obra_social_id, estado, fecha_ingreso, fecha_egreso, motivo_egreso, diagnostico_principal, llegada_confirmada_at, medicacion_confirmada_at, egreso_informado_at, egreso_motivo_informado, profiles:egreso_informado_por(full_name), obras_sociales(nombre)"
+        "id, nombre_completo, dni, domicilio, contacto_familiar_nombre, contacto_familiar_telefono, obra_social, obra_social_id, estado, fecha_ingreso, fecha_egreso, motivo_egreso, diagnostico_principal, llegada_confirmada_at, medicacion_confirmada_at, egreso_informado_at, egreso_motivo_informado, profiles:egreso_informado_por(full_name), obras_sociales(nombre)"
       )
       .order("fecha_ingreso", { ascending: false }),
     // DF-C3 §2: responsable_id habilita rutear el semáforo de vencimientos (más
@@ -135,6 +137,15 @@ export default async function InternacionPage({
     supabase.from("os_required_documents").select("id, obra_social_id, obligatorio").eq("activo", true),
     supabase.from("patient_required_documents").select("patient_id, doc_id"),
   ]);
+  // Prórrogas, internaciones y línea de tiempo (DF-C3 §3.1, §9 y §11.1).
+  const [{ data: prorrogas }, { data: internaciones }, { data: eventos }] = await Promise.all([
+    supabase.from("authorization_extensions").select("id, patient_id, authorization_id, pedida_at, respondida_at, estado, nueva_fecha_hasta, fecha_hasta_anterior, nota").order("pedida_at", { ascending: false }),
+    supabase.from("patient_internaciones").select("id, patient_id, numero, estado, fecha_ingreso, fecha_egreso, motivo_egreso, diagnostico").order("numero", { ascending: false }),
+    supabase.from("patient_status_history").select("id, patient_id, evento, fecha_evento, motivo, informado_por, confirmado_por").order("fecha_evento", { ascending: false }).limit(300),
+  ]);
+  const idsPersonas = [...new Set((eventos ?? []).flatMap((e) => [e.informado_por, e.confirmado_por]).filter((x): x is string => !!x))];
+  const { data: personas } = idsPersonas.length > 0 ? await supabase.from("profiles").select("id, full_name").in("id", idsPersonas) : { data: [] as { id: string; full_name: string }[] };
+  const nombresPersonas = Object.fromEntries((personas ?? []).map((x) => [x.id, x.full_name]));
   const conPlan = new Set((planesActivos ?? []).map((x) => x.patient_id));
   const conMeds = new Set((medsActivas ?? []).map((x) => x.patient_id));
   const totalChecklist = (checkItems ?? []).length;
@@ -356,6 +367,7 @@ export default async function InternacionPage({
                 </div>
                 <div className="flex items-center gap-2 flex-wrap justify-end">
                   <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${ESTADO_STYLES[p.estado]}`}>{ESTADO_LABELS[p.estado]}</span>
+                  {p.estado !== "dado_de_baja" && <SemaforoBadge semaforo={semaforoPaciente(auths)} />}
                   {p.estado === "admitido_pendiente_llegada" && !p.llegada_confirmada_at && canArrival && (
                     <form action={confirmArrivalAction}>
                       <input type="hidden" name="patient_id" value={p.id} />
@@ -366,6 +378,12 @@ export default async function InternacionPage({
                   )}
                 </div>
               </div>
+
+              {p.estado === "admitido_pendiente_llegada" && !p.llegada_confirmada_at && canArrival && (
+                <div className="mt-3">
+                  <LinkLlegada patientId={p.id} pacienteNombre={p.nombre_completo} telefonoResponsable={p.contacto_familiar_telefono} responsableNombre={p.contacto_familiar_nombre} />
+                </div>
+              )}
 
               {p.estado !== "dado_de_baja" && (() => {
                 const totalDocs = (legalDocuments ?? []).length;
@@ -402,9 +420,7 @@ export default async function InternacionPage({
               <ul className="text-sm text-slate-600 mt-3 space-y-1 pl-1">
                 {auths.map((a) => (
                   <li key={a.id} className="flex items-center gap-2 flex-wrap">
-                    <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${SEMAFORO_STYLES[a.estado_semaforo ?? "vigente"]}`}>
-                      {SEMAFORO_LABELS[a.estado_semaforo ?? "vigente"]}
-                    </span>
+                    {a.periodo_hasta ? <StatusBadge tone={semaforoPorDias(diasRestantes(a.periodo_hasta)).tone} label={semaforoPorDias(diasRestantes(a.periodo_hasta)).label} /> : null}
                     {a.practica} · {a.cantidad_autorizada}x {SPECIALTY_LABELS[a.especialidad ?? ""] ?? a.especialidad}
                     <span className="text-xs text-slate-400">(hasta {a.periodo_hasta})</span>
                   </li>
@@ -442,27 +458,32 @@ export default async function InternacionPage({
 
               {p.estado === "dado_de_baja" && p.motivo_egreso && (
                 <div className="text-xs text-slate-500 mt-3 flex items-center gap-1">
-                  <IconClock className="w-3 h-3" /> Egreso: {MOTIVO_LABELS[p.motivo_egreso]} el {p.fecha_egreso}
+                  <IconClock className="w-3 h-3" /> Egreso: {motivoEgresoLabel(p.motivo_egreso)} el {p.fecha_egreso}
                 </div>
               )}
 
               {p.estado !== "dado_de_baja" && p.egreso_informado_at && (
                 <div className="text-xs text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 mt-3 flex items-center gap-1.5">
                   <IconAlert className="w-3.5 h-3.5" /> Egreso informado
-                  {p.motivo_egreso ? "" : ` (${MOTIVO_LABELS[p.egreso_motivo_informado ?? ""] ?? p.egreso_motivo_informado})`}
+                  {p.motivo_egreso ? "" : ` (${motivoEgresoLabel(p.egreso_motivo_informado)})`}
                   {" "}por {(p.profiles as unknown as { full_name: string } | null)?.full_name ?? "—"} — pendiente de que Administración confirme la baja definitiva.
                 </div>
               )}
 
               {p.estado === "activo" && !p.egreso_informado_at && canReportEgreso && (canArrival || misPacientesIds.has(p.id)) && (
-                <form action={reportarEgresoAction} className="flex flex-wrap gap-2 mt-3">
+                <form action={reportarEgresoAction} className="flex flex-wrap items-end gap-2 mt-3">
                   <input type="hidden" name="patient_id" value={p.id} />
-                  <select name="motivo" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
-                    <option value="">Informar egreso — motivo...</option>
-                    <option value="alta">Alta médica</option>
-                    <option value="fallecimiento">Fallecimiento</option>
-                    <option value="fin_internacion">Fin de internación</option>
-                  </select>
+                  <label className="text-[11px] text-slate-600">Motivo del egreso
+                    <select name="motivo" required defaultValue="" className="block mt-0.5 rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
+                      <option value="" disabled>Elegí el motivo…</option>
+                      {MOTIVOS_EGRESO_OPCIONES.map((m) => (
+                        <option key={m} value={m}>{motivoEgresoLabel(m)}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-[11px] text-slate-600">Cuándo ocurrió
+                    <input name="hecho_at" type="datetime-local" defaultValue={datetimeLocalAR()} max={datetimeLocalAR()} className="block mt-0.5 rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
+                  </label>
                   <ConfirmButton className="rounded-lg bg-red-50 text-red-700 border border-red-200 text-xs font-medium px-3 py-1.5 hover:bg-red-100 transition-colors" confirmLabel="¿Informar egreso? Tocá de nuevo">
                     Informar egreso
                   </ConfirmButton>
@@ -482,8 +503,36 @@ export default async function InternacionPage({
                       </select>
                       <input name="cantidad_autorizada" type="number" min="1" defaultValue="1" className="w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
                       <input name="periodo_hasta" type="date" required className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
+                      <details className="basis-full text-xs text-slate-600">
+                        <summary className="cursor-pointer text-slate-500">Frecuencia autorizada por la obra social (opcional, la usan los controles de Facturación)</summary>
+                        <div className="flex flex-wrap items-end gap-2 mt-2">
+                          <label>Tipo
+                            <select name="frecuencia_tipo" defaultValue="" className="block mt-0.5 rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
+                              <option value="">Sin definir</option>
+                              <option value="diaria">Diaria (los días marcados)</option>
+                              <option value="semanal">Semanal (N por semana)</option>
+                            </select>
+                          </label>
+                          <label>Veces por día
+                            <input name="veces_por_dia" type="number" min="1" max="6" defaultValue="1" className="block mt-0.5 w-16 rounded-lg border border-slate-300 px-2 py-1.5 text-xs" />
+                          </label>
+                          <fieldset className="flex items-center gap-2">
+                            <legend className="sr-only">Días de la semana</legend>
+                            {[["1", "L"], ["2", "M"], ["3", "X"], ["4", "J"], ["5", "V"], ["6", "S"], ["7", "D"]].map(([v, l]) => (
+                              <label key={v} className="flex items-center gap-0.5"><input type="checkbox" name="dias_semana" value={v} /> {l}</label>
+                            ))}
+                          </fieldset>
+                        </div>
+                      </details>
                       <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Autorizar</button>
                     </form>
+
+                    <ProrrogasPanel
+                      patientId={p.id}
+                      autorizaciones={auths.map((a) => ({ id: a.id, practica: a.practica, especialidad: a.especialidad, periodo_hasta: a.periodo_hasta }))}
+                      prorrogas={(prorrogas ?? []).filter((x) => x.patient_id === p.id)}
+                      puedeGestionar={canAdmit}
+                    />
 
                     <form action={assignCareTeamAction} className="flex flex-wrap gap-2">
                       <input type="hidden" name="patient_id" value={p.id} />
@@ -500,6 +549,11 @@ export default async function InternacionPage({
                       </select>
                       <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Asignar al equipo</button>
                     </form>
+                    <HistorialInternaciones
+                      internaciones={(internaciones ?? []).filter((x) => x.patient_id === p.id) as never}
+                      eventos={(eventos ?? []).filter((x) => x.patient_id === p.id) as never}
+                      nombres={nombresPersonas}
+                    />
                   </div>
                 </ActionDisclosure>
               )}
