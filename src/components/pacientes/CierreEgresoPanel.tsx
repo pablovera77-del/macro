@@ -1,10 +1,10 @@
 "use client";
 
-import { useActionState, useRef, useTransition } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import ConfirmButton from "@/components/ConfirmButton";
 import { confirmarEgresoAction, type CierreState } from "@/app/(dashboard)/pacientes/actions";
-import { MOTIVO_EGRESO_LABELS, MOTIVOS_EGRESO_OPCIONES } from "@/lib/egreso";
+import { MOTIVO_EGRESO_LABELS, MOTIVOS_EGRESO_OPCIONES, MOTIVO_ALTA_VOLUNTARIA, MOTIVO_NO_SE_INICIA } from "@/lib/egreso";
 
 type Equipo = { asset_id: string | null; descripcion: string | null; numero_serie: string | null };
 
@@ -23,6 +23,7 @@ export default function CierreEgresoPanel({
   equipos,
   label = "Confirmar baja…",
   tone = "alert",
+  pendienteLlegada = false,
 }: {
   patientId: string;
   /** Motivo ya informado por un profesional o Coordinación (valor del enum), si lo hay. */
@@ -33,11 +34,14 @@ export default function CierreEgresoPanel({
   equipos: Equipo[];
   label?: string;
   tone?: "alert" | "subtle" | "default";
+  /** Paciente admitido que todavía no llegó: se ofrece «No se inicia ID» (H5). */
+  pendienteLlegada?: boolean;
 }) {
   const [state, formAction, pending] = useActionState<CierreState, FormData>(confirmarEgresoAction, { error: null });
   const [, startSubmit] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
-  const opciones: string[] = [...MOTIVOS_EGRESO_OPCIONES];
+  const opciones: string[] = pendienteLlegada ? [MOTIVO_NO_SE_INICIA, "internacion_otro"] : [...MOTIVOS_EGRESO_OPCIONES];
+  const [motivoSel, setMotivoSel] = useState(motivoInformado || (pendienteLlegada ? MOTIVO_NO_SE_INICIA : ""));
   if (motivoInformado && !opciones.includes(motivoInformado)) opciones.push(motivoInformado);
 
   return (
@@ -60,7 +64,7 @@ export default function CierreEgresoPanel({
           {informadoPor && <p className="text-xs text-slate-500 mt-0.5">Lo informó {informadoPor}. Revisalo antes de confirmar.</p>}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
             <label className="block text-xs text-slate-600">Motivo
-              <select name="motivo" required defaultValue={motivoInformado} className={`${inputCls} mt-1`}>
+              <select name="motivo" required value={motivoSel} onChange={(e) => setMotivoSel(e.target.value)} className={`${inputCls} mt-1`}>
                 <option value="">Elegí el motivo…</option>
                 {opciones.map((m) => <option key={m} value={m}>{MOTIVO_EGRESO_LABELS[m] ?? m}</option>)}
               </select>
@@ -69,6 +73,15 @@ export default function CierreEgresoPanel({
               <input name="hecho_at" type="datetime-local" required defaultValue={hechoDefault} className={`${inputCls} mt-1`} />
             </label>
           </div>
+          {motivoSel === MOTIVO_ALTA_VOLUNTARIA && (
+            <label className="block text-xs text-slate-600 mt-3">Familiar que firmó la solicitud de alta voluntaria
+              <input name="solicitud_firmante" required placeholder="Nombre y apellido de quien firma" className={`${inputCls} mt-1`} />
+              <span className="block text-[11px] text-slate-400 mt-1">La solicitud de alta se imprime y la firma el familiar; acá queda registrado quién la firmó y cuándo.</span>
+            </label>
+          )}
+          {motivoSel === MOTIVO_NO_SE_INICIA && (
+            <p className="text-xs text-slate-500 mt-2">El paciente fue admitido pero nunca llegó al domicilio: la internación se cierra sin iniciarse.</p>
+          )}
         </section>
 
         <section>

@@ -5,14 +5,17 @@ import { useActionState, useRef, useState, useTransition } from "react";
 import { createAdmissionAction, checkDniAction, type AdmissionState, type DniCheck, type PacienteSimilar } from "@/app/(dashboard)/internacion/actions";
 import { DISCIPLINAS_PLAN, DIAS_CORTOS, hoyAR } from "@/lib/plan";
 import { SPECIALTY_LABELS } from "@/lib/roles";
-import { edadEnAnios, fechaCorta } from "@/lib/paciente";
+import { edadEnAnios, fechaCorta, TIPOS_INTERNACION, TIPOS_POR_UNIDAD, UNIDADES_TRABAJO, SIN_EMERGENCIAS } from "@/lib/paciente";
+import { PARTICULAR } from "@/lib/legajo";
+import DniScanner from "@/components/DniScanner";
+import type { DatosDni } from "@/lib/dni-pdf417";
 
 type ObraSocial = { id: string; nombre: string };
 type Profesional = { id: string; full_name: string };
 
 const STEPS = [
   { n: 1, title: "Datos personales", hint: "DNI, nombre, domicilio y persona responsable" },
-  { n: 2, title: "Obra social", hint: "Cobertura, afiliado y médico derivante" },
+  { n: 2, title: "Cobertura y servicio", hint: "Obra social, derivación, unidad de trabajo y emergencias" },
   { n: 3, title: "Diagnóstico, plan y equipo", hint: "Motivo de la internación, visitas por disciplina y profesionales" },
 ];
 // Los pasos 4 a 6 del DF-C3 §3 se completan en la ficha, con el paciente ya admitido.
@@ -64,6 +67,11 @@ export default function AdmissionWizard({ obrasSociales, profesionales = [], def
   const [nacimiento, setNacimiento] = useState("");
   const [difiere, setDifiere] = useState(false);
   const [osSel, setOsSel] = useState("");
+  const [unidad, setUnidad] = useState("");
+  const [tipo, setTipo] = useState("");
+  const [coseguro, setCoseguro] = useState(false);
+  const [emerg, setEmerg] = useState(false);
+  const [extras, setExtras] = useState(0);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [checking, startChecking] = useTransition();
@@ -93,12 +101,16 @@ export default function AdmissionWizard({ obrasSociales, profesionales = [], def
     if (!pac) return;
     const d = pac.datos;
     setReingreso({ id: pac.id, nombre: pac.nombre_completo, nro: pac.nro_historia_clinica });
-    setField("nombre_completo", pac.nombre_completo);
-    for (const k of ["fecha_nacimiento", "sexo", "ocupacion", "localidad", "domicilio", "telefono_contacto", "domicilio_actual", "telefono_actual", "contacto_familiar_nombre", "contacto_familiar_telefono", "obra_social_id", "numero_afiliado", "medico_derivante", "medico_matricula", "diagnostico_principal"]) {
+    // Pacientes cargados antes de separar apellido y nombre: todo el nombre queda en «Nombre» para corregirlo.
+    setField("apellido", d.apellido ?? "");
+    setField("nombre", d.apellido ? d.nombre : pac.nombre_completo);
+    for (const k of ["email_responsable", "institucion_derivante", "fecha_nacimiento", "sexo", "ocupacion", "localidad", "domicilio", "telefono_contacto", "domicilio_actual", "telefono_actual", "contacto_familiar_nombre", "contacto_familiar_telefono", "obra_social_id", "numero_afiliado", "medico_derivante", "medico_matricula", "diagnostico_principal"]) {
       setField(k, d[k]);
     }
     setNacimiento(d.fecha_nacimiento ?? "");
     setOsSel(d.obra_social_id ?? "");
+    setUnidad(d.unidad_trabajo ?? "");
+    setTipo(d.tipo_internacion ?? "");
     setDifiere(!!(d.domicilio_actual || d.telefono_actual));
     setSimilares(null);
   }
@@ -121,13 +133,24 @@ export default function AdmissionWizard({ obrasSociales, profesionales = [], def
     );
   }
 
+  function aplicarDni(d: DatosDni) {
+    setField("dni", d.dni);
+    setField("apellido", d.apellido);
+    setField("nombre", d.nombre);
+    setField("sexo", d.sexo);
+    setField("fecha_nacimiento", d.fecha_nacimiento);
+    setNacimiento(d.fecha_nacimiento);
+    setDniInfo(null);
+    setSimilares(null);
+  }
+
   function goNext() {
     if (!currentStepValid()) return;
     if (step === 1) {
       const f = formRef.current;
       const val = (n: string) => (f?.elements.namedItem(n) as HTMLInputElement | null)?.value ?? "";
       const dni = val("dni");
-      const nombre = val("nombre_completo");
+      const nombre = `${val("nombre")} ${val("apellido")}`.trim();
       const tel = val("telefono_contacto") || val("contacto_familiar_telefono");
       startChecking(async () => {
         // Nueva internación de un legajo existente: ya se sabe que el DNI existe, no se vuelve a buscar.
@@ -255,9 +278,13 @@ export default function AdmissionWizard({ obrasSociales, profesionales = [], def
           <Field label="Fecha de nacimiento" required hint={edad !== null ? `Edad: ${edad} ${edad === 1 ? "año" : "años"}` : undefined}>
             <input name="fecha_nacimiento" type="date" required max={hoyAR()} value={nacimiento} onChange={(e) => setNacimiento(e.target.value)} className={inputCls} />
           </Field>
-          <Field label="Nombre y apellido" required className="sm:col-span-2">
-            <input name="nombre_completo" required autoComplete="off" placeholder="Ej. María Fernanda Ríos" className={inputCls} />
+          <Field label="Apellido" required>
+            <input name="apellido" required autoComplete="off" placeholder="Ej. Ríos" className={inputCls} />
           </Field>
+          <Field label="Nombre" required>
+            <input name="nombre" required autoComplete="off" placeholder="Ej. María Fernanda" className={inputCls} />
+          </Field>
+          {!reingreso && <DniScanner onResult={aplicarDni} />}
 
           {dniInfo?.existe && dniInfo.paciente && !reingreso && (
             <div role="alert" className="sm:col-span-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-900 space-y-2">
@@ -354,12 +381,31 @@ export default function AdmissionWizard({ obrasSociales, profesionales = [], def
           <Field label="Persona responsable — teléfono" required hint="Con código de área. Se usa para avisarle por WhatsApp.">
             <input name="contacto_familiar_telefono" type="tel" required autoComplete="off" placeholder="Ej. 264 555 0456" className={inputCls} />
           </Field>
+          <Field label="Persona responsable — mail" hint="Opcional. Sirve para avisos y para el acceso del familiar.">
+            <input name="email_responsable" type="email" autoComplete="off" placeholder="nombre@correo.com" className={inputCls} />
+          </Field>
+          <div className="sm:col-span-2 space-y-2">
+            {Array.from({ length: extras }, (_, i) => i + 1).map((n) => (
+              <div key={n} className="grid grid-cols-1 sm:grid-cols-4 gap-2 rounded-xl border border-slate-200 p-2.5">
+                <input name={`contacto_extra_${n}_nombre`} placeholder="Otro familiar de contacto" className={inputCls} />
+                <input name={`contacto_extra_${n}_parentesco`} placeholder="Parentesco" className={inputCls} />
+                <input name={`contacto_extra_${n}_telefono`} type="tel" placeholder="Teléfono" className={inputCls} />
+                <input name={`contacto_extra_${n}_email`} type="email" placeholder="Mail" className={inputCls} />
+              </div>
+            ))}
+            {extras < 4 && (
+              <button type="button" onClick={() => setExtras((x) => x + 1)} className="text-xs font-medium text-[var(--brand-teal)] underline underline-offset-2">
+                + Agregar otro familiar de contacto
+              </button>
+            )}
+          </div>
         </div>
 
         <div data-step="2" className={step === 2 ? "grid grid-cols-1 sm:grid-cols-2 gap-3" : "hidden"}>
           <Field label="Obra social">
             <select name="obra_social_id" value={osSel} onChange={(e) => setOsSel(e.target.value)} className={inputCls}>
-              <option value="">Sin obra social / particular</option>
+              <option value="">Sin obra social</option>
+              <option value={PARTICULAR}>Particular</option>
               {obrasSociales.map((os) => (
                 <option key={os.id} value={os.id}>{os.nombre}</option>
               ))}
@@ -368,13 +414,66 @@ export default function AdmissionWizard({ obrasSociales, profesionales = [], def
           <Field label="N° de afiliado" required={!!osSel} hint={osSel ? undefined : "Se pide cuando el paciente tiene obra social."}>
             <input name="numero_afiliado" required={!!osSel} autoComplete="off" className={inputCls} />
           </Field>
+          <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" name="tiene_coseguro" checked={coseguro} onChange={(e) => setCoseguro(e.target.checked)} className="rounded border-slate-300" />
+              El paciente paga coseguro
+            </label>
+            {coseguro && (
+              <input name="coseguro_detalle" autoComplete="off" placeholder="Detalle del coseguro (ej. 20% por visita)" className={inputCls} />
+            )}
+          </div>
+          <Field label="Institución derivante" hint="De dónde llega el paciente (ej. Sanatorio Argentino).">
+            <input name="institucion_derivante" autoComplete="off" list="instituciones-derivantes" className={inputCls} />
+            <datalist id="instituciones-derivantes">
+              {["Sanatorio Argentino", "Hospital Rawson", "Hospital Marcial Quiroga", "Clínica Mayo", "Clínica Santa Clara", "Domicilio / consultorio"].map((i) => <option key={i} value={i} />)}
+            </datalist>
+          </Field>
           <Field label="Médico derivante">
             <input name="medico_derivante" autoComplete="off" className={inputCls} />
+          </Field>
+          <Field label="Unidad de trabajo" required>
+            <select name="unidad_trabajo" required value={unidad} onChange={(e) => { setUnidad(e.target.value); setTipo(""); }} className={inputCls}>
+              <option value="" disabled>Elegí la unidad</option>
+              {Object.entries(UNIDADES_TRABAJO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            </select>
+          </Field>
+          <Field label="Tipo de internación" required hint={unidad ? undefined : "Primero elegí la unidad de trabajo."}>
+            <select name="tipo_internacion" required value={tipo} onChange={(e) => setTipo(e.target.value)} disabled={!unidad} className={inputCls}>
+              <option value="" disabled>Elegí el tipo</option>
+              {(TIPOS_POR_UNIDAD[unidad] ?? []).map((k) => <option key={k} value={k}>{TIPOS_INTERNACION[k]}</option>)}
+            </select>
+          </Field>
+          <div className="sm:col-span-2 rounded-xl border border-slate-200 p-3 space-y-2">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" name="tiene_emergencias" checked={emerg} onChange={(e) => setEmerg(e.target.checked)} className="rounded border-slate-300" />
+              Tiene servicio de emergencias contratado
+            </label>
+            {emerg ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input name="emergencias_nombre" required autoComplete="off" placeholder="Cuál (ej. Emergencias Cuyo)" className={inputCls} />
+                <input name="emergencias_telefono" required type="tel" autoComplete="off" placeholder="Teléfono del servicio" className={inputCls} />
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">Sin servicio de emergencias: la ficha va a mostrar «{SIN_EMERGENCIAS}».</p>
+            )}
+          </div>
+          <div className="sm:col-span-2 flex flex-wrap gap-x-6 gap-y-2">
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" name="en_tratamiento_atb" className="rounded border-slate-300" /> En tratamiento antibiótico
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" name="requiere_curaciones" className="rounded border-slate-300" /> Requiere curaciones
+            </label>
+            <span className="text-[11px] text-slate-400 w-full">Sirven para filtrar el listado de pacientes.</span>
+          </div>
+          <Field label="Aclaraciones importantes" className="sm:col-span-2" hint="Solo las ve el personal de la empresa; el paciente y el familiar no. Por ejemplo: «va a diálisis martes y miércoles de 9 a 12».">
+            <textarea name="aclaraciones" rows={3} className={inputCls} />
           </Field>
           <Field label="Matrícula del médico derivante">
             <input name="medico_matricula" autoComplete="off" placeholder="Ej. MP 1234" className={inputCls} />
           </Field>
-          <Field label="Fecha de ingreso al servicio" required hint="Por defecto, hoy.">
+          <Field label="Fecha de ingreso al servicio" required hint="El día en que arranca el servicio. No es el vencimiento de la autorización (se carga con las prácticas).">
             <input name="fecha_ingreso" type="date" defaultValue={hoyAR()} className={inputCls} />
           </Field>
         </div>

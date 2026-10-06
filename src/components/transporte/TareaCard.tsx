@@ -39,7 +39,7 @@ export default function TareaCard({
   const atrasada = !t.permanente && !cerrada && t.fecha < fecha;
   const mapa = mapaUrl(t.direccion);
   const tel = telUrl(t.telefono);
-  const puedeEditar = (rol === "transporte" || rol === "deposito") && !cerrada;
+  const puedeEditar = (rol === "transporte" || rol === "deposito" || rol === "administracion") && !cerrada;
   const borde = cerrada ? "border-slate-200 opacity-75" : t.prioridad === "alta" ? "border-red-300" : t.prioridad === "media" ? "border-amber-300" : "border-emerald-300";
 
   return (
@@ -145,7 +145,7 @@ export default function TareaCard({
           {!t.order_id && (
             <ActionForm action={cancelarTareaTransporteAction} className="mt-3">
               <input type="hidden" name="task_id" value={t.id} />
-              <ConfirmButton className="rounded-lg border border-red-200 bg-red-50 text-red-700 text-xs font-medium px-3 py-1.5" confirmLabel="¿Seguro? Tocá de nuevo para cancelar">Cancelar tarea</ConfirmButton>
+              <ConfirmButton className="rounded-lg border border-red-200 bg-red-50 text-red-700 text-xs font-medium px-3 py-1.5" confirmLabel="¿Seguro? Tocá de nuevo para cancelar">Cancelar o eliminar tarea</ConfirmButton>
             </ActionForm>
           )}
         </div>

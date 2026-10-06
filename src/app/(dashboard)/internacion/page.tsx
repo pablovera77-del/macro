@@ -56,9 +56,9 @@ const SEMAFORO_LABELS: Record<string, string> = {
 export default async function InternacionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ nuevo?: string; admitido?: string; ver?: string }>;
+  searchParams: Promise<{ nuevo?: string; admitido?: string; ver?: string; os?: string; atb?: string; cur?: string }>;
 }) {
-  const { nuevo, admitido, ver } = await searchParams;
+  const { nuevo, admitido, ver, os: osFiltro, atb, cur } = await searchParams;
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
@@ -84,7 +84,7 @@ export default async function InternacionPage({
     supabase
       .from("patients")
       .select(
-        "id, nombre_completo, dni, domicilio, contacto_familiar_nombre, contacto_familiar_telefono, obra_social, obra_social_id, estado, fecha_ingreso, fecha_egreso, motivo_egreso, diagnostico_principal, llegada_confirmada_at, medicacion_confirmada_at, egreso_informado_at, egreso_motivo_informado, profiles:egreso_informado_por(full_name), obras_sociales(nombre)"
+        "id, nombre_completo, dni, domicilio, en_tratamiento_atb, requiere_curaciones, es_particular, contacto_familiar_nombre, contacto_familiar_telefono, obra_social, obra_social_id, estado, fecha_ingreso, fecha_egreso, motivo_egreso, diagnostico_principal, llegada_confirmada_at, medicacion_confirmada_at, egreso_informado_at, egreso_motivo_informado, profiles:egreso_informado_por(full_name), obras_sociales(nombre)"
       )
       .order("fecha_ingreso", { ascending: false }),
     // DF-C3 §2: responsable_id habilita rutear el semáforo de vencimientos (más
@@ -197,7 +197,14 @@ export default async function InternacionPage({
     bajas_mes: { label: "Bajas de este mes", test: (p) => p.fecha_egreso?.slice(0, 7) === mesAR },
   };
   const filtroActivo = ver ? FILTROS[ver] ?? null : null;
-  const pacientesVisibles = filtroActivo ? (patients ?? []).filter(filtroActivo.test) : (patients ?? []);
+  // H2 (Vanina 06/10): además del filtro de las tarjetas, se filtra por obra social, antibiótico y curaciones.
+  const filtrosLegajo = [osFiltro, atb === "1" ? "atb" : "", cur === "1" ? "cur" : ""].filter(Boolean).length > 0;
+  const pacientesVisibles = (filtroActivo ? (patients ?? []).filter(filtroActivo.test) : (patients ?? [])).filter((p) => {
+    if (osFiltro === "__particular" ? !p.es_particular : osFiltro ? p.obra_social_id !== osFiltro : false) return false;
+    if (atb === "1" && !p.en_tratamiento_atb) return false;
+    if (cur === "1" && !p.requiere_curaciones) return false;
+    return true;
+  });
 
   const admitidoPaciente = admitido ? (patients ?? []).find((p) => p.id === admitido) ?? null : null;
 
@@ -325,6 +332,23 @@ export default async function InternacionPage({
       )}
 
       <section className="space-y-3">
+        <form method="get" className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-600">
+          {ver && <input type="hidden" name="ver" value={ver} />}
+          <label>Obra social
+            <select name="os" defaultValue={osFiltro ?? ""} className="block mt-0.5 rounded-lg border border-slate-300 px-2 py-1.5 text-xs">
+              <option value="">Todas</option>
+              <option value="__particular">Particular</option>
+              {(obrasSociales ?? []).map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+            </select>
+          </label>
+          <label className="flex items-center gap-1.5 pb-1.5"><input type="checkbox" name="atb" value="1" defaultChecked={atb === "1"} className="rounded border-slate-300" /> En tratamiento antibiótico</label>
+          <label className="flex items-center gap-1.5 pb-1.5"><input type="checkbox" name="cur" value="1" defaultChecked={cur === "1"} className="rounded border-slate-300" /> Requiere curaciones</label>
+          <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Filtrar</button>
+          {filtrosLegajo && (
+            <Link href={ver ? `/internacion?ver=${ver}` : "/internacion"} className="text-xs font-medium text-[var(--brand-teal)] underline underline-offset-2 pb-1.5">Limpiar</Link>
+          )}
+          <span className="ml-auto text-slate-400 pb-1.5">{pacientesVisibles.length} paciente{pacientesVisibles.length === 1 ? "" : "s"}</span>
+        </form>
         {filtroActivo && (
           <div className="flex items-center justify-between gap-3 flex-wrap rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm">
             <span className="text-slate-800">
@@ -337,7 +361,7 @@ export default async function InternacionPage({
         )}
         {pacientesVisibles.length === 0 && (
           <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-8 text-center text-sm text-slate-500">
-            {filtroActivo
+            {filtroActivo || filtrosLegajo
               ? "No hay pacientes que cumplan este filtro."
               : `Todavía no hay pacientes cargados. ${canAdmit ? "Tocá «+ Nuevo paciente» para dar de alta el primero." : ""}`}
           </div>
@@ -358,6 +382,9 @@ export default async function InternacionPage({
                   <div>
                     <Link href={`/paciente/${p.id}`} className="font-medium text-slate-900 hover:underline underline-offset-2">{p.nombre_completo}</Link>
                     <span className="ml-2 text-xs text-slate-400">Ver ficha →</span>
+                    <Link href={`/paciente/${p.id}?tab=datos`} className="ml-2 text-xs font-medium text-[var(--brand-teal)] underline underline-offset-2">Consultar datos</Link>
+                    {p.en_tratamiento_atb && <span className="ml-2 rounded-full bg-sky-50 text-sky-700 text-[10px] font-medium px-2 py-0.5">ATB</span>}
+                    {p.requiere_curaciones && <span className="ml-1 rounded-full bg-sky-50 text-sky-700 text-[10px] font-medium px-2 py-0.5">Curaciones</span>}
                     <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                       <IconMapPin className="w-3 h-3" /> {p.domicilio} · {obraSocial ?? "sin obra social"}
                       {p.dni && <span className="text-slate-400">· DNI {p.dni}</span>}

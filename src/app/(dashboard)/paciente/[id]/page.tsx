@@ -15,6 +15,9 @@ import ConsentimientoDetalle from "@/components/agenda/ConsentimientoDetalle";
 import { familyPortalEnabled, type FamilyAccessInfo } from "@/lib/family";
 import HistoriaClinicaFicha from "@/components/hc/HistoriaClinicaFicha";
 import UppFicha from "@/components/hc/UppFicha";
+import EditarDatosPaciente, { type DatosEditables } from "@/components/pacientes/EditarDatosPaciente";
+import { SIN_EMERGENCIAS, TIPOS_INTERNACION, UNIDADES_TRABAJO, edadEnAnios, SEXO_LABELS } from "@/lib/paciente";
+import { motivoEgresoLabel } from "@/lib/egreso";
 import { signLegalDocumentAction } from "../../internacion/actions";
 import {
   savePlanAction,
@@ -41,7 +44,7 @@ const ORDER_TONE: Record<string, SemanticTone> = { borrador: "amarillo", autoriz
 const SEMAFORO_LABELS: Record<string, string> = { vigente: "Vigente", por_vencer: "Por vencer", vencida: "Vencida" };
 const SEMAFORO_TONE: Record<string, SemanticTone> = { vigente: "verde", por_vencer: "amarillo", vencida: "rojo" };
 
-type Tab = "resumen" | "plan" | "agenda" | "clinica" | "insumos" | "ingreso" | "mensajes" | "familia";
+type Tab = "datos" | "resumen" | "plan" | "agenda" | "clinica" | "insumos" | "ingreso" | "mensajes" | "familia";
 
 function fecha(iso: string | null | undefined) {
   return iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Argentina/San_Juan" }) : "—";
@@ -78,6 +81,7 @@ export default async function FichaPacientePage({
   const verInsumos = role === "administracion" || role === "coordinador_internacion";
   const tabs: { id: Tab; label: string }[] = [
     { id: "resumen", label: "Resumen" },
+    { id: "datos", label: "Datos del paciente" },
     { id: "plan", label: "Plan de tratamiento" },
     { id: "agenda", label: "Agenda" },
     ...(verClinica ? [{ id: "clinica" as Tab, label: "Historia clínica" }] : []),
@@ -91,7 +95,7 @@ export default async function FichaPacientePage({
   const supabase = await createClient();
   const { data: p } = await supabase
     .from("patients")
-    .select("id, nombre_completo, dni, fecha_nacimiento, domicilio, telefono_contacto, contacto_familiar_nombre, contacto_familiar_telefono, diagnostico_principal, obra_social, obra_social_id, numero_afiliado, medico_derivante, estado, fecha_ingreso, fecha_egreso, motivo_egreso, llegada_confirmada_at, egreso_informado_at, medicacion_confirmada_at, obras_sociales(nombre)")
+    .select("id, nombre_completo, nro_historia_clinica, apellido, nombre, dni, fecha_nacimiento, sexo, ocupacion, localidad, domicilio, domicilio_actual, telefono_actual, email_responsable, es_particular, tiene_coseguro, coseguro_detalle, institucion_derivante, unidad_trabajo, tipo_internacion, tiene_emergencias, emergencias_nombre, emergencias_telefono, en_tratamiento_atb, requiere_curaciones, medico_matricula, egreso_solicitud_firmante, egreso_solicitud_firmada_at, telefono_contacto, contacto_familiar_nombre, contacto_familiar_telefono, diagnostico_principal, obra_social, obra_social_id, numero_afiliado, medico_derivante, estado, fecha_ingreso, fecha_egreso, motivo_egreso, llegada_confirmada_at, egreso_informado_at, medicacion_confirmada_at, obras_sociales(nombre)")
     .eq("id", id)
     .maybeSingle();
   if (!p) notFound();
@@ -139,6 +143,15 @@ export default async function FichaPacientePage({
   const accesos = (accesosRaw ?? []) as unknown as FamilyAccessInfo[];
   const visitasPorId = new Map((visits ?? []).map((v) => [v.id, v]));
   const confirmacionesDelPaciente = (confirmacionesFam ?? []).filter((c) => visitasPorId.has(c.visit_id));
+
+  // Aclaraciones (solo personal) y datos de contacto: se usan en el Resumen y en la pestaña «Datos del paciente».
+  const [{ data: aclaracion }, { data: contactosExtra }, { data: obrasSocialesAct }] = await Promise.all([
+    supabase.from("patient_aclaraciones").select("texto").eq("patient_id", id).maybeSingle(),
+    supabase.from("patient_contacts").select("nombre, parentesco, telefono, email").eq("patient_id", id).order("created_at"),
+    tab === "datos" && esAdmin ? supabase.from("obras_sociales").select("id, nombre").eq("activa", true).order("nombre") : Promise.resolve({ data: [] as { id: string; nombre: string }[] }),
+  ]);
+  const aclaraciones = aclaracion?.texto?.trim() ?? "";
+  const edad = edadEnAnios(p.fecha_nacimiento);
 
   const ingresoData = tab === "ingreso"
     ? await Promise.all([
@@ -215,6 +228,112 @@ export default async function FichaPacientePage({
           </Link>
         ))}
       </nav>
+
+      {aclaraciones && (
+        <section role="note" className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span className="font-semibold">Aclaraciones importantes: </span>{aclaraciones}
+          <span className="block text-[11px] text-amber-700 mt-0.5">Solo las ve el personal; el paciente y el familiar no.</span>
+        </section>
+      )}
+
+      {tab === "datos" && (
+        <div className="space-y-4">
+          <section className={card}>
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-3">
+              <h2 className="text-sm font-semibold text-slate-900">Datos cargados en la admisión</h2>
+              <span className="text-xs text-slate-400">Historia clínica N° {p.nro_historia_clinica ?? "—"}</span>
+            </div>
+            <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-1.5 text-sm">
+              {([
+                ["Apellido y nombre", p.nombre_completo],
+                ["DNI", p.dni],
+                ["Nacimiento", `${fecha(p.fecha_nacimiento)}${edad !== null ? ` · ${edad} años` : ""}`],
+                ["Sexo", SEXO_LABELS[p.sexo ?? ""] ?? "—"],
+                ["Ocupación", p.ocupacion ?? "—"],
+                ["Localidad", p.localidad ?? "—"],
+                ["Domicilio", p.domicilio],
+                ["Domicilio actual", p.domicilio_actual ? `${p.domicilio_actual}${p.telefono_actual ? ` · ${p.telefono_actual}` : ""}` : "El mismo"],
+                ["Teléfono", p.telefono_contacto ?? "—"],
+                ["Persona responsable", `${p.contacto_familiar_nombre ?? "—"}${p.contacto_familiar_telefono ? ` · ${p.contacto_familiar_telefono}` : ""}${p.email_responsable ? ` · ${p.email_responsable}` : ""}`],
+                ["Obra social", p.es_particular ? "Particular" : obraSocial],
+                ["N° de afiliado", p.numero_afiliado ?? "—"],
+                ["Coseguro", p.tiene_coseguro ? p.coseguro_detalle || "Sí" : "No"],
+                ["Institución derivante", p.institucion_derivante ?? "—"],
+                ["Médico derivante", `${p.medico_derivante ?? "—"}${p.medico_matricula ? ` · ${p.medico_matricula}` : ""}`],
+                ["Unidad de trabajo", UNIDADES_TRABAJO[p.unidad_trabajo ?? ""] ?? "—"],
+                ["Tipo de internación", TIPOS_INTERNACION[p.tipo_internacion ?? ""] ?? "—"],
+                ["Servicio de emergencias", p.tiene_emergencias ? `${p.emergencias_nombre ?? ""} · ${p.emergencias_telefono ?? ""}` : SIN_EMERGENCIAS],
+                ["Diagnóstico", p.diagnostico_principal ?? "—"],
+                ["Ingreso al servicio", fecha(p.fecha_ingreso)],
+                ["Marcas", [p.en_tratamiento_atb ? "En tratamiento antibiótico" : null, p.requiere_curaciones ? "Requiere curaciones" : null].filter(Boolean).join(" · ") || "—"],
+              ] as [string, string][]).map(([k, v]) => (
+                <div key={k} className="flex gap-2"><dt className="text-slate-500 w-40 shrink-0">{k}</dt><dd className="min-w-0 break-words">{v}</dd></div>
+              ))}
+            </dl>
+            {(contactosExtra ?? []).length > 0 && (
+              <div className="mt-4">
+                <h3 className="text-xs font-semibold text-slate-700 mb-1">Otros familiares de contacto</h3>
+                <ul className="text-sm space-y-0.5">
+                  {(contactosExtra ?? []).map((c, i) => (
+                    <li key={i}>{c.nombre}{c.parentesco ? ` (${c.parentesco})` : ""}{c.telefono ? ` · ${c.telefono}` : ""}{c.email ? ` · ${c.email}` : ""}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {p.estado === "dado_de_baja" && (
+              <div className="mt-4 text-sm text-slate-600">
+                <span className="text-slate-500">Egreso:</span> {motivoEgresoLabel(p.motivo_egreso)} · {fecha(p.fecha_egreso)}
+                {p.egreso_solicitud_firmante ? ` · solicitud de alta firmada por ${p.egreso_solicitud_firmante} el ${fecha(p.egreso_solicitud_firmada_at)}` : ""}
+              </div>
+            )}
+          </section>
+          {esAdmin && (
+            <section className={card}>
+              <h2 className="text-sm font-semibold text-slate-900 mb-1">Corregir o actualizar</h2>
+              <p className="text-xs text-slate-500 mb-3">Para un error de carga, un cambio de domicilio o de persona responsable.</p>
+              <EditarDatosPaciente
+                obrasSociales={obrasSocialesAct ?? []}
+                d={{
+                  id: p.id,
+                  dni: p.dni,
+                  apellido: p.apellido ?? "",
+                  nombre: p.apellido ? p.nombre ?? "" : p.nombre_completo,
+                  fecha_nacimiento: p.fecha_nacimiento ?? "",
+                  sexo: p.sexo ?? "",
+                  ocupacion: p.ocupacion ?? "",
+                  localidad: p.localidad ?? "",
+                  domicilio: p.domicilio,
+                  telefono_contacto: p.telefono_contacto ?? "",
+                  domicilio_actual: p.domicilio_actual ?? "",
+                  telefono_actual: p.telefono_actual ?? "",
+                  contacto_familiar_nombre: p.contacto_familiar_nombre ?? "",
+                  contacto_familiar_telefono: p.contacto_familiar_telefono ?? "",
+                  email_responsable: p.email_responsable ?? "",
+                  diagnostico_principal: p.diagnostico_principal ?? "",
+                  obra_social_id: p.obra_social_id ?? "",
+                  es_particular: p.es_particular,
+                  numero_afiliado: p.numero_afiliado ?? "",
+                  tiene_coseguro: p.tiene_coseguro,
+                  coseguro_detalle: p.coseguro_detalle ?? "",
+                  medico_derivante: p.medico_derivante ?? "",
+                  medico_matricula: p.medico_matricula ?? "",
+                  institucion_derivante: p.institucion_derivante ?? "",
+                  unidad_trabajo: p.unidad_trabajo ?? "",
+                  tipo_internacion: p.tipo_internacion ?? "",
+                  tiene_emergencias: p.tiene_emergencias,
+                  emergencias_nombre: p.emergencias_nombre ?? "",
+                  emergencias_telefono: p.emergencias_telefono ?? "",
+                  en_tratamiento_atb: p.en_tratamiento_atb,
+                  requiere_curaciones: p.requiere_curaciones,
+                  fecha_ingreso: p.fecha_ingreso ?? "",
+                  aclaraciones,
+                  extras: (contactosExtra ?? []).map((c) => ({ nombre: c.nombre, parentesco: c.parentesco ?? "", telefono: c.telefono ?? "", email: c.email ?? "" })),
+                } satisfies DatosEditables}
+              />
+            </section>
+          )}
+        </div>
+      )}
 
       {tab === "resumen" && (
         <div className="grid gap-4 md:grid-cols-2">

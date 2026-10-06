@@ -10,6 +10,7 @@ import { DISCIPLINAS_PLAN, hoyAR } from "@/lib/plan";
 import { ESTADO_PACIENTE_LABELS } from "@/lib/paciente";
 import { MOTIVOS_EGRESO_OPCIONES, motivoEgresoLabel, parseDatetimeLocalAR } from "@/lib/egreso";
 import type { AppRole } from "@/lib/auth";
+import { leerLegajo, leerContactosExtra, txt, PARTICULAR } from "@/lib/legajo";
 
 // DF-C3 §2 y §3: el alta, el legajo, las firmas de ingreso y las autorizaciones
 // los gestiona Administración. Coordinación confirma la llegada al domicilio
@@ -24,98 +25,6 @@ const ESTADO_LABEL: Record<string, string> = ESTADO_PACIENTE_LABELS;
 // (informe-tecnico §4): acá la obra social es una FK real a obras_sociales.
 export type AdmissionState = { error: string | null };
 
-type Legajo = {
-  nombre_completo: string;
-  dni: string;
-  fecha_nacimiento: string;
-  sexo: string;
-  ocupacion: string | null;
-  localidad: string;
-  domicilio: string;
-  telefono_contacto: string | null;
-  domicilio_actual: string | null;
-  telefono_actual: string | null;
-  lat: number | null;
-  lng: number | null;
-  contacto_familiar_nombre: string;
-  contacto_familiar_telefono: string;
-  diagnostico_principal: string;
-  obra_social_id: string | null;
-  numero_afiliado: string | null;
-  medico_derivante: string | null;
-  medico_matricula: string | null;
-  fecha_ingreso: string;
-};
-
-const txt = (fd: FormData, k: string) => String(fd.get(k) || "").trim();
-const num = (fd: FormData, k: string) => {
-  const v = txt(fd, k);
-  if (!v) return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-};
-
-// Lee y valida los datos del paso 1 a 3 del alta (DF-C3 §4.1 y §4.2). Devuelve el error en castellano si falta algo.
-function leerLegajo(fd: FormData): { error: string } | { datos: Legajo } {
-  const nombre_completo = txt(fd, "nombre_completo");
-  // El DNI es el identificador único del paciente en toda la plataforma
-  // (pedido de Pablo, 25/09) — se normaliza a solo dígitos acá para que
-  // "30.998.221" y "30998221" cuenten como el mismo DNI.
-  const dni = String(fd.get("dni") || "").replace(/\D/g, "");
-  const fecha_nacimiento = txt(fd, "fecha_nacimiento");
-  const sexo = txt(fd, "sexo");
-  const localidad = txt(fd, "localidad");
-  const domicilio = txt(fd, "domicilio");
-  const contacto_familiar_nombre = txt(fd, "contacto_familiar_nombre");
-  const contacto_familiar_telefono = txt(fd, "contacto_familiar_telefono");
-  const diagnostico_principal = txt(fd, "diagnostico_principal");
-  const obra_social_id = txt(fd, "obra_social_id") || null;
-  const numero_afiliado = txt(fd, "numero_afiliado") || null;
-  const fecha_ingreso = txt(fd, "fecha_ingreso") || hoyAR();
-  const lat = num(fd, "lat");
-  const lng = num(fd, "lng");
-
-  if (!dni) return { error: "Falta el DNI: es obligatorio y es el identificador único del paciente en todo el sistema." };
-  if (dni.length < 6 || dni.length > 9) return { error: "El DNI no parece válido (debe tener entre 6 y 9 dígitos)." };
-  if (!nombre_completo) return { error: "Falta el nombre y apellido del paciente." };
-  if (!fecha_nacimiento) return { error: "Falta la fecha de nacimiento del paciente." };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha_nacimiento) || fecha_nacimiento > hoyAR()) return { error: "La fecha de nacimiento no es válida: no puede ser posterior a hoy." };
-  if (!["femenino", "masculino", "otro"].includes(sexo)) return { error: "Elegí el sexo del paciente." };
-  if (!localidad) return { error: "Falta la localidad del domicilio del paciente." };
-  if (!domicilio) return { error: "Falta el domicilio del paciente: es donde se agendan las visitas." };
-  if (!contacto_familiar_nombre) return { error: "Falta el nombre de la persona responsable (familiar o referente)." };
-  if (contacto_familiar_telefono.replace(/\D/g, "").length < 8) return { error: "Falta el teléfono de la persona responsable, o no parece válido (con código de área, mínimo 8 números): se usa para avisarle por WhatsApp." };
-  if (obra_social_id && !numero_afiliado) return { error: "Falta el N° de afiliado: es obligatorio cuando el paciente tiene obra social." };
-  if (!diagnostico_principal) return { error: "Falta el diagnóstico principal (motivo de la internación domiciliaria)." };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha_ingreso)) return { error: "La fecha de ingreso no es válida." };
-  if ((lat !== null && (lat < -90 || lat > 90)) || (lng !== null && (lng < -180 || lng > 180))) return { error: "La ubicación capturada no es válida: volvé a capturarla o dejala vacía." };
-
-  return {
-    datos: {
-      nombre_completo,
-      dni,
-      fecha_nacimiento,
-      sexo,
-      ocupacion: txt(fd, "ocupacion") || null,
-      localidad,
-      domicilio,
-      telefono_contacto: txt(fd, "telefono_contacto") || null,
-      domicilio_actual: txt(fd, "domicilio_actual") || null,
-      telefono_actual: txt(fd, "telefono_actual") || null,
-      lat,
-      lng,
-      contacto_familiar_nombre,
-      contacto_familiar_telefono,
-      diagnostico_principal,
-      obra_social_id,
-      numero_afiliado,
-      medico_derivante: txt(fd, "medico_derivante") || null,
-      medico_matricula: txt(fd, "medico_matricula") || null,
-      fecha_ingreso,
-    },
-  };
-}
-
 export async function createAdmissionAction(_prev: AdmissionState, formData: FormData): Promise<AdmissionState> {
   const { profile } = await requireProfile();
   // Los errores de negocio se DEVUELVEN (no se lanzan): en producción Next.js
@@ -129,12 +38,14 @@ export async function createAdmissionAction(_prev: AdmissionState, formData: For
   const leido = leerLegajo(formData);
   if ("error" in leido) return { error: leido.error };
   const d = leido.datos;
+  const extras = leerContactosExtra(formData);
+  if ("error" in extras) return { error: extras.error };
   const reingresoId = txt(formData, "reingreso_patient_id") || null;
 
   // Denormalizamos también el nombre de la obra social en la columna de texto
   // existente (obra_social) para no romper la UI del mockup C5 (Catálogo/Pedidos)
   // que todavía la lee como texto plano.
-  let obra_social_texto: string | null = null;
+  let obra_social_texto: string | null = d.es_particular ? "Particular" : null;
   if (d.obra_social_id) {
     const { data: os } = await supabase.from("obras_sociales").select("nombre").eq("id", d.obra_social_id).single();
     obra_social_texto = os?.nombre ?? null;
@@ -201,6 +112,19 @@ export async function createAdmissionAction(_prev: AdmissionState, formData: For
     patientId = creado.id;
   }
 
+  // H1: familiares de contacto adicionales y aclaraciones importantes (solo para el personal).
+  let aviso = "";
+  if (esReingreso) await supabase.from("patient_contacts").delete().eq("patient_id", patientId);
+  if (extras.length > 0) {
+    const { error: eC } = await supabase.from("patient_contacts").insert(extras.map((c) => ({ ...c, patient_id: patientId, created_by: profile.id })));
+    if (eC) aviso += " No se pudieron guardar los familiares de contacto adicionales: cargalos desde «Datos» en la ficha.";
+  }
+  const aclaraciones = txt(formData, "aclaraciones");
+  if (aclaraciones || esReingreso) {
+    const { error: eA } = await supabase.from("patient_aclaraciones").upsert({ patient_id: patientId, texto: aclaraciones, updated_by: profile.id, updated_at: new Date().toISOString() }, { onConflict: "patient_id" });
+    if (eA) aviso += " No se pudo guardar el cuadro de aclaraciones: cargalo desde «Datos» en la ficha.";
+  }
+
   // Paso 3 del DF-C3 §3: plan de tratamiento por disciplina y equipo asistencial.
   const planRows: { patient_id: string; especialidad: Enums<"specialty">; cantidad: number; unidad: string; dias_semana: number[] | null; creado_por: string }[] = [];
   const teamRows: { patient_id: string; especialidad: Enums<"specialty">; profesional_id: string }[] = [];
@@ -214,7 +138,6 @@ export async function createAdmissionAction(_prev: AdmissionState, formData: For
     const prof = String(formData.get(`equipo__${esp}`) || "");
     if (prof) teamRows.push({ patient_id: patientId, especialidad: esp, profesional_id: prof });
   }
-  let aviso = "";
   if (planRows.length > 0) {
     const { error: e1 } = await supabase.from("treatment_plans").insert(planRows);
     if (e1) aviso += " No se pudo guardar el plan de tratamiento: cargalo desde la ficha.";
@@ -262,7 +185,7 @@ export async function checkDniAction(dniRaw: string, nombre?: string, telefono?:
   const supabase = await createClient();
   const { data } = await supabase
     .from("patients")
-    .select("id, nombre_completo, estado, nro_historia_clinica, fecha_nacimiento, sexo, ocupacion, localidad, domicilio, telefono_contacto, domicilio_actual, telefono_actual, contacto_familiar_nombre, contacto_familiar_telefono, obra_social_id, numero_afiliado, medico_derivante, medico_matricula, diagnostico_principal")
+    .select("id, nombre_completo, estado, nro_historia_clinica, apellido, nombre, fecha_nacimiento, sexo, ocupacion, localidad, domicilio, telefono_contacto, domicilio_actual, telefono_actual, contacto_familiar_nombre, contacto_familiar_telefono, email_responsable, obra_social_id, es_particular, numero_afiliado, medico_derivante, medico_matricula, institucion_derivante, unidad_trabajo, tipo_internacion, diagnostico_principal")
     .eq("dni", dni)
     .maybeSingle();
   if (data) {
@@ -271,7 +194,9 @@ export async function checkDniAction(dniRaw: string, nombre?: string, telefono?:
       .select("numero, estado, fecha_ingreso, fecha_egreso, motivo_egreso")
       .eq("patient_id", data.id)
       .order("numero", { ascending: false });
-    const { id, nombre_completo, estado, nro_historia_clinica, ...datos } = data;
+    const { id, nombre_completo, estado, nro_historia_clinica, es_particular, ...resto } = data;
+    // El formulario usa un único selector de obra social: «Particular» viaja como valor especial.
+    const datos = { ...resto, obra_social_id: es_particular ? PARTICULAR : resto.obra_social_id };
     return {
       existe: true,
       valido: true,

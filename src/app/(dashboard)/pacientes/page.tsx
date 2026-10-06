@@ -33,7 +33,7 @@ const [{ data: patients }, { data: products }, { data: authorizations }] = await
 supabase
 .from("patients")
 .select(
-"id, nombre_completo, dni, domicilio, obra_social, estado, frecuencia_reposicion, egreso_informado_at, egreso_motivo_informado, egreso_hecho_at, profiles:egreso_informado_por(full_name)"
+"id, nombre_completo, dni, domicilio, obra_social, estado, fecha_ingreso, llegada_confirmada_at, frecuencia_reposicion, egreso_informado_at, egreso_motivo_informado, egreso_hecho_at, profiles:egreso_informado_por(full_name)"
 )
 .order("nombre_completo"),
 supabase.from("products").select("id, descripcion").eq("active", true),
@@ -42,6 +42,7 @@ supabase.from("patient_authorizations").select("id, patient_id, cantidad_autoriz
 
 const canConfirmEgreso = profile.role === "administracion";
 const egresosPendientes = (patients ?? []).filter((p) => p.egreso_informado_at && p.estado !== "dado_de_baja");
+const sinIniciar = (patients ?? []).filter((p) => p.estado === "admitido_pendiente_llegada" && !p.llegada_confirmada_at && !p.egreso_informado_at);
 // Equipos que siguen en el domicilio de los pacientes con egreso pendiente (sección 2 del cierre guiado).
 const { data: equiposEnDomicilio } = canConfirmEgreso && egresosPendientes.length > 0
 ? await supabase.from("v_equipos_en_domicilio").select("asset_id, descripcion, numero_serie, patient_id").in("patient_id", egresosPendientes.map((p) => p.id))
@@ -97,6 +98,21 @@ equipos={(equiposEnDomicilio ?? []).filter((e) => e.patient_id === p.id)}
 <p className="text-xs text-red-500 mt-3">
 El profesional o Coordinación solo informa el egreso — es Administración quien confirma la baja definitiva, y eso dispara la alerta de retiro de equipos para Transporte y Depósito.
 </p>
+</section>
+)}
+
+{canConfirmEgreso && sinIniciar.length > 0 && (
+<section className="bg-white border border-slate-200 rounded-2xl p-5 animate-fade-slide-up">
+<h2 className="text-sm font-medium text-slate-900 mb-1">Admitidos que todavía no llegaron al domicilio</h2>
+<p className="text-xs text-slate-500 mb-3">Si el paciente nunca llegó a iniciar la internación, cerrala con el motivo «No se inicia ID».</p>
+<div className="space-y-2">
+{sinIniciar.map((p) => (
+<div key={p.id} className="flex items-center justify-between gap-3 text-sm border border-slate-100 rounded-xl px-3.5 py-2.5 flex-wrap">
+<span>{p.nombre_completo} <span className="text-xs text-slate-400">· admitido el {p.fecha_ingreso}</span></span>
+<CierreEgresoPanel patientId={p.id} motivoInformado="" hechoDefault={datetimeLocalAR(new Date())} informadoPor={null} equipos={[]} label="No se inicia ID…" tone="subtle" pendienteLlegada />
+</div>
+))}
+</div>
 </section>
 )}
 

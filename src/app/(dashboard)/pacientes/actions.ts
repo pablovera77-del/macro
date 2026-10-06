@@ -1,7 +1,7 @@
 "use server";
 
 import { ymdAR } from "@/lib/plan";
-import { MOTIVOS_EGRESO_OPCIONES, motivoParaFormulario, parseDatetimeLocalAR } from "@/lib/egreso";
+import { MOTIVOS_EGRESO_OPCIONES, MOTIVO_ALTA_VOLUNTARIA, MOTIVO_NO_SE_INICIA, motivoParaFormulario, parseDatetimeLocalAR } from "@/lib/egreso";
 import { fechaCorta } from "@/lib/paciente";
 import { createClient } from "@/lib/supabase/server";
 import { requireProfile } from "@/lib/auth";
@@ -87,8 +87,16 @@ export async function confirmarEgresoAction(_prev: CierreState, formData: FormDa
 
   const motivo = (String(formData.get("motivo") || "") || motivoParaFormulario(patient.egreso_motivo_informado) || "") as Enums<"discharge_reason">;
   if (!motivo) return { error: "Elegí el motivo del egreso." };
-  const motivosValidos: string[] = [...MOTIVOS_EGRESO_OPCIONES, "fin_internacion"];
+  const motivosValidos: string[] = [...MOTIVOS_EGRESO_OPCIONES, "fin_internacion", MOTIVO_NO_SE_INICIA];
   if (!motivosValidos.includes(motivo)) return { error: "El motivo del egreso no es válido: elegí uno de la lista." };
+  // H5: «No se inicia ID» es solo para quien nunca llegó; «Alta voluntaria» pide la solicitud firmada por el familiar.
+  if (motivo === MOTIVO_NO_SE_INICIA && patient.estado !== "admitido_pendiente_llegada") {
+    return { error: "«No se inicia ID» solo se usa cuando el paciente fue admitido y nunca llegó al domicilio." };
+  }
+  const firmante = String(formData.get("solicitud_firmante") || "").trim();
+  if (motivo === MOTIVO_ALTA_VOLUNTARIA && !firmante) {
+    return { error: "Para el alta voluntaria hace falta el nombre del familiar que firmó la solicitud de alta." };
+  }
 
   // Fecha y hora del hecho: la que se informó, o la que edite Administración (por defecto, ahora).
   const ahora = new Date();
@@ -103,7 +111,13 @@ export async function confirmarEgresoAction(_prev: CierreState, formData: FormDa
 
   const { error: patientError } = await supabase
     .from("patients")
-    .update({ estado: "dado_de_baja", motivo_egreso: motivo, fecha_egreso, egreso_hecho_at: hecho })
+    .update({
+      estado: "dado_de_baja",
+      motivo_egreso: motivo,
+      fecha_egreso,
+      egreso_hecho_at: hecho,
+      ...(motivo === MOTIVO_ALTA_VOLUNTARIA ? { egreso_solicitud_firmante: firmante, egreso_solicitud_firmada_at: new Date().toISOString() } : {}),
+    })
     .eq("id", patient_id);
   if (patientError) return { error: `No se pudo registrar la baja: ${patientError.message}` };
 

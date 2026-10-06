@@ -1898,6 +1898,73 @@ export type Database = {
           },
         ]
       }
+      patient_aclaraciones: {
+        Row: {
+          id: string
+          patient_id: string
+          texto: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          texto?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          texto?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_aclaraciones_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: true
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_aclaraciones_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: true
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_aclaraciones_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: true
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_aclaraciones_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: true
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_aclaraciones_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: true
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_aclaraciones_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patient_authorizations: {
         Row: {
           cantidad_autorizada: number
@@ -2059,6 +2126,82 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      patient_contacts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          nombre: string
+          parentesco: string | null
+          patient_id: string
+          telefono: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          nombre: string
+          parentesco?: string | null
+          patient_id: string
+          telefono?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          nombre?: string
+          parentesco?: string | null
+          patient_id?: string
+          telefono?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_contacts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_contacts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_contacts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_contacts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_contacts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "patient_contacts_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
           },
         ]
       }
@@ -2638,9 +2781,11 @@ export type Database = {
       }
       patients: {
         Row: {
+          apellido: string | null
           contacto_familiar_nombre: string | null
           contacto_familiar_telefono: string | null
           coordinador_id: string | null
+          coseguro_detalle: string | null
           created_at: string
           diagnostico_principal: string | null
           dni: string
@@ -2652,12 +2797,20 @@ export type Database = {
           egreso_motivo_informado:
             | Database["public"]["Enums"]["discharge_reason"]
             | null
+          egreso_solicitud_firmada_at: string | null
+          egreso_solicitud_firmante: string | null
+          email_responsable: string | null
+          emergencias_nombre: string | null
+          emergencias_telefono: string | null
+          en_tratamiento_atb: boolean
+          es_particular: boolean
           estado: Database["public"]["Enums"]["patient_status"]
           fecha_egreso: string | null
           fecha_ingreso: string | null
           fecha_nacimiento: string | null
           frecuencia_reposicion: Database["public"]["Enums"]["replenishment_frequency"]
           id: string
+          institucion_derivante: string | null
           lat: number | null
           llegada_confirmada_at: string | null
           lng: number | null
@@ -2666,21 +2819,29 @@ export type Database = {
           medico_derivante: string | null
           medico_matricula: string | null
           motivo_egreso: Database["public"]["Enums"]["discharge_reason"] | null
+          nombre: string | null
           nombre_completo: string
           nro_historia_clinica: number | null
           numero_afiliado: string | null
           obra_social: string | null
           obra_social_id: string | null
           ocupacion: string | null
+          requiere_curaciones: boolean
           sexo: string | null
           telefono_actual: string | null
           telefono_contacto: string | null
+          tiene_coseguro: boolean
+          tiene_emergencias: boolean
+          tipo_internacion: string | null
+          unidad_trabajo: string | null
           updated_at: string
         }
         Insert: {
+          apellido?: string | null
           contacto_familiar_nombre?: string | null
           contacto_familiar_telefono?: string | null
           coordinador_id?: string | null
+          coseguro_detalle?: string | null
           created_at?: string
           diagnostico_principal?: string | null
           dni: string
@@ -2692,12 +2853,20 @@ export type Database = {
           egreso_motivo_informado?:
             | Database["public"]["Enums"]["discharge_reason"]
             | null
+          egreso_solicitud_firmada_at?: string | null
+          egreso_solicitud_firmante?: string | null
+          email_responsable?: string | null
+          emergencias_nombre?: string | null
+          emergencias_telefono?: string | null
+          en_tratamiento_atb?: boolean
+          es_particular?: boolean
           estado?: Database["public"]["Enums"]["patient_status"]
           fecha_egreso?: string | null
           fecha_ingreso?: string | null
           fecha_nacimiento?: string | null
           frecuencia_reposicion?: Database["public"]["Enums"]["replenishment_frequency"]
           id?: string
+          institucion_derivante?: string | null
           lat?: number | null
           llegada_confirmada_at?: string | null
           lng?: number | null
@@ -2706,21 +2875,29 @@ export type Database = {
           medico_derivante?: string | null
           medico_matricula?: string | null
           motivo_egreso?: Database["public"]["Enums"]["discharge_reason"] | null
+          nombre?: string | null
           nombre_completo: string
           nro_historia_clinica?: number | null
           numero_afiliado?: string | null
           obra_social?: string | null
           obra_social_id?: string | null
           ocupacion?: string | null
+          requiere_curaciones?: boolean
           sexo?: string | null
           telefono_actual?: string | null
           telefono_contacto?: string | null
+          tiene_coseguro?: boolean
+          tiene_emergencias?: boolean
+          tipo_internacion?: string | null
+          unidad_trabajo?: string | null
           updated_at?: string
         }
         Update: {
+          apellido?: string | null
           contacto_familiar_nombre?: string | null
           contacto_familiar_telefono?: string | null
           coordinador_id?: string | null
+          coseguro_detalle?: string | null
           created_at?: string
           diagnostico_principal?: string | null
           dni?: string
@@ -2732,12 +2909,20 @@ export type Database = {
           egreso_motivo_informado?:
             | Database["public"]["Enums"]["discharge_reason"]
             | null
+          egreso_solicitud_firmada_at?: string | null
+          egreso_solicitud_firmante?: string | null
+          email_responsable?: string | null
+          emergencias_nombre?: string | null
+          emergencias_telefono?: string | null
+          en_tratamiento_atb?: boolean
+          es_particular?: boolean
           estado?: Database["public"]["Enums"]["patient_status"]
           fecha_egreso?: string | null
           fecha_ingreso?: string | null
           fecha_nacimiento?: string | null
           frecuencia_reposicion?: Database["public"]["Enums"]["replenishment_frequency"]
           id?: string
+          institucion_derivante?: string | null
           lat?: number | null
           llegada_confirmada_at?: string | null
           lng?: number | null
@@ -2746,15 +2931,21 @@ export type Database = {
           medico_derivante?: string | null
           medico_matricula?: string | null
           motivo_egreso?: Database["public"]["Enums"]["discharge_reason"] | null
+          nombre?: string | null
           nombre_completo?: string
           nro_historia_clinica?: number | null
           numero_afiliado?: string | null
           obra_social?: string | null
           obra_social_id?: string | null
           ocupacion?: string | null
+          requiere_curaciones?: boolean
           sexo?: string | null
           telefono_actual?: string | null
           telefono_contacto?: string | null
+          tiene_coseguro?: boolean
+          tiene_emergencias?: boolean
+          tipo_internacion?: string | null
+          unidad_trabajo?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -5125,7 +5316,11 @@ export type Database = {
         Returns: Json
       }
       fn_informar_egreso: {
-        Args: { p_hecho?: string; p_motivo: Database["public"]["Enums"]["discharge_reason"]; p_patient: string }
+        Args: {
+          p_hecho?: string
+          p_motivo: Database["public"]["Enums"]["discharge_reason"]
+          p_patient: string
+        }
         Returns: undefined
       }
       fn_norm_texto: { Args: { t: string }; Returns: string }
@@ -5181,6 +5376,8 @@ export type Database = {
         | "traslado_otro_domicilio"
         | "traslado_otra_institucion"
         | "internacion_otro"
+        | "alta_voluntaria"
+        | "no_se_inicia_id"
       discharge_status: "pendiente_retiro" | "retiro_informado" | "cerrado"
       iva_category:
         | "21%"
@@ -5395,6 +5592,8 @@ export const Constants = {
         "traslado_otro_domicilio",
         "traslado_otra_institucion",
         "internacion_otro",
+        "alta_voluntaria",
+        "no_se_inicia_id",
       ],
       discharge_status: ["pendiente_retiro", "retiro_informado", "cerrado"],
       iva_category: [

@@ -34,10 +34,10 @@ async function conflicto(supabase: Sb, fecha: string, hora: string | null, durac
   return (data ?? []).find((t) => t.id !== excluirId && seSuperponen({ hora, duracion_min: duracion }, t)) ?? null;
 }
 
-// Transporte (o Depósito) agenda una tarea propia de «otros motivos» (visible para Depósito, Administración y Dirección).
+// Transporte, Depósito o Administración (H17, Vanina 06/10) agendan una tarea de cadetería, única o programada.
 export async function crearTareaTransporteAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { profile } = await requireProfile();
-  if (profile.role !== "transporte" && profile.role !== "deposito") return fail("Solo Transporte o Depósito crean tareas en la agenda de Transporte.");
+  if (profile.role !== "transporte" && profile.role !== "deposito" && profile.role !== "administracion") return fail("Solo Transporte, Depósito o Administración crean tareas en la agenda de Transporte.");
   const supabase = await createClient();
 
   const titulo = String(formData.get("titulo") || "").trim();
@@ -80,7 +80,7 @@ export async function crearTareaTransporteAction(_prev: ActionState, formData: F
   });
   if (error) return fail(`No se pudo guardar la tarea: ${error.message}`);
   refrescar();
-  await flash("Tarea agendada. Depósito, Administración y Dirección la ven en la agenda.");
+  await flash("Tarea agendada. Transporte la ve en su agenda; Depósito, Facturación y Dirección también.");
   return OK;
 }
 
@@ -141,7 +141,7 @@ export async function completarTareaTransporteAction(_prev: ActionState, formDat
 // «No se pudo hacer hoy»: pasa sola al día siguiente con la nota del motivo (R62).
 export async function reprogramarTareaTransporteAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { profile } = await requireProfile();
-  if (profile.role !== "transporte" && profile.role !== "deposito") return fail("Solo Transporte o Depósito editan y reprograman las tareas.");
+  if (profile.role !== "transporte" && profile.role !== "deposito" && profile.role !== "administracion") return fail("Solo Transporte, Depósito o Administración editan y reprograman las tareas.");
   const supabase = await createClient();
   const id = String(formData.get("task_id") || "");
   const motivo = String(formData.get("motivo") || "").trim();
@@ -189,7 +189,7 @@ export async function reprogramarTareaTransporteAction(_prev: ActionState, formD
 // Depósito (o Transporte) cambia fecha, hora o prioridad; avisa si se pisa con otra tarea.
 export async function editarTareaTransporteAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { profile } = await requireProfile();
-  if (profile.role !== "transporte" && profile.role !== "deposito") return fail("Solo Transporte o Depósito editan y reprograman las tareas.");
+  if (profile.role !== "transporte" && profile.role !== "deposito" && profile.role !== "administracion") return fail("Solo Transporte, Depósito o Administración editan y reprograman las tareas.");
   const supabase = await createClient();
   const id = String(formData.get("task_id") || "");
   const fecha = String(formData.get("fecha") || "");
@@ -218,7 +218,7 @@ export async function editarTareaTransporteAction(_prev: ActionState, formData: 
 
 export async function cancelarTareaTransporteAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { profile } = await requireProfile();
-  if (profile.role !== "transporte" && profile.role !== "deposito") return fail("Solo Transporte o Depósito editan y reprograman las tareas.");
+  if (profile.role !== "transporte" && profile.role !== "deposito" && profile.role !== "administracion") return fail("Solo Transporte, Depósito o Administración editan y reprograman las tareas.");
   const supabase = await createClient();
   const id = String(formData.get("task_id") || "");
   const { data: t } = await supabase.from("transport_tasks").select("order_id").eq("id", id).single();

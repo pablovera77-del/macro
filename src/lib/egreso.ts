@@ -11,11 +11,17 @@ export const MOTIVO_EGRESO_LABELS: Record<string, string> = {
   traslado_otra_institucion: "Se trasladó a otra institución (sanatorio)",
   internacion_otro: "Otro motivo",
   fin_internacion: "Fin de internación",
+  alta_voluntaria: "Alta voluntaria",
+  no_se_inicia_id: "No se inicia ID (el paciente no llegó a iniciar la internación)",
 };
 
 /** Motivos que se ofrecen hoy al informar o confirmar un egreso. */
-export const MOTIVOS_EGRESO_OPCIONES = ["alta_medica", "fallecimiento", "traslado_otro_domicilio", "traslado_otra_institucion", "internacion_otro"] as const;
+export const MOTIVOS_EGRESO_OPCIONES = ["alta_medica", "alta_voluntaria", "fallecimiento", "traslado_otro_domicilio", "traslado_otra_institucion", "internacion_otro"] as const;
 export type MotivoEgresoNuevo = (typeof MOTIVOS_EGRESO_OPCIONES)[number];
+/** «No se inicia ID» solo se usa para un paciente admitido que nunca llegó al domicilio (H5, Vanina 06/10). */
+export const MOTIVO_NO_SE_INICIA = "no_se_inicia_id";
+/** El alta voluntaria exige la solicitud de alta firmada por el familiar. */
+export const MOTIVO_ALTA_VOLUNTARIA = "alta_voluntaria";
 
 export function motivoEgresoLabel(m: string | null | undefined): string {
   if (!m) return "—";

@@ -53,7 +53,7 @@ export default async function AgendaTransportePage({ searchParams }: { searchPar
   const pendientes = tareas.filter((t) => !cerrada(t)).sort(orden);
   const hechasHoy = tareas.filter(cerrada).sort(orden);
 
-  const puedeCrear = profile.role === "transporte" || profile.role === "deposito";
+  const puedeCrear = profile.role === "transporte" || profile.role === "deposito" || profile.role === "administracion";
   const nav = "rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50";
 
   return (

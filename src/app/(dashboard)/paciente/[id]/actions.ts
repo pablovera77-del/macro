@@ -10,6 +10,7 @@ import { familyPortalEnabled } from "@/lib/family";
 import { flash } from "@/lib/flash";
 import { DISCIPLINAS_PLAN, hoyAR } from "@/lib/plan";
 import type { Enums } from "@/types/database";
+import { leerLegajo, leerContactosExtra, txt } from "@/lib/legajo";
 
 const PLAN_ROLES: AppRole[] = ["administracion", "coordinador_internacion"];
 const ESPECIALIDADES = new Set<string>(DISCIPLINAS_PLAN);
@@ -211,4 +212,57 @@ export async function revokeFamilyAccessAction(formData: FormData) {
   if (error) throw new Error(error.message);
   await flash("Acceso de la familia dado de baja.");
   revalidatePath(`/paciente/${patient_id}`);
+}
+
+// H2 (Vanina 06/10): editar los datos del paciente por un error de carga, un cambio de domicilio o de persona
+// responsable. Solo Administración; cada cambio queda en la auditoría (trigger sobre patients).
+export type EditarDatosState = { error: string | null; ok?: boolean };
+
+export async function updatePatientDataAction(_prev: EditarDatosState, formData: FormData): Promise<EditarDatosState> {
+  const { profile } = await requireProfile();
+  if (profile.role !== "administracion") return { error: "Solo Administración edita los datos del paciente." };
+  const supabase = await createClient();
+  const patient_id = String(formData.get("patient_id") || "");
+  if (!patient_id) return { error: "Falta el paciente." };
+
+  const leido = leerLegajo(formData);
+  if ("error" in leido) return { error: leido.error };
+  const extras = leerContactosExtra(formData);
+  if ("error" in extras) return { error: extras.error };
+  const d = leido.datos;
+
+  const { data: previo } = await supabase.from("patients").select("id, estado").eq("id", patient_id).maybeSingle();
+  if (!previo) return { error: "No encontramos al paciente." };
+
+  let obra_social: string | null = d.es_particular ? "Particular" : null;
+  if (d.obra_social_id) {
+    const { data: os } = await supabase.from("obras_sociales").select("nombre").eq("id", d.obra_social_id).single();
+    obra_social = os?.nombre ?? null;
+  }
+  // La fecha de ingreso de una internación en curso se corrige desde acá; el egreso no se toca.
+  // La ubicación capturada (lat/lng) no se edita desde acá: se conserva la que ya tiene.
+  const { lat: _lat, lng: _lng, ...cambios } = d;
+  void _lat; void _lng;
+  const { error } = await supabase.from("patients").update({ ...cambios, obra_social }).eq("id", patient_id);
+  if (error) {
+    if (error.code === "23505" && error.message.includes("patients_dni_key")) return { error: "Ya existe otro paciente con ese DNI. Revisá el número." };
+    return { error: `No se pudieron guardar los cambios: ${error.message}` };
+  }
+
+  // Contactos adicionales: se reemplazan por los del formulario.
+  const { error: eDel } = await supabase.from("patient_contacts").delete().eq("patient_id", patient_id);
+  if (eDel) return { error: `Se guardaron los datos, pero no se pudieron actualizar los familiares de contacto: ${eDel.message}` };
+  if (extras.length > 0) {
+    const { error: eIns } = await supabase.from("patient_contacts").insert(extras.map((c) => ({ ...c, patient_id, created_by: profile.id })));
+    if (eIns) return { error: `Se guardaron los datos, pero no se pudieron guardar los familiares de contacto: ${eIns.message}` };
+  }
+  const { error: eAcl } = await supabase
+    .from("patient_aclaraciones")
+    .upsert({ patient_id, texto: txt(formData, "aclaraciones"), updated_by: profile.id, updated_at: new Date().toISOString() }, { onConflict: "patient_id" });
+  if (eAcl) return { error: `Se guardaron los datos, pero no el cuadro de aclaraciones: ${eAcl.message}` };
+
+  refresh(patient_id);
+  revalidatePath("/pacientes");
+  await flash(`Datos de ${d.nombre_completo} actualizados.`);
+  return { error: null, ok: true };
 }
