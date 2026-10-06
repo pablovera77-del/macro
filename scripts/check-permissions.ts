@@ -12,6 +12,7 @@ const NOMBRE_EN_MENSAJE: Record<string, string> = {
   deposito: "deposito",
   transporte: "transporte",
   direccion: "direccion",
+  facturacion: "facturacion",
 };
 
 const errores: string[] = [];
@@ -30,7 +31,7 @@ for (const p of PERMISOS) {
   // Los mensajes en lenguaje natural deben nombrar exactamente los roles de la matriz.
   if (!p.guard.message.includes("role")) {
     const msg = norm(p.guard.message.replace(/^Solo (el |un )?/i, ""));
-    const head = msg.split(/ (da|carga|registra|arman|confirman|confirma|pueden|modifican|completa|programa|reprograma|cancela|gestiona|arma|autoriza|rechaza|despacha|genera|marca|reporta|configura|generan|revocan)\b/)[0];
+    const head = msg.split(/ (da|carga|registra|arman|confirman|confirma|pueden|modifican|completa|programa|reprograma|cancela|gestiona|arma|autoriza|rechaza|despacha|genera|marca|reporta|configura|generan|revocan|revisa)\b/)[0];
     const nombrados = Object.entries(NOMBRE_EN_MENSAJE).filter(([, n]) => head.includes(n)).map(([r]) => r);
     const esperados = [...p.roles].sort().join(",");
     if (nombrados.sort().join(",") !== esperados) {

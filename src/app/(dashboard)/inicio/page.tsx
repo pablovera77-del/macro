@@ -68,6 +68,15 @@ async function getPendientes(role: AppRole, userId: string): Promise<Pendiente[]
       true
     );
   }
+  if (role === "facturacion") {
+    const mesRef = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/San_Juan" }).format(new Date()).slice(0, 7);
+    push(
+      "pacientes marcados como listos para facturar esperan tu revisión",
+      await count(supabase.from("billing_ready").select("id", { count: "exact", head: true }).is("revisado_at", null).lte("periodo", `${mesRef}-01`)),
+      "/listo-para-facturar",
+      true
+    );
+  }
   if (role === "deposito") {
     push(
       "pedidos autorizados esperan que los despaches",

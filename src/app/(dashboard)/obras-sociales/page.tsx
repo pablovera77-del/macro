@@ -17,7 +17,7 @@ function formatARS(value: number | null) {
 export default async function ObrasSocialesPage() {
   const { profile } = await requireProfile();
   // Datos económicos: solo Administración (que los gestiona) y Dirección (solo lectura).
-  if (profile.role !== "administracion" && profile.role !== "direccion") redirect("/inicio");
+  if (profile.role !== "administracion" && profile.role !== "direccion" && profile.role !== "facturacion") redirect("/inicio");
   const supabase = await createClient();
 
   const [{ data: obrasSociales }, { data: history }, { data: patientCounts }, { data: responsables }, { data: docsReq }] = await Promise.all([
@@ -34,6 +34,7 @@ export default async function ObrasSocialesPage() {
   ]);
 
   const canManage = profile.role === "administracion";
+  const canBill = profile.role === "facturacion";
   const countByOs = new Map<string, number>();
   (patientCounts ?? []).forEach((p) => {
     if (p.obra_social_id) countByOs.set(p.obra_social_id, (countByOs.get(p.obra_social_id) ?? 0) + 1);
@@ -95,7 +96,7 @@ export default async function ObrasSocialesPage() {
                 </div>
               )}
 
-              {canManage && (
+              {canBill && (
                 <ActionDisclosure label="Configurar reglas y contacto" tone="subtle">
                   <ConfigObraSocialForm
                     obraSocialId={os.id}
@@ -109,7 +110,7 @@ export default async function ObrasSocialesPage() {
                 </ActionDisclosure>
               )}
 
-              {canManage && (
+              {canBill && (
                 <ActionDisclosure label="Actualizar valor" tone="subtle">
                   <form action={addValueHistoryAction} className="flex flex-wrap gap-2">
                     <input type="hidden" name="obra_social_id" value={os.id} />

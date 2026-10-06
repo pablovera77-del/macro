@@ -19,12 +19,12 @@ export default async function EvolucionesPage({
   const { visita, q } = await searchParams;
   const { profile } = await requireProfile();
   // La historia clínica es solo para roles clínicos y de control; Depósito y Transporte vuelven al inicio.
-  if (!["administracion", "coordinador_internacion", "profesional_asistencial", "direccion"].includes(profile.role)) redirect("/inicio");
+  if (!["administracion", "coordinador_internacion", "profesional_asistencial", "direccion", "facturacion"].includes(profile.role)) redirect("/inicio");
   const supabase = await createClient();
 
   // Coordinación controla y Administración/Dirección consultan (solo lectura); quien carga es el profesional.
-  const isMedico = ["coordinador_internacion", "direccion", "administracion"].includes(profile.role);
-  const soloLectura = profile.role === "direccion" || profile.role === "administracion";
+  const isMedico = ["coordinador_internacion", "direccion", "administracion", "facturacion"].includes(profile.role);
+  const soloLectura = profile.role === "direccion" || profile.role === "administracion" || profile.role === "facturacion";
   const busqueda = (q ?? "").replace(/[%,()]/g, " ").trim().slice(0, 60);
 
   let pendingQuery = supabase

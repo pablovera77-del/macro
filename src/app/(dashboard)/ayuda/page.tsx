@@ -102,4 +102,4 @@ export default async function AyudaPage() {
   );
 }
 
-const COLUMNAS: AppRole[] = ["administracion", "coordinador_internacion", "profesional_asistencial", "deposito", "transporte", "direccion"];
+const COLUMNAS: AppRole[] = ["administracion", "coordinador_internacion", "profesional_asistencial", "deposito", "transporte", "direccion", "facturacion"];

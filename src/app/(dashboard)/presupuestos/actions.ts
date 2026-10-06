@@ -33,7 +33,7 @@ function leerLineas(formData: FormData): { lineas: Linea[]; error?: string } {
 
 export async function saveSalesQuoteAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const { profile } = await requireProfile();
-  if (profile.role !== "administracion") throw new Error("Solo Administración arma presupuestos de venta.");
+  if (profile.role !== "facturacion") throw new Error("Solo Facturación arma presupuestos de venta.");
 
   const supabase = await createClient();
   const quoteId = String(formData.get("quote_id") || "");
@@ -87,7 +87,7 @@ export async function saveSalesQuoteAction(_prev: ActionResult, formData: FormDa
 
 export async function deleteSalesQuoteAction(formData: FormData) {
   const { profile } = await requireProfile();
-  if (profile.role !== "administracion") throw new Error("Solo Administración arma presupuestos de venta.");
+  if (profile.role !== "facturacion") throw new Error("Solo Facturación arma presupuestos de venta.");
   const id = String(formData.get("quote_id") || "");
   if (!id) throw new Error("Falta el presupuesto. Recargá la página.");
   const supabase = await createClient();

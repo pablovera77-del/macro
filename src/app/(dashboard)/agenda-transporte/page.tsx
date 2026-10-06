@@ -11,7 +11,7 @@ import { hoyAR } from "@/lib/plan";
 import { fechaCorta } from "@/lib/stock-ui";
 import { PRIORIDAD_ORDEN, permanenteCaeEn, sumarDias, minutos, type TareaT } from "@/lib/agenda-transporte";
 
-const ROLES = ["transporte", "deposito", "administracion", "direccion"];
+const ROLES = ["transporte", "deposito", "administracion", "direccion", "facturacion"];
 
 /**
  * Agenda de Transporte: lo que hay que hacer en el día (entregas, retiros y tareas propias),

@@ -13,7 +13,7 @@ export default async function PresupuestoDetallePage({ params }: { params: Promi
   const { id } = await params;
   const { profile } = await requireProfile();
   if (!ROLES_PRESUPUESTOS.includes(profile.role)) redirect("/inicio");
-  const canManage = profile.role === "administracion";
+  const canManage = profile.role === "facturacion";
   const supabase = await createClient();
 
   const { data: quote } = await supabase

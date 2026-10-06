@@ -13,7 +13,7 @@ import { hoyAR } from "@/lib/plan";
 export default async function PresupuestosPage() {
   const { profile } = await requireProfile();
   if (!ROLES_PRESUPUESTOS.includes(profile.role)) redirect("/inicio");
-  const canManage = profile.role === "administracion";
+  const canManage = profile.role === "facturacion";
   const supabase = await createClient();
 
   const [{ data: quotes }, { data: items }, { data: obrasSociales }] = await Promise.all([

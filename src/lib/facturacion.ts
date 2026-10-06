@@ -71,8 +71,8 @@ export const MODALIDAD_LABELS: Record<string, string> = {
   prestaciones: "Por prestaciones",
 };
 
-// Presupuestos de venta (C4-15/16): Administración los arma; Dirección solo los consulta.
-export const ROLES_PRESUPUESTOS: AppRole[] = ["administracion", "direccion"];
+// Presupuestos de venta (C4-15/16): Facturación los arma (H8, Vanina 06/10); Dirección solo los consulta.
+export const ROLES_PRESUPUESTOS: AppRole[] = ["facturacion", "direccion"];
 
 export function totalPresupuesto(items: { cantidad: number; valor_unitario: number }[]): number {
   return items.reduce((acc, i) => acc + Number(i.cantidad) * Number(i.valor_unitario), 0);

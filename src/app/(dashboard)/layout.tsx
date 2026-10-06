@@ -5,7 +5,7 @@ import FlashToast from "@/components/FlashToast";
 import PatientSearch from "@/components/PatientSearch";
 import { createClient } from "@/lib/supabase/server";
 
-const CAN_SEARCH = ["administracion", "coordinador_internacion", "profesional_asistencial"];
+const CAN_SEARCH = ["administracion", "coordinador_internacion", "profesional_asistencial", "facturacion"];
 
 export default async function DashboardLayout({
 children,

@@ -33,7 +33,7 @@ export default async function HistoriaClinicaFicha({ patientId, role, userId }: 
     arr.push({ id: n.id, texto: n.texto, created_at: n.created_at, autor: (n.profiles as unknown as { full_name: string } | null)?.full_name ?? "Profesional" });
     notas.set(n.evolution_id, arr);
   }
-  const soloLectura = role === "administracion" || role === "direccion";
+  const soloLectura = role === "administracion" || role === "direccion" || role === "facturacion";
 
   return (
     <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden">

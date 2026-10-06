@@ -285,6 +285,35 @@ const CONFIRMAR_EGRESOS: HomeTask = {
   doc: "DF-C3 §11",
 };
 
+const LISTO_PARA_FACTURAR: HomeTask = {
+  id: "listo-para-facturar",
+  title: "Marcar pacientes como listos para facturar",
+  summary: "Controlar las historias clínicas del mes y avisar a Facturación. No da de baja al paciente.",
+  steps: [
+    "Entrá a «Listo para facturar» y elegí el mes.",
+    "Revisá cada paciente: te muestra cuántas visitas realizadas todavía no tienen evolución cargada.",
+    "Tildá los pacientes listos y tocá «Marcar como listos para facturar». Si alguno tiene evoluciones pendientes, dejá una observación.",
+    "Facturación los ve al instante y los revisa; mientras no los revise, podés quitar la marca.",
+  ],
+  href: "/listo-para-facturar",
+  cta: "Ir a Listo para facturar",
+  doc: "DF-C4 §4",
+};
+
+const REVISAR_LISTOS: HomeTask = {
+  id: "revisar-listos",
+  title: "Revisar lo que Administración dejó listo para facturar",
+  summary: "Controlar de nuevo cada paciente antes de calcular importes.",
+  steps: [
+    "Entrá a «Listo para facturar»: ves los pacientes del mes que Administración marcó, con sus observaciones.",
+    "Abrí la historia clínica si querés controlar algo, y tildá los que están bien.",
+    "Tocá «Registrar la revisión»: queda quién y cuándo. Después seguí con el cierre mensual.",
+  ],
+  href: "/listo-para-facturar",
+  cta: "Ir a Listo para facturar",
+  doc: "DF-C4 §4",
+};
+
 const CIERRE_MENSUAL: HomeTask = {
   id: "cierre-mensual",
   title: "Hacer el cierre mensual de facturación",
@@ -304,17 +333,31 @@ const CIERRE_MENSUAL: HomeTask = {
 
 const OBRAS_SOCIALES: HomeTask = {
   id: "obras-sociales",
-  title: "Actualizar el valor del módulo de una obra social",
-  summary: "Mantener al día los valores y asignar quién es responsable de cada obra social.",
+  title: "Dar de alta una obra social y asignar su responsable",
+  summary: "Mantener el catálogo de obras sociales, la documentación que piden al ingreso y quién recibe las alertas.",
   steps: [
     "Entrá a Obras sociales.",
     "Para una obra social nueva tocá «+ Nueva obra social» (arriba a la derecha).",
-    "Tocá «Actualizar valor» para cargar un valor nuevo sin perder el histórico.",
     "Tocá «Asignar responsable» para elegir quién recibe las alertas de esa obra social.",
+    "Con «Agregar documento requerido» definís qué documentación hay que recibir al ingreso.",
   ],
   href: "/obras-sociales",
   cta: "Ir a Obras sociales",
-  doc: "DF-C3 §2 y DF-C4",
+  doc: "DF-C3 §2",
+};
+
+const OBRAS_SOCIALES_FACT: HomeTask = {
+  id: "obras-sociales-valores",
+  title: "Actualizar el valor del módulo de una obra social",
+  summary: "Mantener al día los valores y las reglas de facturación de cada obra social.",
+  steps: [
+    "Entrá a Obras sociales.",
+    "Tocá «Actualizar valor» para cargar un valor nuevo sin perder el histórico.",
+    "Con «Configurar reglas y contacto» definís modalidad, plazo y contacto de auditoría.",
+  ],
+  href: "/obras-sociales",
+  cta: "Ir a Obras sociales",
+  doc: "DF-C4",
 };
 
 const PRESUPUESTOS: HomeTask = {
@@ -474,9 +517,8 @@ export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
     CONFIRMAR_EGRESOS,
     AUTORIZACIONES_STOCK,
     AUTORIZAR_PEDIDOS,
-    CIERRE_MENSUAL,
+    LISTO_PARA_FACTURAR,
     OBRAS_SOCIALES,
-    PRESUPUESTOS,
     COMPRAS,
     SEGUIMIENTO,
     MENSAJES_EQUIPO,
@@ -486,13 +528,15 @@ export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
   deposito: [DESPACHAR_PEDIDOS, AGENDA_TRANSPORTE, SEGUIMIENTO, CARGAR_PRODUCTO, COMPRAS],
   transporte: [AGENDA_TRANSPORTE, ENTREGAR_PEDIDOS, SEGUIMIENTO],
   direccion: [DASHBOARD, PRODUCTIVIDAD, PRESUPUESTOS, AUDITORIA],
+  facturacion: [REVISAR_LISTOS, CIERRE_MENSUAL, OBRAS_SOCIALES_FACT, PRESUPUESTOS, CONSULTAR_HC],
 };
 
 export const ROLE_WELCOME: Record<AppRole, string> = {
   coordinador_internacion: "Desde acá armás la agenda de visitas, confirmás cuándo llega cada paciente y controlás las evoluciones.",
   profesional_asistencial: "Desde acá ves tus visitas, cargás la historia clínica e informás egresos.",
-  administracion: "Desde acá das de alta a los pacientes, controlás autorizaciones, pedidos, compras y la facturación.",
+  administracion: "Desde acá das de alta a los pacientes, controlás autorizaciones, pedidos, compras y las historias clínicas, y avisás a Facturación.",
   deposito: "Desde acá gestionás el catálogo, armás pedidos y seguís los equipos.",
   transporte: "Desde acá ves las entregas y retiros que tenés que hacer.",
   direccion: "Desde acá ves el estado general de la operación y quién cambió qué.",
+  facturacion: "Desde acá controlás lo que Administración deja listo, calculás los importes, cerrás cada mes por obra social y armás presupuestos.",
 };

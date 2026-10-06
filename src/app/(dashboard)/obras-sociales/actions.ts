@@ -7,7 +7,8 @@ import { flash } from "@/lib/flash";
 import type { Enums } from "@/types/database";
 import type { ActionResult } from "@/lib/facturacion";
 
-const BILLING_ROLES: Enums<"app_role">[] = ["administracion"];
+const ADMIN_ROLES: Enums<"app_role">[] = ["administracion"];
+const BILLING_ROLES: Enums<"app_role">[] = ["facturacion"];
 
 // DF-C4 §2: catálogo de obras sociales, cada una con su propio plazo de
 // facturación. DF-C1 lista un rol "Facturación (4 personas)" que DF-C3 §2 y
@@ -15,7 +16,7 @@ const BILLING_ROLES: Enums<"app_role">[] = ["administracion"];
 // hace) — no lo resolvimos unilateralmente, seguimos DF-C3/DF-C4 acá.
 export async function createObraSocialAction(formData: FormData) {
   const { profile } = await requireProfile();
-  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Administración gestiona obras sociales.");
+  if (!ADMIN_ROLES.includes(profile.role)) throw new Error("Solo Administración gestiona obras sociales.");
 
   const supabase = await createClient();
   const nombre = String(formData.get("nombre") || "").trim();
@@ -48,7 +49,7 @@ export async function createObraSocialAction(formData: FormData) {
 // Internación (ver internacion/page.tsx).
 export async function assignResponsableAction(formData: FormData) {
   const { profile } = await requireProfile();
-  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Administración asigna responsables de obra social.");
+  if (!ADMIN_ROLES.includes(profile.role)) throw new Error("Solo Administración asigna responsables de obra social.");
 
   const supabase = await createClient();
   const obra_social_id = String(formData.get("obra_social_id") || "");
@@ -67,7 +68,7 @@ export async function assignResponsableAction(formData: FormData) {
 // perder el registro anterior.
 export async function addValueHistoryAction(formData: FormData) {
   const { profile } = await requireProfile();
-  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Administración carga valores.");
+  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Facturación carga valores.");
 
   const supabase = await createClient();
   const obra_social_id = String(formData.get("obra_social_id") || "");
@@ -115,7 +116,7 @@ export async function removeRequiredDocAction(formData: FormData) {
 // plazo para presentar y contacto de auditoría de cada obra social.
 export async function updateObraSocialConfigAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const { profile } = await requireProfile();
-  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Administración configura las reglas de facturación de cada obra social.");
+  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Facturación configura las reglas de facturación de cada obra social.");
 
   const supabase = await createClient();
   const obra_social_id = String(formData.get("obra_social_id") || "");

@@ -67,10 +67,10 @@ function formatARS(value: number | null) {
 export default async function FacturacionPage() {
   const { profile } = await requireProfile();
   // Datos económicos: solo Administración (que los gestiona) y Dirección (solo lectura).
-  if (profile.role !== "administracion" && profile.role !== "direccion") redirect("/inicio");
+  if (profile.role !== "facturacion" && profile.role !== "direccion") redirect("/inicio");
   // TODO(DF-C1 §4.3): ver la misma nota en facturacion/actions.ts — pendiente
   // de confirmar con Vanina si Facturación es un rol de sistema propio.
-  const canManage = profile.role === "administracion";
+  const canManage = profile.role === "facturacion";
   const supabase = await createClient();
 
   const [

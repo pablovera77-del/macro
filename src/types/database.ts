@@ -647,6 +647,89 @@ export type Database = {
           },
         ]
       }
+      billing_ready: {
+        Row: {
+          id: string
+          marcado_at: string
+          marcado_por: string | null
+          nota: string | null
+          patient_id: string
+          periodo: string
+          revisado_at: string | null
+          revisado_por: string | null
+        }
+        Insert: {
+          id?: string
+          marcado_at?: string
+          marcado_por?: string | null
+          nota?: string | null
+          patient_id: string
+          periodo: string
+          revisado_at?: string | null
+          revisado_por?: string | null
+        }
+        Update: {
+          id?: string
+          marcado_at?: string
+          marcado_por?: string | null
+          nota?: string | null
+          patient_id?: string
+          periodo?: string
+          revisado_at?: string | null
+          revisado_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_ready_marcado_por_fkey"
+            columns: ["marcado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_ready_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_ready_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_diaria"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "billing_ready_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_control_frecuencia_semanal"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "billing_ready_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_controles"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "billing_ready_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "v_prevalidacion_facturacion"
+            referencedColumns: ["patient_id"]
+          },
+          {
+            foreignKeyName: "billing_ready_revisado_por_fkey"
+            columns: ["revisado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalog_items: {
         Row: {
           activo: boolean
@@ -5403,6 +5486,7 @@ export type Database = {
         | "coordinador_internacion"
         | "profesional_asistencial"
         | "medico_coordinador"
+        | "facturacion"
       asset_movement_type:
         | "entrega_domicilio"
         | "retiro_domicilio"
@@ -5616,6 +5700,7 @@ export const Constants = {
         "coordinador_internacion",
         "profesional_asistencial",
         "medico_coordinador",
+        "facturacion",
       ],
       asset_movement_type: [
         "entrega_domicilio",

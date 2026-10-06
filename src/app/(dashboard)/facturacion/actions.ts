@@ -15,13 +15,13 @@ import type { Enums, TablesUpdate } from "@/types/database";
 // Administración. Si se confirma como rol aparte, agregarlo acá y en
 // facturacion/page.tsx (canManage) — y revisar si también debería poder
 // cargar débitos sin pasar por Administración.
-const BILLING_ROLES: Enums<"app_role">[] = ["administracion"];
+const BILLING_ROLES: Enums<"app_role">[] = ["facturacion"];
 
 // DF-C4 §4: abre el período de cierre mensual para una obra social.
 // C4-18: si no se carga un total a mano, se precarga el sugerido (valor vigente x módulos al día).
 export async function createBillingPeriodAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const { profile } = await requireProfile();
-  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Administración gestiona la facturación.");
+  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Facturación gestiona la facturación.");
 
   const supabase = await createClient();
   const obra_social_id = String(formData.get("obra_social_id") || "");
@@ -184,7 +184,7 @@ export async function updateDebitStatusAction(formData: FormData) {
 // C4-18: corregir a mano el total de un período que todavía no se presentó.
 export async function updateBillingTotalAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const { profile } = await requireProfile();
-  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Administración corrige el total de un período.");
+  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Facturación corrige el total de un período.");
 
   const supabase = await createClient();
   const billing_period_id = String(formData.get("billing_period_id") || "");
@@ -217,7 +217,7 @@ async function periodoEditableParaExclusiones(billing_period_id: string) {
 
 export async function excludePatientFromPeriodAction(formData: FormData) {
   const { profile } = await requireProfile();
-  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Administración deja pacientes fuera del cierre mensual.");
+  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Facturación deja pacientes fuera del cierre mensual.");
 
   const billing_period_id = String(formData.get("billing_period_id") || "");
   const patient_id = String(formData.get("patient_id") || "");
@@ -236,7 +236,7 @@ export async function excludePatientFromPeriodAction(formData: FormData) {
 
 export async function includePatientInPeriodAction(formData: FormData) {
   const { profile } = await requireProfile();
-  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Administración deja pacientes fuera del cierre mensual.");
+  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Facturación deja pacientes fuera del cierre mensual.");
 
   const billing_period_id = String(formData.get("billing_period_id") || "");
   const patient_id = String(formData.get("patient_id") || "");
@@ -253,7 +253,7 @@ export async function includePatientInPeriodAction(formData: FormData) {
 // C4-44: si el débito se puede reclamar, cuándo se volvió a presentar y notas de la gestión.
 export async function updateDebitResubmisionAction(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const { profile } = await requireProfile();
-  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Administración registra el reclamo de un débito.");
+  if (!BILLING_ROLES.includes(profile.role)) throw new Error("Solo Facturación registra el reclamo de un débito.");
 
   const supabase = await createClient();
   const debit_id = Number(formData.get("debit_id"));

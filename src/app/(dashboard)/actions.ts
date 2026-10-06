@@ -22,7 +22,7 @@ export async function searchPatientsAction(query: string): Promise<PatientHit[]>
   } = await supabase.auth.getUser();
   if (!user) return [];
   const { data: profile } = await supabase.from("profiles").select("role, active").eq("id", user.id).single();
-  if (!profile?.active || !["administracion", "coordinador_internacion", "profesional_asistencial"].includes(profile.role)) return [];
+  if (!profile?.active || !["administracion", "coordinador_internacion", "profesional_asistencial", "facturacion"].includes(profile.role)) return [];
   const digits = q.replace(/\D/g, "");
   const filters = [`nombre_completo.ilike.%${q}%`];
   if (digits.length >= 2) filters.push(`dni.ilike.%${digits}%`);

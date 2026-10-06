@@ -22,6 +22,7 @@ const P: AppRole = "profesional_asistencial";
 const D: AppRole = "deposito";
 const T: AppRole = "transporte";
 const DIR: AppRole = "direccion";
+const F: AppRole = "facturacion";
 
 const INTER = "src/app/(dashboard)/internacion/actions.ts";
 const PAC = "src/app/(dashboard)/paciente/[id]/actions.ts";
@@ -38,6 +39,7 @@ const EVO = "src/app/(dashboard)/evoluciones/actions.ts";
 const PRES = "src/app/(dashboard)/presupuestos/actions.ts";
 const USR = "src/app/(dashboard)/usuarios/actions.ts";
 const CFG = "src/app/(dashboard)/configuracion/actions.ts";
+const LPF = "src/app/(dashboard)/listo-para-facturar/actions.ts";
 
 export const PERMISOS: Permiso[] = [
   // Pacientes e ingreso
@@ -94,15 +96,18 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Seguimiento", accion: "Confirmar la llegada a depósito", roles: [T], guard: { file: SEG, message: "Solo Transporte confirma la llegada." } },
   { modulo: "Compras", accion: "Recibir órdenes de compra", roles: [D], guard: { file: COMP, message: "Solo Depósito gestiona la recepción de órdenes de compra." } },
   // Obras sociales y facturación
-  { modulo: "Obras sociales", accion: "Gestionar obras sociales y valores", roles: [A], guard: { file: OS, message: "Solo Administración gestiona obras sociales." } },
+  { modulo: "Obras sociales", accion: "Dar de alta obras sociales y asignar su responsable", roles: [A], guard: { file: OS, message: "Solo Administración gestiona obras sociales." } },
+  { modulo: "Obras sociales", accion: "Cargar el valor del módulo de cada obra social", roles: [F], guard: { file: OS, message: "Solo Facturación carga valores." } },
   { modulo: "Obras sociales", accion: "Definir la documentación requerida al ingreso", roles: [A], guard: { file: OS, message: "Solo Administración configura la documentación requerida." } },
-  { modulo: "Facturación", accion: "Gestionar períodos y débitos", roles: [A], guard: { file: FAC, message: "Solo Administración gestiona la facturación." } },
-  { modulo: "Obras sociales", accion: "Configurar reglas, modalidad, plazo y contacto de auditoría", roles: [A], guard: { file: OS, message: "Solo Administración configura las reglas de facturación de cada obra social." } },
-  { modulo: "Facturación", accion: "Corregir el total de un período", roles: [A], guard: { file: FAC, message: "Solo Administración corrige el total de un período." } },
-  { modulo: "Facturación", accion: "Dejar pacientes fuera del cierre mensual", roles: [A], guard: { file: FAC, message: "Solo Administración deja pacientes fuera del cierre mensual." } },
-  { modulo: "Facturación", accion: "Registrar el reclamo de un débito", roles: [A], guard: { file: FAC, message: "Solo Administración registra el reclamo de un débito." } },
-  { modulo: "Presupuestos", accion: "Armar y editar presupuestos de venta", roles: [A], guard: { file: PRES, message: "Solo Administración arma presupuestos de venta." } },
-  { modulo: "Presupuestos", accion: "Ver presupuestos de venta (solo lectura)", roles: [A, DIR], guard: { file: "src/app/(dashboard)/presupuestos/page.tsx", message: "ROLES_PRESUPUESTOS.includes(profile.role)" } },
+  { modulo: "Facturación", accion: "Marcar pacientes como listos para facturar (corte administrativo)", roles: [A], guard: { file: LPF, message: "Solo Administración marca a los pacientes como listos para facturar." } },
+  { modulo: "Facturación", accion: "Registrar la revisión de lo que Administración dejó listo", roles: [F], guard: { file: LPF, message: "Solo Facturación revisa lo que Administración dejó listo para facturar." } },
+  { modulo: "Facturación", accion: "Gestionar períodos y débitos", roles: [F], guard: { file: FAC, message: "Solo Facturación gestiona la facturación." } },
+  { modulo: "Obras sociales", accion: "Configurar reglas, modalidad, plazo y contacto de auditoría", roles: [F], guard: { file: OS, message: "Solo Facturación configura las reglas de facturación de cada obra social." } },
+  { modulo: "Facturación", accion: "Corregir el total de un período", roles: [F], guard: { file: FAC, message: "Solo Facturación corrige el total de un período." } },
+  { modulo: "Facturación", accion: "Dejar pacientes fuera del cierre mensual", roles: [F], guard: { file: FAC, message: "Solo Facturación deja pacientes fuera del cierre mensual." } },
+  { modulo: "Facturación", accion: "Registrar el reclamo de un débito", roles: [F], guard: { file: FAC, message: "Solo Facturación registra el reclamo de un débito." } },
+  { modulo: "Presupuestos", accion: "Armar y editar presupuestos de venta", roles: [F], guard: { file: PRES, message: "Solo Facturación arma presupuestos de venta." } },
+  { modulo: "Presupuestos", accion: "Ver presupuestos de venta (solo lectura)", roles: [F, DIR], guard: { file: "src/app/(dashboard)/presupuestos/page.tsx", message: "ROLES_PRESUPUESTOS.includes(profile.role)" } },
   // Dirección (solo lectura)
   { modulo: "Auditoría", accion: "Ver el registro de auditoría", roles: [DIR], guard: { file: "src/app/(dashboard)/auditoria/page.tsx", message: 'profile.role !== "direccion"' } },
   // Usuarios y configuración
@@ -112,10 +117,11 @@ export const PERMISOS: Permiso[] = [
 
 /** Lo que cada rol puede VER (sin modificar), para completar la matriz en pantalla. */
 export const SOLO_LECTURA: Record<AppRole, string> = {
-  administracion: "Todo lo de pacientes, pedidos, compras, seguimiento, obras sociales, facturación, usuarios y configuración.",
+  administracion: "Todo lo de pacientes, pedidos, compras, seguimiento, obras sociales, usuarios y configuración. No ve períodos abiertos ni débitos.",
   coordinador_internacion: "Pacientes (ficha completa), agenda de todos los profesionales y control de evoluciones.",
   profesional_asistencial: "Su agenda, sus pacientes y su historia clínica.",
   deposito: "Catálogo, pedidos, seguimiento de equipos y compras.",
   transporte: "Pedidos y seguimiento de equipos.",
   direccion: "Dashboard ejecutivo y auditoría. No modifica datos.",
+  facturacion: "Pacientes, historias clínicas (para controlar), autorizaciones, agenda de Transporte y valores de obras sociales.",
 };
