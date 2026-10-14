@@ -23,6 +23,7 @@ const D: AppRole = "deposito";
 const T: AppRole = "transporte";
 const DIR: AppRole = "direccion";
 const F: AppRole = "facturacion";
+const AUD: AppRole = "auditor_externo";
 
 const INTER = "src/app/(dashboard)/internacion/actions.ts";
 const PAC = "src/app/(dashboard)/paciente/[id]/actions.ts";
@@ -76,6 +77,10 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Agenda", accion: "Ver productividad y cupos (solo lectura)", roles: [C, A, DIR], guard: { file: "src/app/(dashboard)/productividad/page.tsx", message: "ROLES_PRODUCTIVIDAD.includes(profile.role)" } },
   { modulo: "Pacientes", accion: "Ver el mapa de pacientes y rutas sugeridas (solo lectura)", roles: [C, A, DIR], guard: { file: "src/app/(dashboard)/mapa/page.tsx", message: "ROLES_MAPA.includes(profile.role)" } },
   { modulo: "Agenda", accion: "Armar las guardias del mes (por tramos o por día y cantidad) y asignar profesional", roles: [C, A], guard: { file: "src/app/(dashboard)/guardias/actions.ts", message: "Solo Coordinación y Administración arman las guardias." } },
+  { modulo: "Agenda", accion: "Abrir el turno de guardia en el domicilio", roles: [P], guard: { file: "src/app/(dashboard)/guardias/turno/actions.ts", message: "Solo el profesional asistencial abre su turno de guardia." } },
+  { modulo: "Agenda", accion: "Anotar los controles de la guardia (P/A, FC, FR, AX, diuresis, catarsis)", roles: [P], guard: { file: "src/app/(dashboard)/guardias/turno/actions.ts", message: "Solo el profesional asistencial registra los controles de su guardia." } },
+  { modulo: "Agenda", accion: "Cerrar el turno de guardia con firma y conformidad de la familia", roles: [P], guard: { file: "src/app/(dashboard)/guardias/turno/actions.ts", message: "Solo el profesional asistencial cierra su turno de guardia." } },
+  { modulo: "Agenda", accion: "Cargar la guardia de kinesiología de fin de semana", roles: [C, A], guard: { file: "src/app/(dashboard)/guardias/actions.ts", message: "Solo Coordinación y Administración arman las guardias." } },
   { modulo: "Agenda", accion: "Ver las guardias del mes (solo lectura)", roles: [C, A, DIR], guard: { file: "src/app/(dashboard)/guardias/page.tsx", message: "ROLES_VER as readonly string[]).includes(profile.role)" } },
   { modulo: "Pacientes", accion: "Elegir el coordinador de un paciente (cuidadores y guardias)", roles: [A], guard: { file: INTER, message: "Solo Administración elige el coordinador de un paciente." } },
   { modulo: "Historia clínica", accion: "Cargar evoluciones", roles: [P], guard: { file: EVO, message: "Solo el profesional asistencial carga evoluciones." } },
@@ -84,6 +89,7 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Catálogo", accion: "Cargar productos y unidades físicas", roles: [D], guard: { file: CAT, message: "Solo Depósito carga el catálogo." } },
   { modulo: "Catálogo", accion: "Gestionar proveedores del catálogo", roles: [D], guard: { file: CAT, message: "Solo Depósito gestiona proveedores del catálogo." } },
   { modulo: "Pedidos", accion: "Armar pedidos", roles: [D], guard: { file: PED, message: "Solo Depósito arma pedidos." } },
+  { modulo: "Pedidos", accion: "Armar la renovación de un pedido que se repite", roles: [D], guard: { file: PED, message: "Solo Depósito arma pedidos." } },
   { modulo: "Pedidos", accion: "Autorizar pedidos", roles: [A], guard: { file: PED, message: "Solo Administración autoriza pedidos." } },
   { modulo: "Pedidos", accion: "Rechazar pedidos", roles: [A], guard: { file: PED, message: "Solo Administración rechaza pedidos." } },
   { modulo: "Pedidos", accion: "Despachar pedidos", roles: [D], guard: { file: PED, message: "Solo Depósito despacha pedidos." } },
@@ -116,7 +122,7 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Presupuestos", accion: "Cargar los honorarios por prestación (base del costo)", roles: [DIR], guard: { file: HON, message: "Solo Dirección carga los honorarios." } },
   { modulo: "Presupuestos", accion: "Ver presupuestos de venta (solo lectura)", roles: [F, DIR], guard: { file: "src/app/(dashboard)/presupuestos/page.tsx", message: "ROLES_PRESUPUESTOS.includes(profile.role)" } },
   // Dirección (solo lectura)
-  { modulo: "Auditoría", accion: "Ver el registro de auditoría", roles: [DIR], guard: { file: "src/app/(dashboard)/auditoria/page.tsx", message: 'profile.role !== "direccion"' } },
+  { modulo: "Auditoría", accion: "Ver el registro de auditoría", roles: [DIR, AUD], guard: { file: "src/app/(dashboard)/auditoria/page.tsx", message: 'profile.role !== "direccion" && profile.role !== "auditor_externo"' } },
   // Usuarios y configuración
   { modulo: "Usuarios", accion: "Crear usuarios, asignar roles, definir el cupo contratado, editar el legajo y desactivar cuentas", roles: [A], guard: { file: USR, message: "Solo Administración gestiona los usuarios." } },
   { modulo: "Configuración", accion: "Editar parámetros, catálogos y alertas", roles: [A], guard: { file: CFG, message: "Solo Administración configura la plataforma." } },
@@ -131,4 +137,5 @@ export const SOLO_LECTURA: Record<AppRole, string> = {
   transporte: "Pedidos y seguimiento de equipos.",
   direccion: "Dashboard ejecutivo y auditoría. No modifica datos.",
   facturacion: "Pacientes, historias clínicas (para controlar), autorizaciones, agenda de Transporte y valores de obras sociales.",
+  auditor_externo: "Historias clínicas y registro de auditoría. No modifica nada ni carga datos.",
 };

@@ -55,7 +55,7 @@ export default async function AuditoriaPage({
   searchParams: Promise<{ entidad?: string; accion?: string; usuario?: string; desde?: string; hasta?: string }>;
 }) {
   const { profile } = await requireProfile();
-  if (profile.role !== "direccion") redirect("/inicio");
+  if (profile.role !== "direccion" && profile.role !== "auditor_externo") redirect("/inicio");
   const { entidad, accion, usuario, desde, hasta } = await searchParams;
   const supabase = await createClient();
 

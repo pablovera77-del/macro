@@ -129,7 +129,14 @@ profesional_asistencial: [
 { href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
 { href: "/agenda", label: "Mi agenda", icon: "agenda", description: "Visitas asignadas" },
 { href: "/evoluciones", label: "Historia clínica", icon: "evoluciones", description: "Evoluciones por disciplina" },
+{ href: "/guardias/turno", label: "Mi guardia", icon: "agenda", description: "Turno, controles y firmas" },
 { href: "/internacion", label: "Mis pacientes", icon: "internacion", description: "Informar egreso" },
+{ href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
+],
+auditor_externo: [
+{ href: "/inicio", label: "Inicio", icon: "inicio", description: "Qué podés hacer acá" },
+{ href: "/evoluciones", label: "Historias clínicas", icon: "evoluciones", description: "Consulta de solo lectura" },
+{ href: "/auditoria", label: "Auditoría", icon: "auditoria", description: "Quién cambió qué" },
 { href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
 };
@@ -142,4 +149,5 @@ direccion: { bg: "bg-emerald-500/15", text: "text-emerald-300", ring: "ring-emer
 coordinador_internacion: { bg: "bg-rose-500/15", text: "text-rose-300", ring: "ring-rose-400/30", dot: "bg-rose-400" },
 facturacion: { bg: "bg-sky-500/15", text: "text-sky-300", ring: "ring-sky-400/30", dot: "bg-sky-400" },
 profesional_asistencial: { bg: "bg-teal-500/15", text: "text-teal-300", ring: "ring-teal-400/30", dot: "bg-teal-400" },
+auditor_externo: { bg: "bg-slate-500/15", text: "text-slate-300", ring: "ring-slate-400/30", dot: "bg-slate-400" },
 };

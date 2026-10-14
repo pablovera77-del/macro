@@ -5,6 +5,7 @@ import { useActionState, useRef, useState, useTransition } from "react";
 import { createAdmissionAction, checkDniAction, type AdmissionState, type DniCheck, type PacienteSimilar } from "@/app/(dashboard)/internacion/actions";
 import { DISCIPLINAS_PLAN, DIAS_CORTOS, hoyAR } from "@/lib/plan";
 import { SPECIALTY_LABELS } from "@/lib/roles";
+import { NOVA5_DIMENSIONES, riesgoNova5 } from "@/lib/hc";
 import { edadEnAnios, fechaCorta, TIPOS_INTERNACION, TIPOS_POR_UNIDAD, UNIDADES_TRABAJO, SIN_EMERGENCIAS } from "@/lib/paciente";
 import { PARTICULAR } from "@/lib/legajo";
 import DniScanner from "@/components/DniScanner";
@@ -55,9 +56,10 @@ function Field({
  * entendía cómo empezar. Todos los campos quedan montados en el DOM (solo se
  * ocultan los de otros pasos) para que se envíen juntos al final.
  */
-export default function AdmissionWizard({ obrasSociales, profesionales = [], defaultOpen = false }: { obrasSociales: ObraSocial[]; profesionales?: Profesional[]; defaultOpen?: boolean }) {
+export default function AdmissionWizard({ obrasSociales, profesionales = [], coordinadores = [], defaultOpen = false }: { obrasSociales: ObraSocial[]; profesionales?: Profesional[]; coordinadores?: Profesional[]; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   const [step, setStep] = useState(1);
+  const [upp, setUpp] = useState<Record<string, string>>({});
   // Legajo encontrado por DNI (con su historial de internaciones) y modo «nueva internación».
   const [dniInfo, setDniInfo] = useState<DniCheck | null>(null);
   const [reingreso, setReingreso] = useState<{ id: string; nombre: string; nro: number | null } | null>(null);
@@ -482,6 +484,31 @@ export default function AdmissionWizard({ obrasSociales, profesionales = [], def
           <Field label="Diagnóstico principal" required>
             <input name="diagnostico_principal" required autoComplete="off" placeholder="Motivo de la internación domiciliaria" className={inputCls} />
           </Field>
+          <Field label="Coordinador/a del paciente" required={coordinadores.length > 0} hint="Es quien arma la agenda de visitas y las guardias de este paciente. Sale en la firma de los PDF.">
+            <select name="coordinador_id" required={coordinadores.length > 0} defaultValue="" className={inputCls}>
+              <option value="">{coordinadores.length > 0 ? "Elegir coordinador…" : "No hay coordinadores cargados"}</option>
+              {coordinadores.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+            </select>
+          </Field>
+          <fieldset className="rounded-xl border border-slate-200 p-3">
+            <legend className="text-xs font-medium text-slate-700 px-1">Riesgo de úlceras por presión (Nova 5) <span className="text-red-500">*</span></legend>
+            <p className="text-[11px] text-slate-400 mb-2">Lo carga Administración al ingreso, con lo que informa la derivación o la familia. Después lo actualiza Enfermería en cada evolución.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {NOVA5_DIMENSIONES.map((dim) => (
+                <label key={dim.key} className="block text-[11px] text-slate-500">{dim.label}
+                  <select name={`upp__${dim.key}`} required value={upp[dim.key] ?? ""} onChange={(e) => setUpp((u) => ({ ...u, [dim.key]: e.target.value }))} className={`${inputCls} mt-0.5 py-2`}>
+                    <option value="">Elegir…</option>
+                    {dim.niveles.map((n, i) => <option key={i} value={i}>{i} · {n}</option>)}
+                  </select>
+                </label>
+              ))}
+            </div>
+            {NOVA5_DIMENSIONES.every((dim) => upp[dim.key] !== undefined && upp[dim.key] !== "") && (() => {
+              const total = NOVA5_DIMENSIONES.reduce((a, dim) => a + Number(upp[dim.key]), 0);
+              const riesgo = riesgoNova5(total);
+              return <p className="mt-2 text-xs text-slate-700">Total {total}: <strong>{riesgo ? `riesgo ${riesgo}` : "sin riesgo"}</strong> <span className="text-slate-400">(1–4 bajo · 5–8 medio · 9–15 alto)</span></p>;
+            })()}
+          </fieldset>
           <div>
             <p className="text-xs font-medium text-slate-700 mb-1">Plan de tratamiento y equipo asistencial</p>
             <p className="text-[11px] text-slate-400 mb-2">Para cada disciplina que corresponda, indicá cuántas visitas necesita y qué profesional la atiende. Las que dejes vacías quedan fuera del plan; se pueden completar después en la ficha.</p>

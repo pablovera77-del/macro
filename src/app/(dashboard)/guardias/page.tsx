@@ -7,10 +7,11 @@ import StatusBadge from "@/components/StatusBadge";
 import ConfirmButton from "@/components/ConfirmButton";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import ProgramarGuardiasForm from "@/components/guardias/ProgramarGuardiasForm";
+import GuardiaKineForm from "@/components/guardias/GuardiaKineForm";
 import { IconAlert, IconClock } from "@/components/icons";
 import { hoyAR, ymdAR, TZ } from "@/lib/plan";
 import { ROLES_GUARDIAS, HORAS_TURNO_ABIERTO, turnosOlvidados, limitesDelMes, mesValido, mesVecino } from "@/lib/guardias";
-import { asignarProfesionalGuardiaAction, quitarGuardiaAction } from "./actions";
+import { asignarProfesionalGuardiaAction, quitarGuardiaAction, quitarGuardiaKineAction } from "./actions";
 
 const ROLES_VER = [...ROLES_GUARDIAS, "direccion"] as const;
 const campo = "rounded-lg border border-slate-300 px-2 py-1.5 text-xs";
@@ -32,12 +33,13 @@ export default async function GuardiasPage({ searchParams }: { searchParams: Pro
   const mes = mesValido(mesParam) ? (mesParam as string) : hoy.slice(0, 7);
   const { desde, hasta } = limitesDelMes(mes);
 
-  const [{ data: guardias }, { data: turnos }, { data: abiertos }, { data: pacientes }, { data: profes }] = await Promise.all([
+  const [{ data: guardias }, { data: turnos }, { data: abiertos }, { data: pacientes }, { data: profes }, { data: guardiasKine }] = await Promise.all([
     supabase.from("guardias_programadas").select("id, patient_id, profesional_id, fecha, desde, hasta, nota").gte("fecha", desde).lte("fecha", hasta).order("fecha").order("desde"),
     supabase.from("turno_guardia").select("patient_id, profesional_id, hora_ingreso").gte("hora_ingreso", `${desde}T00:00:00-03:00`).lt("hora_ingreso", `${hasta}T23:59:59-03:00`),
     supabase.from("turno_guardia").select("id, patient_id, profesional_id, hora_ingreso").eq("estado", "abierto").order("hora_ingreso"),
     supabase.from("patients").select("id, nombre_completo").eq("estado", "activo").order("nombre_completo"),
     supabase.from("profiles").select("id, full_name").eq("role", "profesional_asistencial").eq("active", true).order("full_name"),
+    supabase.from("guardias_kine_fin_de_semana").select("id, sabado, profesional_id, nota").gte("sabado", desde).lte("sabado", hasta).order("sabado"),
   ]);
   const pac = new Map((pacientes ?? []).map((p) => [p.id, p.nombre_completo]));
   const nombreProf = new Map((profes ?? []).map((p) => [p.id, p.full_name]));
@@ -100,6 +102,35 @@ export default async function GuardiasPage({ searchParams }: { searchParams: Pro
             />
           </div>
         </ActionDisclosure>
+      )}
+
+      {puedeEditar && (
+        <ActionDisclosure label="+ Guardia de kinesiología de fin de semana" tone="default">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5">
+            <GuardiaKineForm profesionales={(profes ?? []).map((p) => ({ id: p.id, nombre: p.full_name }))} hoy={hoy} />
+          </div>
+        </ActionDisclosure>
+      )}
+
+      {(guardiasKine ?? []).length > 0 && (
+        <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <h3 className="px-4 py-2 text-xs font-semibold uppercase tracking-wide bg-slate-50 text-slate-500">Guardia de kinesiología de fin de semana</h3>
+          <ul className="divide-y divide-slate-100">
+            {(guardiasKine ?? []).map((g) => (
+              <li key={g.id} className="px-4 py-2.5 flex flex-wrap items-center gap-3 text-sm">
+                <span className="text-slate-900 font-medium capitalize">Sábado {fechaLarga(g.sabado)} y domingo</span>
+                <span className="text-slate-600">{g.profesional_id ? nombreProf.get(g.profesional_id) ?? "Profesional" : "Sin profesional"}</span>
+                {g.nota && <span className="text-xs text-slate-400">{g.nota}</span>}
+                {puedeEditar && (
+                  <form action={quitarGuardiaKineAction} className="ml-auto">
+                    <input type="hidden" name="id" value={g.id} />
+                    <ConfirmButton className="text-xs text-slate-500 hover:text-red-700">Quitar</ConfirmButton>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {porDia.size === 0 ? (

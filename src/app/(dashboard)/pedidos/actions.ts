@@ -12,6 +12,8 @@ import type { Enums, TablesUpdate } from "@/types/database";
 
 type Sb = Awaited<ReturnType<typeof createClient>>;
 
+const FRECUENCIAS_PEDIDO = ["a_demanda", "semanal", "quincenal", "mensualizado"] as const;
+
 const OK: ActionState = { error: null };
 const fail = (error: string): ActionState => ({ error });
 
@@ -40,17 +42,29 @@ export async function addOrderItemAction(_prev: ActionState, formData: FormData)
   const destino = String(formData.get("destino") || "paciente");
   const patient_id = destino === "profesional" ? null : String(formData.get("patient_id") || "") || null;
   const profesional_id = destino === "profesional" ? String(formData.get("profesional_id") || "") || null : null;
-  const product_id = String(formData.get("product_id") || "");
-  const equipment_asset_id = String(formData.get("equipment_asset_id") || "") || null;
-  const cantidad = Math.floor(Number(formData.get("cantidad") || 1));
   const canal_entrega = String(formData.get("canal_entrega") || "domicilio") as Enums<"order_delivery_channel">;
   const prioridad = String(formData.get("prioridad") || "normal") as Enums<"order_priority">;
   const motivo_urgencia = String(formData.get("motivo_urgencia") || "").trim() || null;
   const direccion_entrega = String(formData.get("direccion_entrega") || "").trim() || null;
+  const frecuenciaRaw = String(formData.get("frecuencia_renovacion") || "a_demanda");
+  const frecuencia_renovacion = (FRECUENCIAS_PEDIDO as readonly string[]).includes(frecuenciaRaw)
+    ? (frecuenciaRaw as Enums<"replenishment_frequency">)
+    : "a_demanda";
+
+  // Varias líneas por pedido (DF-C5, reunión 08/10): producto + cantidad + unidad física opcional, alineados por posición.
+  const productIds = formData.getAll("product_id").map(String);
+  const cantidades = formData.getAll("cantidad").map((c) => Math.floor(Number(c || 1)));
+  const unidadesFisicas = formData.getAll("equipment_asset_id").map(String);
+  const lineas: { product_id: string; cantidad: number; equipment_asset_id: string | null }[] = [];
+  for (let i = 0; i < productIds.length; i++) {
+    if (!productIds[i]) continue;
+    const cantidad = cantidades[i];
+    if (!Number.isFinite(cantidad) || cantidad < 1) return fail(`La cantidad de la línea ${i + 1} tiene que ser 1 o más.`);
+    lineas.push({ product_id: productIds[i], cantidad, equipment_asset_id: unidadesFisicas[i] || null });
+  }
 
   if (!patient_id && !profesional_id) return fail("Elegí para quién es el pedido (un paciente o un profesional).");
-  if (!product_id) return fail("Elegí el producto que querés agregar.");
-  if (!Number.isFinite(cantidad) || cantidad < 1) return fail("La cantidad tiene que ser 1 o más.");
+  if (lineas.length === 0) return fail("Elegí al menos un producto para el pedido.");
 
   let q = supabase.from("orders").select("id").eq("estado", "borrador").eq("origen", "deposito");
   q = patient_id ? q.eq("patient_id", patient_id) : q.eq("profesional_id", profesional_id!);
@@ -59,7 +73,7 @@ export async function addOrderItemAction(_prev: ActionState, formData: FormData)
   let orderId = existing?.id;
 
   if (!orderId) {
-    // Canal y prioridad solo se piden al crear (primer ítem); si ya hay borrador se respeta lo elegido.
+    // Canal, prioridad y frecuencia solo se piden al crear; si ya hay borrador se respeta lo elegido.
     if (prioridad === "urgente" && !motivo_urgencia) return fail("Si el pedido es urgente, escribí el motivo.");
     if (profesional_id && canal_entrega === "domicilio" && !direccion_entrega) {
       return fail("Para entregar a un profesional a domicilio, indicá la dirección.");
@@ -76,6 +90,7 @@ export async function addOrderItemAction(_prev: ActionState, formData: FormData)
         motivo_urgencia: prioridad === "urgente" ? motivo_urgencia : null,
         direccion_entrega: profesional_id ? direccion_entrega : null,
         origen: "deposito",
+        frecuencia_renovacion,
       })
       .select("id")
       .single();
@@ -85,17 +100,72 @@ export async function addOrderItemAction(_prev: ActionState, formData: FormData)
 
   const { error: itemError } = await supabase
     .from("order_items")
-    .insert({ order_id: orderId, product_id, cantidad, equipment_asset_id });
-  if (itemError) return fail(`No se pudo agregar el ítem: ${itemError.message}`);
+    .insert(lineas.map((l) => ({ order_id: orderId, ...l })));
+  if (itemError) return fail(`No se pudieron agregar los productos: ${itemError.message}`);
 
   const autorizado = await tryAutoAuthorize(supabase, orderId, patient_id);
+  const cuantos = lineas.length === 1 ? "Producto agregado" : `${lineas.length} productos agregados`;
 
   refrescar();
   await flash(
     autorizado
-      ? "Ítem agregado. Todo está cubierto por la autorización del paciente: el pedido quedó autorizado. Siguiente paso: marcalo como preparado."
-      : "Ítem agregado al pedido. Administración tiene que autorizarlo antes de prepararlo."
+      ? `${cuantos}. Todo está cubierto por la autorización del paciente: el pedido quedó autorizado. Siguiente paso: marcalo como preparado.`
+      : `${cuantos} al pedido. Administración tiene que autorizarlo antes de prepararlo.`
   );
+  return OK;
+}
+
+// Armar la renovación de un pedido recurrente (DF-C5): copia los productos del pedido ya entregado en un
+// borrador nuevo de Depósito, que sigue el circuito normal (autorización, preparación, entrega).
+export async function renovarPedidoAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { profile } = await requireProfile();
+  if (profile.role !== "deposito") return fail("Solo Depósito arma pedidos.");
+  const supabase = await createClient();
+  const origenId = String(formData.get("order_id") || "");
+  if (!origenId) return fail("Falta el pedido a renovar.");
+
+  const { data: origen } = await supabase
+    .from("orders")
+    .select("id, patient_id, profesional_id, canal_entrega, direccion_entrega, frecuencia_renovacion, order_items(product_id, cantidad, equipment_asset_id, estado_item)")
+    .eq("id", origenId)
+    .maybeSingle();
+  if (!origen) return fail("No encontramos el pedido a renovar.");
+
+  let ya = supabase.from("orders").select("id").eq("estado", "borrador").eq("origen", "deposito");
+  ya = origen.patient_id ? ya.eq("patient_id", origen.patient_id) : ya.eq("profesional_id", origen.profesional_id!);
+  const { data: borrador } = await ya.limit(1).maybeSingle();
+  if (borrador) return fail("Ya hay un pedido en borrador para este destinatario: terminalo primero (o agregale los productos desde «Nuevo pedido»).");
+
+  const items = (origen.order_items ?? []).filter((i) => i.estado_item !== "rechazado");
+  if (items.length === 0) return fail("El pedido original no tiene productos para renovar.");
+
+  const { data: nuevo, error } = await supabase
+    .from("orders")
+    .insert({
+      patient_id: origen.patient_id,
+      profesional_id: origen.profesional_id,
+      creado_por: profile.id,
+      estado: "borrador",
+      canal_entrega: origen.canal_entrega,
+      direccion_entrega: origen.direccion_entrega,
+      origen: "deposito",
+      frecuencia_renovacion: origen.frecuencia_renovacion,
+      renovado_de: origen.id,
+    })
+    .select("id")
+    .single();
+  if (error) return fail(`No se pudo armar la renovación: ${error.message}`);
+  const { error: e2 } = await supabase
+    .from("order_items")
+    // Las unidades serializadas (equipos) no se repiten: Depósito elige cuál entrega esta vez.
+    .insert(items.map((i) => ({ order_id: nuevo.id, product_id: i.product_id, cantidad: i.cantidad })));
+  if (e2) {
+    await supabase.from("orders").update({ estado: "cancelado", motivo_rechazo: "Renovación incompleta." }).eq("id", nuevo.id);
+    return fail(`No se pudieron copiar los productos: ${e2.message}`);
+  }
+  const autorizado = await tryAutoAuthorize(supabase, nuevo.id, origen.patient_id);
+  refrescar();
+  await flash(autorizado ? "Renovación armada y autorizada (todo está cubierto por la autorización del paciente)." : "Renovación armada. Administración tiene que autorizarla antes de prepararla.");
   return OK;
 }
 

@@ -8,7 +8,7 @@ import SearchableSelect, { type SearchableOption } from "@/components/Searchable
 import type { ActionState } from "@/lib/stock-types";
 
 // Depósito arma un pedido: para un paciente o para un profesional asistencial (ej. una enfermera
-// que necesita insumos para su recorrido).
+// que necesita insumos para su recorrido). Puede llevar varias líneas y repetirse (semanal, quincenal, mensual).
 export default function NuevoPedidoDeposito({
   action,
   pacientes,
@@ -24,6 +24,8 @@ export default function NuevoPedidoDeposito({
 }) {
   const [destino, setDestino] = useState<"paciente" | "profesional">("paciente");
   const [canal, setCanal] = useState("domicilio");
+  const [lineas, setLineas] = useState<number[]>([1]);
+  const [next, setNext] = useState(2);
   return (
     <ActionForm action={action} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
       <div className="sm:col-span-4 flex gap-2 text-sm">
@@ -39,14 +41,45 @@ export default function NuevoPedidoDeposito({
       ) : (
         <SearchableSelect name="profesional_id" required placeholder="Profesional..." className="sm:col-span-4" options={profesionales} />
       )}
-      <SearchableSelect name="product_id" required placeholder="Producto..." className="sm:col-span-3" options={productos} />
-      <input name="cantidad" type="number" min="1" defaultValue="1" aria-label="Cantidad" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
-      <select name="equipment_asset_id" aria-label="Unidad física" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm sm:col-span-4 bg-white">
-        <option value="">(sin unidad serializada)</option>
-        {unidades.map((u) => (
-          <option key={u.id} value={u.id}>{u.label}</option>
-        ))}
-      </select>
+      <p className="sm:col-span-4 text-xs text-slate-500 -mb-1">¿Qué lleva? Podés sumar todos los productos del pedido.</p>
+      {lineas.map((k) => (
+        <div key={k} className="sm:col-span-4 grid grid-cols-1 sm:grid-cols-[1fr_5rem_14rem_auto] gap-2 items-start">
+          <SearchableSelect name="product_id" required placeholder="Producto..." options={productos} />
+          <input name="cantidad" type="number" min="1" defaultValue="1" aria-label="Cantidad" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm" />
+          <select name="equipment_asset_id" aria-label="Unidad física" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white">
+            <option value="">(sin unidad serializada)</option>
+            {unidades.map((u) => (
+              <option key={u.id} value={u.id}>{u.label}</option>
+            ))}
+          </select>
+          {lineas.length > 1 ? (
+            <button type="button" onClick={() => setLineas((l) => l.filter((x) => x !== k))} aria-label="Quitar esta línea" className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-500 hover:bg-slate-50">
+              ×
+            </button>
+          ) : (
+            <span />
+          )}
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => {
+          setLineas((l) => [...l, next]);
+          setNext((n) => n + 1);
+        }}
+        className="sm:col-span-4 rounded-xl border border-dashed border-slate-300 text-slate-600 text-sm px-3 py-2.5 hover:bg-slate-50"
+      >
+        + Sumar otro producto
+      </button>
+      <label className="sm:col-span-4 text-xs text-slate-600">
+        ¿Se repite?
+        <select name="frecuencia_renovacion" defaultValue="a_demanda" className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white">
+          <option value="a_demanda">No, es un pedido único</option>
+          <option value="semanal">Se renueva cada semana</option>
+          <option value="quincenal">Se renueva cada quincena</option>
+          <option value="mensualizado">Se renueva cada mes</option>
+        </select>
+      </label>
       <select
         name="canal_entrega"
         value={canal}

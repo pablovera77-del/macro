@@ -310,7 +310,7 @@ export default async function InternacionPage({
         </section>
       )}
 
-      {canAdmit && <AdmissionWizard obrasSociales={(obrasSociales ?? []).map((o) => ({ id: o.id, nombre: o.nombre }))} profesionales={profesionalesLivianos} defaultOpen={nuevo === "1"} />}
+      {canAdmit && <AdmissionWizard obrasSociales={(obrasSociales ?? []).map((o) => ({ id: o.id, nombre: o.nombre }))} profesionales={profesionalesLivianos} coordinadores={(coordinadores ?? []).map((c) => ({ id: c.id, full_name: c.full_name }))} defaultOpen={nuevo === "1"} />}
 
       {isCoord && misNovedades.length > 0 && (
         <section className="bg-white border border-slate-200 rounded-2xl p-5 animate-fade-slide-up card-hover">

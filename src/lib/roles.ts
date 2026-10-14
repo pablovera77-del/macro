@@ -15,6 +15,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   facturacion: "Facturación",
   coordinador_internacion: "Coordinador de Internación",
   profesional_asistencial: "Profesional Asistencial",
+  auditor_externo: "Auditor externo",
 };
 
 // Disciplinas clínicas (DF-C2 §5)

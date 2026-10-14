@@ -9,6 +9,7 @@ export const ROLES_ASIGNABLES: AppRole[] = [
   "transporte",
   "direccion",
   "facturacion",
+  "auditor_externo",
 ];
 
 export const ROL_DESCRIPCION: Record<AppRole, string> = {
@@ -19,6 +20,7 @@ export const ROL_DESCRIPCION: Record<AppRole, string> = {
   transporte: "Entregas y retiros",
   direccion: "Solo lectura: tableros y auditoría",
   facturacion: "Control, importes, cierre mensual, valores y presupuestos",
+  auditor_externo: "Solo lectura: historias clínicas y auditoría, para auditores de obras sociales o de la Provincia (sin costo)",
 };
 
 /** Contraseña provisoria legible (sin caracteres que se confunden). El usuario la cambia con «Olvidé mi contraseña». */

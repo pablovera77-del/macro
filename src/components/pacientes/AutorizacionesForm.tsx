@@ -108,7 +108,7 @@ export default function AutorizacionesForm({
                 {DIAS.map(([v, l]) => (
                   <label key={v} className="flex items-center gap-0.5"><input type="checkbox" name={`r${f.key}_dias`} value={v} defaultChecked={f.v.dias.includes(Number(v))} /> {l}</label>
                 ))}
-                <span className="text-slate-400">(opcional: con los días marcados Facturación controla cada visita)</span>
+                <span className="text-slate-400">(opcional: si no marcás días, Facturación controla que se cumpla la cantidad en la semana)</span>
               </fieldset>
             )}
           </li>

@@ -145,7 +145,7 @@ export default function PrevalidacionPanel({
                 </div>
                 {v.frecuencia_tipo && (
                   <div className="text-xs text-slate-400 mt-0.5">
-                    Frecuencia {v.frecuencia_tipo === "diaria" ? "diaria" : "semanal"}: {describirDias(v.dias_semana)}
+                    {v.frecuencia_tipo === "por_semana" ? "Frecuencia semanal sin día fijo" : `Frecuencia ${v.frecuencia_tipo === "diaria" ? "diaria" : "semanal"}: ${describirDias(v.dias_semana)}`}
                     {(v.veces_por_dia ?? 1) > 1 ? `, ${v.veces_por_dia} veces por día` : ""}
                   </div>
                 )}

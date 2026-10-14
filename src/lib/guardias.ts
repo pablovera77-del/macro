@@ -46,10 +46,27 @@ export function mesVecino(mes: string, delta: number): string {
   return new Date(Date.UTC(y, m - 1 + delta, 1)).toISOString().slice(0, 7);
 }
 
-/** Un turno abierto hace más de este tiempo se marca como olvidado (a confirmar con Vanina). */
-export const HORAS_TURNO_ABIERTO = 14;
+/** Un turno abierto hace más de este tiempo se marca como olvidado (Vanina, DF-C2 pregunta 1: 12 horas). */
+export const HORAS_TURNO_ABIERTO = 12;
 
 /** Turnos abiertos hace más de HORAS_TURNO_ABIERTO horas (el profesional se olvidó de cerrar). */
 export function turnosOlvidados<T extends { hora_ingreso: string }>(abiertos: T[], ahora = new Date()): T[] {
   return abiertos.filter((t) => ahora.getTime() - new Date(t.hora_ingreso).getTime() > HORAS_TURNO_ABIERTO * 3600000);
 }
+
+// Guardia de kinesiología de fin de semana (DF-C2, reunión 08/10): la kinesiología respiratoria tiene guardia los
+// sábados y domingos, y quien la cubre ve a TODOS los pacientes de kinesiología «de lunes a lunes»: desde el lunes
+// anterior al sábado hasta el lunes siguiente al domingo (a confirmar con Vanina si el lunes de cierre entra o no).
+const sumar = (ymd: string, n: number) => {
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+};
+export const ventanaGuardiaKine = (sabado: string) => ({ desde: sumar(sabado, -5), hasta: sumar(sabado, 2) });
+
+/** Sábado de ese fin de semana (si cae sábado o domingo) o el próximo sábado. */
+export function sabadoDesde(ymd: string): string {
+  const dow = new Date(`${ymd}T12:00:00Z`).getUTCDay(); // 0 = domingo
+  if (dow === 0) return sumar(ymd, -1);
+  return sumar(ymd, (6 - dow + 7) % 7);
+}
+export const sabadoSiguiente = (sabado: string, n: number) => sumar(sabado, 7 * n);

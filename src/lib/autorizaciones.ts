@@ -40,8 +40,9 @@ export type Renglon = {
   frecuencia_unidad: string;
   frecuencia_periodo: string;
   dias_semana: number[];
-  // Lo que usan los controles de Facturación (DF-C4 §4): solo se completan cuando la frecuencia se puede controlar con evoluciones.
-  frecuencia_tipo: "diaria" | "semanal" | null;
+  // Lo que usan los controles de Facturación (DF-C4 §4): solo se completan cuando la frecuencia se puede controlar con evoluciones
+  // (por día, por semana con días fijos, o por semana sin día: el control es por período, no por día).
+  frecuencia_tipo: "diaria" | "semanal" | "por_semana" | null;
   veces_por_dia: number | null;
   cantidad_autorizada: number;
 };
@@ -113,6 +114,9 @@ export function leerRenglones(fd: FormData, desde: string, hasta: string): { err
         if (cantidad % dias.length !== 0) return { error: `Renglón ${num}: marcaste ${dias.length} día(s) pero la frecuencia es ${cantidad} por semana; no coinciden. Marcá ${cantidad} día(s) o un divisor (por ejemplo 6 por semana en 3 días = 2 por día).` };
         frecuencia_tipo = "semanal";
         veces_por_dia = cantidad / dias.length;
+      } else if (periodo === "semana") {
+        // «Semana sin día» (DF-C2 pregunta 3): no hay días fijos; se controla que se cumpla la cantidad en la semana.
+        frecuencia_tipo = "por_semana";
       }
     }
     renglones.push({

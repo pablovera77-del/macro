@@ -9,6 +9,7 @@ import { ROLES_ASIGNABLES, passwordProvisoria } from "@/lib/usuarios";
 import { esCupo } from "@/lib/cupos";
 import type { AppRole } from "@/lib/roles";
 import type { Enums } from "@/types/database";
+import { TIPO_PROFESIONAL_POR_CODIGO, TIPOS_DOCUMENTO_LEGAJO, TIPOS_ARCHIVO_LEGAJO, MAX_BYTES_DOCUMENTO, normalizarCuil } from "@/lib/legajo-personal";
 
 export type UsuarioResult = { error?: string; creado?: { email: string; password: string; nombre: string } } | null;
 const fail = (error: string): UsuarioResult => ({ error });
@@ -118,12 +119,21 @@ export async function guardarLegajoAction(_prev: UsuarioResult, formData: FormDa
   const nombre = String(formData.get("full_name") || "").trim();
   if (!id) return fail("Falta la persona.");
   if (!nombre) return fail("Falta el nombre y apellido.");
-  const esp = String(formData.get("especialidad") || "") || null;
+  let esp = String(formData.get("especialidad") || "") || null;
   const email = String(formData.get("email_contacto") || "").trim();
   if (email && !emailValido(email)) return fail("El email de contacto no es válido.");
+  const cuilTxt = String(formData.get("cuil") || "").trim();
+  const cuil = cuilTxt ? normalizarCuil(cuilTxt) : "";
+  if (cuil === null) return fail("El CUIL tiene que tener 11 números (por ejemplo 20-12345678-9).");
+  const tipo = String(formData.get("tipo_profesional") || "");
+  if (tipo && !TIPO_PROFESIONAL_POR_CODIGO[tipo]) return fail("Elegí el tipo de profesional de la lista.");
+  const tipoOtro = String(formData.get("tipo_profesional_otro") || "").trim();
+  if (tipo === "otros" && !tipoOtro) return fail("Si elegís «Otros», escribí qué práctica realiza.");
+  // La disciplina clínica se completa sola desde el tipo de profesional si no se eligió una.
+  if (tipo && !esp) esp = TIPO_PROFESIONAL_POR_CODIGO[tipo].esp;
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("admin_update_legajo", {
+  const { error } = await supabase.rpc("admin_update_legajo_v2", {
     p_id: id,
     p_full_name: nombre,
     p_especialidad: (esp as Enums<"specialty"> | null) as Enums<"specialty">,
@@ -133,10 +143,89 @@ export async function guardarLegajoAction(_prev: UsuarioResult, formData: FormDa
     p_email_contacto: email,
     p_fecha_ingreso: (String(formData.get("fecha_ingreso") || "") || null) as string,
     p_fecha_baja: (String(formData.get("fecha_baja") || "") || null) as string,
+    p_fecha_nacimiento: (String(formData.get("fecha_nacimiento") || "") || null) as string,
+    p_domicilio: String(formData.get("domicilio") || ""),
+    p_cuil: cuil ?? "",
+    p_tipo_profesional: tipo,
+    p_tipo_profesional_otro: tipo === "otros" ? tipoOtro : "",
   });
   if (error) return fail(error.message);
   revalidatePath("/usuarios");
   await flash("Legajo guardado.");
+  return null;
+}
+
+// Documentación adjunta al legajo (DNI, título, matrícula, vacunación, mala praxis). Va a un bucket privado.
+export async function subirDocumentoLegajoAction(_prev: UsuarioResult, formData: FormData): Promise<UsuarioResult> {
+  const yo = await soloAdmin();
+  if (!yo) return fail(SOLO_ADMIN);
+  const profile_id = String(formData.get("id") || "");
+  const tipo = String(formData.get("tipo") || "");
+  const vence = String(formData.get("vence") || "") || null;
+  const archivo = formData.get("archivo");
+  if (!profile_id) return fail("Falta la persona.");
+  if (!TIPOS_DOCUMENTO_LEGAJO[tipo]) return fail("Elegí qué documento es.");
+  if (!(archivo instanceof File) || archivo.size === 0) return fail("Elegí el archivo a subir.");
+  const ext = TIPOS_ARCHIVO_LEGAJO[archivo.type];
+  if (!ext) return fail("El archivo tiene que ser un PDF o una imagen (JPG, PNG).");
+  if (archivo.size > MAX_BYTES_DOCUMENTO) return fail("El archivo pesa más de 5 MB. Comprimilo o sacale una foto con menos calidad.");
+
+  const supabase = await createClient();
+  const ruta = `${profile_id}/${crypto.randomUUID()}.${ext}`;
+  const { error: eUp } = await supabase.storage.from("legajos").upload(ruta, Buffer.from(await archivo.arrayBuffer()), { contentType: archivo.type, upsert: false });
+  if (eUp) return fail(`No se pudo subir el archivo (${eUp.message}). Probá de nuevo.`);
+  const { error } = await supabase.from("profile_documents").insert({
+    profile_id,
+    tipo,
+    archivo: ruta,
+    nombre_original: archivo.name.slice(0, 200),
+    vence,
+    subido_por: yo.id,
+  });
+  if (error) {
+    await supabase.storage.from("legajos").remove([ruta]);
+    return fail("No se pudo registrar el documento. Probá de nuevo.");
+  }
+  revalidatePath("/usuarios");
+  await flash("Documento agregado al legajo.");
+  return null;
+}
+
+export async function eliminarDocumentoLegajoAction(formData: FormData) {
+  const yo = await soloAdmin();
+  if (!yo) throw new Error(SOLO_ADMIN);
+  const id = String(formData.get("id") || "");
+  if (!id) throw new Error("Falta el documento.");
+  const supabase = await createClient();
+  const { data: doc } = await supabase.from("profile_documents").select("archivo").eq("id", id).maybeSingle();
+  if (!doc) throw new Error("No encontramos el documento.");
+  const { error } = await supabase.from("profile_documents").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  await supabase.storage.from("legajos").remove([doc.archivo]);
+  revalidatePath("/usuarios");
+  await flash("Documento quitado del legajo.");
+}
+
+// Firma y sello digital de la persona (hoy se usa en el pie de los PDF de la coordinación).
+export async function guardarFirmaSelloAction(_prev: UsuarioResult, formData: FormData): Promise<UsuarioResult> {
+  const yo = await soloAdmin();
+  if (!yo) return fail(SOLO_ADMIN);
+  const id = String(formData.get("id") || "");
+  const quitar = String(formData.get("quitar") || "") === "1";
+  const archivo = formData.get("archivo");
+  if (!id) return fail("Falta la persona.");
+  let dataUrl: string | null = null;
+  if (!quitar) {
+    if (!(archivo instanceof File) || archivo.size === 0) return fail("Elegí la imagen de la firma y el sello.");
+    if (!["image/png", "image/jpeg", "image/webp"].includes(archivo.type)) return fail("La imagen tiene que ser PNG o JPG.");
+    if (archivo.size > 200 * 1024) return fail("La imagen pesa más de 200 KB. Recortala o reducila.");
+    dataUrl = `data:${archivo.type};base64,${Buffer.from(await archivo.arrayBuffer()).toString("base64")}`;
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_firma_sello", { p_id: id, p_firma: dataUrl as string });
+  if (error) return fail(error.message);
+  revalidatePath("/usuarios");
+  await flash(quitar ? "Firma y sello quitados." : "Firma y sello guardados.");
   return null;
 }
 

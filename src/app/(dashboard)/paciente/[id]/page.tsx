@@ -665,7 +665,14 @@ export default async function FichaPacientePage({
                 );
               })}
             </ul>
-            <h3 className="text-sm font-semibold text-slate-900 mt-6 mb-2">Consentimientos</h3>
+            <div className="flex items-center justify-between gap-3 flex-wrap mt-6 mb-2">
+              <h3 className="text-sm font-semibold text-slate-900">Consentimientos</h3>
+              {firmados.size > 0 && (
+                <Link href={`/paciente/${id}/consentimientos`} className="text-xs font-medium text-teal-700 underline underline-offset-2">
+                  Descargar en PDF para enviar
+                </Link>
+              )}
+            </div>
             <div className="space-y-2">
               {(legalDocs ?? []).map((d, idx, todos) => {
                 const s = firmados.get(d.id);

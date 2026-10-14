@@ -5,7 +5,10 @@ import PageHeader from "@/components/PageHeader";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import { IconUsers } from "@/components/icons";
 import { CUPOS, type CupoCodigo } from "@/lib/cupos";
-import { CrearUsuarioForm, CambiarRolForm, ActivarForm, LegajoForm, CupoForm } from "@/components/usuarios/UsuarioForms";
+import { CrearUsuarioForm, CambiarRolForm, ActivarForm, LegajoForm, CupoForm, DocumentoLegajoForm, FirmaSelloForm } from "@/components/usuarios/UsuarioForms";
+import { TIPOS_DOCUMENTO_LEGAJO, TIPO_PROFESIONAL_POR_CODIGO } from "@/lib/legajo-personal";
+import { eliminarDocumentoLegajoAction } from "./actions";
+import ConfirmButton from "@/components/ConfirmButton";
 import { puedeCrearUsuarios } from "@/lib/supabase/admin";
 import { SPECIALTY_LABELS } from "@/lib/roles";
 import type { AppRole } from "@/lib/roles";
@@ -24,12 +27,18 @@ export default async function UsuariosPage({ searchParams }: { searchParams: Pro
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, role, active, last_login_at, especialidad, dni, matricula, telefono, email_contacto, fecha_ingreso, fecha_baja, cupo_modulo")
+    .select("id, full_name, role, active, last_login_at, especialidad, dni, matricula, telefono, email_contacto, fecha_ingreso, fecha_baja, cupo_modulo, fecha_nacimiento, domicilio, cuil, tipo_profesional, tipo_profesional_otro, firma_sello")
     .neq("role", "medico_coordinador")
     .order("active", { ascending: false })
     .order("full_name");
 
   const todos = data ?? [];
+  // Documentación adjunta al legajo, con enlaces temporales para abrirla.
+  const { data: docs } = await supabase.from("profile_documents").select("id, profile_id, tipo, archivo, nombre_original, vence, created_at").order("created_at", { ascending: false });
+  const { data: firmados } = (docs ?? []).length > 0 ? await supabase.storage.from("legajos").createSignedUrls((docs ?? []).map((d) => d.archivo), 3600) : { data: [] as { path: string | null; signedUrl: string }[] };
+  const urlDe = new Map<string, string>();
+  for (const f of firmados ?? []) if (f.path && f.signedUrl) urlDe.set(f.path, f.signedUrl);
+  const hoyISO = new Date().toISOString().slice(0, 10);
   const verInactivos = ver === "todos";
   const lista = verInactivos ? todos : todos.filter((u) => u.active);
   const inactivos = todos.filter((u) => !u.active).length;
@@ -72,7 +81,8 @@ export default async function UsuariosPage({ searchParams }: { searchParams: Pro
                   </div>
                   <div className="text-xs text-slate-500 mt-0.5">
                     {ROLE_LABELS[rol] ?? u.role}
-                    {u.especialidad ? ` · ${SPECIALTY_LABELS[u.especialidad] ?? u.especialidad}` : ""}
+                    {u.tipo_profesional ? ` · ${u.tipo_profesional === "otros" ? `Otros: ${u.tipo_profesional_otro ?? ""}` : TIPO_PROFESIONAL_POR_CODIGO[u.tipo_profesional]?.label ?? u.tipo_profesional}` : ""}
+                    {!u.tipo_profesional && u.especialidad ? ` · ${SPECIALTY_LABELS[u.especialidad] ?? u.especialidad}` : ""}
                     {u.matricula ? ` · Mat. ${u.matricula}` : ""}
                     {u.cupo_modulo && u.cupo_modulo in CUPOS ? ` · Cupo: ${CUPOS[u.cupo_modulo as CupoCodigo].nombre}` : ""}
                   </div>
@@ -90,6 +100,31 @@ export default async function UsuariosPage({ searchParams }: { searchParams: Pro
               <ActionDisclosure label="Editar" tone="subtle">
                 <div className="space-y-4 rounded-xl bg-slate-50 border border-slate-200 p-4">
                   <LegajoForm p={u} />
+                  <hr className="border-slate-200" />
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-semibold text-slate-700">Documentación del legajo</h3>
+                    <ul className="text-sm space-y-1">
+                      {(docs ?? []).filter((d) => d.profile_id === u.id).map((d) => (
+                        <li key={d.id} className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-slate-800">{TIPOS_DOCUMENTO_LEGAJO[d.tipo] ?? d.tipo}</span>
+                          {urlDe.get(d.archivo) ? <a href={urlDe.get(d.archivo)} target="_blank" rel="noopener noreferrer" className="text-teal-700 underline underline-offset-2 text-xs">{d.nombre_original ?? "Ver archivo"}</a> : <span className="text-xs text-slate-400">{d.nombre_original}</span>}
+                          {d.vence && <span className={`text-xs ${d.vence < hoyISO ? "text-red-700 font-medium" : "text-slate-500"}`}>{d.vence < hoyISO ? "Venció" : "Vence"} el {fechaCorta(d.vence)}</span>}
+                          <form action={eliminarDocumentoLegajoAction} className="ml-auto">
+                            <input type="hidden" name="id" value={d.id} />
+                            <ConfirmButton className="text-xs text-slate-500 hover:text-red-700">Quitar</ConfirmButton>
+                          </form>
+                        </li>
+                      ))}
+                      {(docs ?? []).filter((d) => d.profile_id === u.id).length === 0 && <li className="text-xs text-slate-500">Todavía no hay documentos cargados.</li>}
+                    </ul>
+                    <DocumentoLegajoForm id={u.id} />
+                  </div>
+                  {u.role === "coordinador_internacion" && (
+                    <>
+                      <hr className="border-slate-200" />
+                      <FirmaSelloForm id={u.id} tiene={!!u.firma_sello} />
+                    </>
+                  )}
                   {u.role === "profesional_asistencial" && (
                     <>
                       <hr className="border-slate-200" />

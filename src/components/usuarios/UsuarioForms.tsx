@@ -3,7 +3,8 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 import ConfirmButton from "@/components/ConfirmButton";
-import { crearUsuarioAction, cambiarRolAction, activarUsuarioAction, guardarLegajoAction, guardarCupoAction, type UsuarioResult } from "@/app/(dashboard)/usuarios/actions";
+import { crearUsuarioAction, cambiarRolAction, activarUsuarioAction, guardarLegajoAction, guardarCupoAction, subirDocumentoLegajoAction, guardarFirmaSelloAction, type UsuarioResult } from "@/app/(dashboard)/usuarios/actions";
+import { TIPOS_PROFESIONAL, TIPOS_DOCUMENTO_LEGAJO } from "@/lib/legajo-personal";
 import { ROLES_ASIGNABLES, ROL_DESCRIPCION } from "@/lib/usuarios";
 import { ROLE_LABELS, SPECIALTY_LABELS } from "@/lib/roles";
 import { CUPOS, CUPO_CODIGOS } from "@/lib/cupos";
@@ -172,10 +173,16 @@ export type LegajoDatos = {
   email_contacto: string | null;
   fecha_ingreso: string | null;
   fecha_baja: string | null;
+  fecha_nacimiento: string | null;
+  domicilio: string | null;
+  cuil: string | null;
+  tipo_profesional: string | null;
+  tipo_profesional_otro: string | null;
 };
 
 export function LegajoForm({ p }: { p: LegajoDatos }) {
   const [state, action] = useActionState(guardarLegajoAction, null as UsuarioResult);
+  const [tipo, setTipo] = useState(p.tipo_profesional ?? "");
   return (
     <form action={action} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
       <input type="hidden" name="id" value={p.id} />
@@ -184,11 +191,25 @@ export function LegajoForm({ p }: { p: LegajoDatos }) {
         <input name="full_name" required defaultValue={p.full_name} className={inputCls} />
       </div>
       <div>
-        <label className={labelCls}>Disciplina</label>
-        <select name="especialidad" defaultValue={p.especialidad ?? ""} className={inputCls}>
-          <Opciones />
+        <label className={labelCls}>Tipo de profesional</label>
+        <select name="tipo_profesional" value={tipo} onChange={(e) => setTipo(e.target.value)} className={inputCls}>
+          <option value="">— Sin definir —</option>
+          {TIPOS_PROFESIONAL.map((t) => <option key={t.codigo} value={t.codigo}>{t.label}</option>)}
         </select>
       </div>
+      {tipo === "otros" ? (
+        <div>
+          <label className={labelCls}>¿Qué práctica realiza?</label>
+          <input name="tipo_profesional_otro" required defaultValue={p.tipo_profesional_otro ?? ""} className={inputCls} />
+        </div>
+      ) : (
+        <div>
+          <label className={labelCls}>Disciplina clínica</label>
+          <select name="especialidad" defaultValue={p.especialidad ?? ""} className={inputCls}>
+            <Opciones />
+          </select>
+        </div>
+      )}
       <div>
         <label className={labelCls}>Matrícula</label>
         <input name="matricula" defaultValue={p.matricula ?? ""} className={inputCls} />
@@ -196,6 +217,18 @@ export function LegajoForm({ p }: { p: LegajoDatos }) {
       <div>
         <label className={labelCls}>DNI</label>
         <input name="dni" inputMode="numeric" defaultValue={p.dni ?? ""} className={inputCls} />
+      </div>
+      <div>
+        <label className={labelCls}>CUIL</label>
+        <input name="cuil" inputMode="numeric" placeholder="20-12345678-9" defaultValue={p.cuil ?? ""} className={inputCls} />
+      </div>
+      <div>
+        <label className={labelCls}>Fecha de nacimiento</label>
+        <input name="fecha_nacimiento" type="date" defaultValue={p.fecha_nacimiento ?? ""} className={inputCls} />
+      </div>
+      <div className="sm:col-span-2">
+        <label className={labelCls}>Domicilio</label>
+        <input name="domicilio" defaultValue={p.domicilio ?? ""} className={inputCls} />
       </div>
       <div>
         <label className={labelCls}>Teléfono</label>
@@ -236,6 +269,54 @@ export function CupoForm({ id, cupo }: { id: string; cupo: string | null }) {
         </select>
       </div>
       <Enviar>Guardar cupo</Enviar>
+      <div className="basis-full"><ErrorBox state={state} /></div>
+    </form>
+  );
+}
+
+/** Subida de un documento al legajo (DNI, título, matrícula, vacunación, mala praxis). */
+export function DocumentoLegajoForm({ id }: { id: string }) {
+  const [state, action] = useActionState(subirDocumentoLegajoAction, null as UsuarioResult);
+  return (
+    <form action={action} className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+      <input type="hidden" name="id" value={id} />
+      <div>
+        <label className={labelCls}>Documento</label>
+        <select name="tipo" required defaultValue="" className={inputCls}>
+          <option value="" disabled>Elegir…</option>
+          {Object.entries(TIPOS_DOCUMENTO_LEGAJO).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className={labelCls}>Vence (opcional)</label>
+        <input name="vence" type="date" className={inputCls} />
+      </div>
+      <div className="sm:col-span-2">
+        <label className={labelCls}>Archivo (PDF o foto, hasta 5 MB)</label>
+        <input name="archivo" type="file" required accept="application/pdf,image/jpeg,image/png,image/webp" className="block w-full text-xs text-slate-600" />
+      </div>
+      <div className="sm:col-span-4 space-y-2">
+        <ErrorBox state={state} />
+        <Enviar pending="Subiendo…">Agregar al legajo</Enviar>
+      </div>
+    </form>
+  );
+}
+
+/** Firma y sello digital del coordinador: se imprime en el pie de los PDF. */
+export function FirmaSelloForm({ id, tiene }: { id: string; tiene: boolean }) {
+  const [state, action] = useActionState(guardarFirmaSelloAction, null as UsuarioResult);
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-2">
+      <input type="hidden" name="id" value={id} />
+      <div className="min-w-0 flex-1">
+        <label className={labelCls}>Firma y sello digital {tiene ? "(ya cargados: subí otra imagen para reemplazarlos)" : "(imagen PNG o JPG, hasta 200 KB)"}</label>
+        <input name="archivo" type="file" accept="image/png,image/jpeg,image/webp" className="block w-full text-xs text-slate-600" />
+      </div>
+      <Enviar pending="Guardando…">Guardar firma y sello</Enviar>
+      {tiene && (
+        <label className="flex items-center gap-1.5 text-xs text-slate-600"><input type="checkbox" name="quitar" value="1" /> Quitar los actuales</label>
+      )}
       <div className="basis-full"><ErrorBox state={state} /></div>
     </form>
   );

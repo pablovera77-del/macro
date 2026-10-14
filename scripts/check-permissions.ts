@@ -13,6 +13,7 @@ const NOMBRE_EN_MENSAJE: Record<string, string> = {
   transporte: "transporte",
   direccion: "direccion",
   facturacion: "facturacion",
+  auditor_externo: "auditor externo",
 };
 
 const errores: string[] = [];
@@ -40,12 +41,12 @@ for (const p of PERMISOS) {
   }
 }
 
-// Cada rol tiene al menos una pantalla y nadie ve la Auditoría salvo Dirección.
+// Cada rol tiene al menos una pantalla y nadie ve la Auditoría salvo Dirección y el auditor externo.
 for (const [rol, items] of Object.entries(NAV_BY_ROLE)) {
   if (!items.some((i) => i.href === "/inicio")) errores.push(`El rol ${rol} no tiene «Inicio» en el menú`);
   const ve = items.some((i) => i.href === "/auditoria");
-  if (ve && rol !== "direccion") errores.push(`El rol ${rol} ve «Auditoría» en el menú y no debería`);
-  if (rol === "direccion" && !ve) errores.push("Dirección no ve «Auditoría» en el menú");
+  if (ve && rol !== "direccion" && rol !== "auditor_externo") errores.push(`El rol ${rol} ve «Auditoría» en el menú y no debería`);
+  if ((rol === "direccion" || rol === "auditor_externo") && !ve) errores.push(`${rol === "direccion" ? "Dirección" : "El auditor externo"} no ve «Auditoría» en el menú`);
 }
 // Roles que el menú muestra para crear cosas deben figurar en la matriz.
 const rolesEnMatriz = new Set(PERMISOS.flatMap((p) => p.roles));

@@ -34,6 +34,12 @@ export default async function ImprimirEvolucionPage({
   const { data: e } = await supabase.from("evolutions").select(cols).eq("id", id).maybeSingle();
   if (!e) notFound();
 
+  // Firma y sello digital de la coordinadora/or asignado al paciente (DF-C2 pregunta 5): sale en el pie de la planilla.
+  const { data: pacCoord } = await supabase.from("patients").select("coordinador_id").eq("id", e.patient_id).maybeSingle();
+  const { data: coordinador } = pacCoord?.coordinador_id
+    ? await supabase.from("profiles").select("full_name, firma_sello").eq("id", pacCoord.coordinador_id).maybeSingle()
+    : { data: null };
+
   const { data: templates } = await supabase.from("discipline_form_templates").select("id, titulo, especialidad, campos");
   const template = (templates ?? []).find((t) => t.id === e.template_id) ?? (templates ?? []).find((t) => t.especialidad === e.especialidad);
   const campos = parseCampos(template?.campos);
@@ -114,8 +120,15 @@ export default async function ImprimirEvolucionPage({
         {CON_PIE_COORDINACION.includes(e.especialidad) && (
           <div className="flex justify-end pt-6 break-inside-avoid">
             <div className="w-64 text-center">
-              <div className="h-20 border-b border-black" />
-              <div className="text-[11px] text-neutral-700 mt-1">Firma y sello de la coordinación</div>
+              <div className="h-20 border-b border-black flex items-end justify-center">
+                {coordinador?.firma_sello && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={coordinador.firma_sello} alt={`Firma y sello de ${coordinador.full_name}`} className="max-h-20 max-w-full object-contain" />
+                )}
+              </div>
+              <div className="text-[11px] text-neutral-700 mt-1">
+                Firma y sello de la coordinación{coordinador ? ` · ${coordinador.full_name}` : ""}
+              </div>
             </div>
           </div>
         )}

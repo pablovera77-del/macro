@@ -13,6 +13,7 @@ import {
   reviewItemAction,
   acceptAllItemsAction,
   markNoticesReadAction,
+  renovarPedidoAction,
 } from "./actions";
 import PageHeader from "@/components/PageHeader";
 import SidePanel from "@/components/SidePanel";
@@ -32,6 +33,13 @@ import type { SemanticTone } from "@/lib/semantic-status";
 import { fechaHora, mapaUrl, telUrl, pesos } from "@/lib/stock-ui";
 import { hoyAR } from "@/lib/plan";
 import { IconTruck, IconClipboard, IconCheck, IconSignature, IconMapPin, IconRefresh, IconAlert, IconBox } from "@/components/icons";
+
+const FRECUENCIA_LABELS: Record<string, string> = {
+  a_demanda: "Pedido único",
+  semanal: "Se renueva cada semana",
+  quincenal: "Se renueva cada quincena",
+  mensualizado: "Se renueva cada mes",
+};
 
 const ESTADO_LABELS: Record<string, string> = {
   borrador: "Borrador",
@@ -104,7 +112,7 @@ export default async function PedidosPage({
   let ordersQuery = supabase
     .from("orders")
     .select(
-      "id, estado, created_at, fecha_autorizacion, autorizacion_automatica, motivo_rechazo, motivo_urgencia, origen, patient_id, profesional_id, direccion_entrega, canal_entrega, prioridad, creado_por, patients(nombre_completo, dni, domicilio, telefono_contacto, contacto_familiar_nombre, contacto_familiar_telefono), profesional:profiles!orders_profesional_id_fkey(full_name), creador:profiles!orders_creado_por_fkey(full_name), order_items(id, cantidad, cantidad_solicitada, estado_item, motivo, product_id, equipment_asset_id, products(descripcion, tipo, existencia_actual), equipment_assets(numero_serie)), remitos(fecha_despacho, fecha_entrega, firma_familiar_url, firmante_nombre, firmante_dni, notificacion_enviada_at, notificacion_canal, entrega_lat, entrega_lng)"
+      "id, estado, created_at, frecuencia_renovacion, renovado_de, fecha_autorizacion, autorizacion_automatica, motivo_rechazo, motivo_urgencia, origen, patient_id, profesional_id, direccion_entrega, canal_entrega, prioridad, creado_por, patients(nombre_completo, dni, domicilio, telefono_contacto, contacto_familiar_nombre, contacto_familiar_telefono), profesional:profiles!orders_profesional_id_fkey(full_name), creador:profiles!orders_creado_por_fkey(full_name), order_items(id, cantidad, cantidad_solicitada, estado_item, motivo, product_id, equipment_asset_id, products(descripcion, tipo, existencia_actual), equipment_assets(numero_serie)), remitos(fecha_despacho, fecha_entrega, firma_familiar_url, firmante_nombre, firmante_dni, notificacion_enviada_at, notificacion_canal, entrega_lat, entrega_lng)"
     )
     .order("created_at", { ascending: false })
     .limit(200);
@@ -132,6 +140,7 @@ export default async function PedidosPage({
     { data: authorizations },
     { data: precios },
     { data: noticesRaw },
+    { data: recurrentesRaw },
   ] = await Promise.all([
     ordersQuery,
     pacientesQuery,
@@ -141,6 +150,15 @@ export default async function PedidosPage({
     supabase.from("patient_authorizations").select("patient_id, product_id, cantidad_autorizada, vigente_desde, vigente_hasta"),
     supabase.from("product_price_history").select("product_id, precio_compra, vigente_desde").order("vigente_desde", { ascending: false }),
     supabase.from("order_notices").select("id, tipo, titulo, detalle, href, created_at").is("leido_at", null).order("created_at", { ascending: false }).limit(15),
+    esDeposito
+      ? supabase
+          .from("orders")
+          .select("id, estado, created_at, frecuencia_renovacion, patient_id, profesional_id, patients(nombre_completo), profesional:profiles!orders_profesional_id_fkey(full_name), order_items(cantidad, estado_item, products(descripcion)), remitos(fecha_entrega)")
+          .neq("frecuencia_renovacion", "a_demanda")
+          .neq("estado", "cancelado")
+          .order("created_at", { ascending: false })
+          .limit(200)
+      : Promise.resolve({ data: null }),
   ]);
 
   const precioDe = new Map<string, number>();
@@ -184,6 +202,34 @@ export default async function PedidosPage({
     (!a.vigente_desde || a.vigente_desde <= hoy) && (!a.vigente_hasta || a.vigente_hasta >= hoy);
 
   const notices = (noticesRaw ?? []) as Notice[];
+
+  // Pedidos que se repiten (DF-C5): por destinatario se toma el último pedido recurrente; si ya está entregado,
+  // la próxima renovación es la fecha de entrega + el intervalo. Si todavía está en curso, solo se muestra.
+  const DIAS_FRECUENCIA: Record<string, number> = { semanal: 7, quincenal: 15, mensualizado: 30 };
+  const sumarDiasISO = (iso: string, n: number) => new Date(new Date(iso).getTime() + n * 86400000).toISOString().slice(0, 10);
+  type Recurrente = { id: string; para: string; frecuencia: string; estado: string; productos: string; proxima: string | null; vencida: boolean };
+  const vistos = new Set<string>();
+  const recurrentes: Recurrente[] = [];
+  for (const r of recurrentesRaw ?? []) {
+    const clave = r.patient_id ?? r.profesional_id ?? r.id;
+    if (vistos.has(clave)) continue;
+    vistos.add(clave);
+    const entrega = (r.remitos as unknown as { fecha_entrega: string | null }[] | null)?.map((x) => x.fecha_entrega).find(Boolean) ?? null;
+    const proxima = r.estado === "entregado" ? sumarDiasISO(entrega ?? r.created_at, DIAS_FRECUENCIA[r.frecuencia_renovacion] ?? 30) : null;
+    const pac = r.patients as unknown as { nombre_completo: string } | null;
+    const pro = r.profesional as unknown as { full_name: string } | null;
+    const its = ((r.order_items as unknown as { cantidad: number; estado_item: string; products: { descripcion: string } | null }[]) ?? []).filter((i) => i.estado_item !== "rechazado");
+    recurrentes.push({
+      id: r.id,
+      para: pac?.nombre_completo ?? (pro ? `${pro.full_name} (profesional)` : "—"),
+      frecuencia: r.frecuencia_renovacion,
+      estado: r.estado,
+      productos: its.map((i) => `${i.cantidad}x ${i.products?.descripcion ?? ""}`).join(" · "),
+      proxima,
+      vencida: !!proxima && proxima <= sumarDiasISO(hoy, 3),
+    });
+  }
+  recurrentes.sort((a, b) => Number(b.vencida) - Number(a.vencida) || (a.proxima ?? "9").localeCompare(b.proxima ?? "9"));
   const hayFiltros = !!(mes || filtroPaciente || filtroProf || filtroEstado !== "todos");
 
   return (
@@ -208,6 +254,37 @@ export default async function PedidosPage({
       />
 
       <NoticesPanel notices={notices} action={markNoticesReadAction} title={esDeposito ? "Avisos nuevos" : "Avisos para vos"} />
+
+      {esDeposito && recurrentes.length > 0 && (
+        <section className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-sm font-medium text-slate-900">Pedidos que se repiten</h2>
+            {recurrentes.some((r) => r.vencida) ? <StatusBadge tone="amarillo" label={`${recurrentes.filter((r) => r.vencida).length} para renovar`} /> : <StatusBadge tone="verde" label="Todo al día" />}
+          </div>
+          <p className="text-xs text-slate-500 mt-1">Cuando toca renovar, armás el pedido con un toque: copia los productos y sigue el circuito normal (autorización, preparación y entrega).</p>
+          <ul className="mt-3 divide-y divide-slate-100">
+            {recurrentes.map((r) => (
+              <li key={r.id} className="py-2.5 flex items-start justify-between gap-3 flex-wrap">
+                <div className="min-w-0 text-sm">
+                  <div className="font-medium text-slate-900">{r.para} <span className="text-xs font-normal text-slate-500">· {FRECUENCIA_LABELS[r.frecuencia] ?? r.frecuencia}</span></div>
+                  <div className="text-xs text-slate-500 truncate">{r.productos}</div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    {r.proxima ? `Próxima renovación: ${r.proxima.split("-").reverse().join("/")}` : `Pedido en curso (${ESTADO_LABELS[r.estado] ?? r.estado})`}
+                  </div>
+                </div>
+                {r.proxima && (
+                  <ActionForm action={renovarPedidoAction}>
+                    <input type="hidden" name="order_id" value={r.id} />
+                    <SubmitButton className={`rounded-lg text-xs font-medium px-3.5 py-2 transition-colors ${r.vencida ? "bg-amber-600 text-white hover:bg-amber-700" : "border border-slate-300 text-slate-700 hover:bg-slate-50"}`} pendingLabel="Armando…">
+                      <span className="inline-flex items-center gap-1.5"><IconRefresh className="w-3.5 h-3.5" /> Armar renovación</span>
+                    </SubmitButton>
+                  </ActionForm>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <form method="get" className="bg-white rounded-2xl border border-slate-200 p-4 grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
         <label className="text-xs text-slate-500 flex flex-col gap-1">
@@ -335,6 +412,9 @@ export default async function PedidosPage({
                     </span>
                   )}
                   <span className="text-[11px] text-slate-500 bg-slate-50 rounded-full px-2.5 py-1">{CANAL_LABELS[order.canal_entrega]}</span>
+                  {order.frecuencia_renovacion !== "a_demanda" && (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-sky-700 bg-sky-50 rounded-full px-2.5 py-1"><IconRefresh className="w-3 h-3" /> {FRECUENCIA_LABELS[order.frecuencia_renovacion]}</span>
+                  )}
                   <StatusBadge tone={ESTADO_TONE[order.estado]} label={ESTADO_LABELS[order.estado]} className="!text-xs !px-2.5 !py-1" />
                 </div>
               </div>

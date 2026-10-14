@@ -5,7 +5,8 @@ import { requireProfile, ROLES_ALTA } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { flash } from "@/lib/flash";
 import { redirect } from "next/navigation";
-import type { Enums } from "@/types/database";
+import type { Enums, Json } from "@/types/database";
+import { NOVA5_DIMENSIONES, leerNova5Completa } from "@/lib/hc";
 import { DISCIPLINAS_PLAN, hoyAR } from "@/lib/plan";
 import { ESTADO_PACIENTE_LABELS } from "@/lib/paciente";
 import { MOTIVOS_EGRESO_OPCIONES, motivoEgresoLabel, parseDatetimeLocalAR } from "@/lib/egreso";
@@ -43,6 +44,16 @@ export async function createAdmissionAction(_prev: AdmissionState, formData: For
   const extras = leerContactosExtra(formData);
   if ("error" in extras) return { error: extras.error };
   const reingresoId = txt(formData, "reingreso_patient_id") || null;
+  // UPP obligatoria al ingreso, cargada por Administración (DF-C2 pregunta 8).
+  const upp = leerNova5Completa(NOVA5_DIMENSIONES.map((dim) => txt(formData, `upp__${dim.key}`)));
+  if ("error" in upp) return { error: upp.error };
+  const uppDatos = { upp_ingreso_nova5: upp.valor as unknown as Json, upp_ingreso_at: new Date().toISOString() };
+  // Coordinador/a asignado al ingreso (DF-C3 pregunta 13): arma la agenda y sale en la firma de los PDF.
+  const coordinadorId = txt(formData, "coordinador_id") || null;
+  if (coordinadorId) {
+    const { data: coord } = await supabase.from("profiles").select("id").eq("id", coordinadorId).eq("role", "coordinador_internacion").eq("active", true).maybeSingle();
+    if (!coord) return { error: "El coordinador elegido no está disponible. Elegí otro de la lista." };
+  }
 
   // Denormalizamos también el nombre de la obra social en la columna de texto
   // existente (obra_social) para no romper la UI del mockup C5 (Catálogo/Pedidos)
@@ -66,6 +77,8 @@ export async function createAdmissionAction(_prev: AdmissionState, formData: For
       .from("patients")
       .update({
         ...d,
+        ...uppDatos,
+        coordinador_id: coordinadorId,
         obra_social: obra_social_texto,
         estado: "admitido_pendiente_llegada",
         fecha_egreso: null,
@@ -88,10 +101,11 @@ export async function createAdmissionAction(_prev: AdmissionState, formData: For
       .from("patients")
       .insert({
         ...d,
+        ...uppDatos,
         obra_social: obra_social_texto,
-        // El alta la hace Administración; el médico a cargo se asigna después en el
-        // equipo asistencial (no es quien carga el alta).
-        coordinador_id: null,
+        // El alta la hace Administración, que elige también el coordinador del paciente; el médico a
+        // cargo se asigna después en el equipo asistencial (no es quien carga el alta).
+        coordinador_id: coordinadorId,
         estado: "admitido_pendiente_llegada",
       })
       .select("id")

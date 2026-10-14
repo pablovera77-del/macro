@@ -48,7 +48,7 @@ export default function ControlesFrecuencia({ diaria, semanal }: { diaria: Diari
                     <li key={`${s.treatment_authorization_id}`} className="flex items-center gap-2 flex-wrap">
                       <StatusBadge tone="amarillo" label="Faltaron evoluciones" />
                       <span className="text-slate-700">{s.nombre_completo} · {s.practica} ({SPECIALTY_LABELS[s.especialidad ?? ""] ?? s.especialidad})</span>
-                      <span className="text-xs text-slate-500">{s.cargadas}/{s.esperadas} evoluciones ({describirDias(s.dias_semana)})</span>
+                      <span className="text-xs text-slate-500">{s.cargadas}/{s.esperadas} evoluciones ({s.dias_semana ? describirDias(s.dias_semana) : "sin día fijo"})</span>
                     </li>
                   ))}
                 </ul>

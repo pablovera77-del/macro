@@ -36,7 +36,7 @@ export type Nova5 = {
   nutricion: number;
   actividad: number;
   total: number;
-  riesgo: "bajo" | "medio" | "alto";
+  riesgo: "bajo" | "medio" | "alto" | "sin_riesgo";
   movilizacion_indicada?: boolean;
 };
 
@@ -66,6 +66,19 @@ export const NOVA5_DIMENSIONES: { key: "estado_mental" | "incontinencia" | "movi
 export function riesgoNova5(total: number): Nova5["riesgo"] | null {
   if (total <= 0) return null;
   return total <= 4 ? "bajo" : total <= 8 ? "medio" : "alto";
+}
+
+/** Escala Nova 5 completa (las cinco respuestas de 0 a 3), p. ej. al ingreso. Con total 0 queda «sin riesgo». */
+export function leerNova5Completa(valores: string[]): { error: string } | { valor: Nova5 } {
+  if (valores.length !== NOVA5_DIMENSIONES.length || valores.some((v) => v === "")) {
+    return { error: "Completá las cinco preguntas de la escala de riesgo de úlceras por presión (Nova 5)." };
+  }
+  const nums = valores.map((v) => Number(v));
+  if (nums.some((n) => !Number.isInteger(n) || n < 0 || n > 3)) return { error: "Los puntajes de la escala Nova 5 van de 0 a 3." };
+  const total = nums.reduce((a, b) => a + b, 0);
+  return {
+    valor: { estado_mental: nums[0], incontinencia: nums[1], movilidad: nums[2], nutricion: nums[3], actividad: nums[4], total, riesgo: riesgoNova5(total) ?? "sin_riesgo" },
+  };
 }
 
 export const RIESGO_TONE: Record<string, "verde" | "amarillo" | "rojo"> = { bajo: "verde", medio: "amarillo", alto: "rojo" };

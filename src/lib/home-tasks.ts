@@ -560,6 +560,7 @@ export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
   transporte: [AGENDA_TRANSPORTE, ENTREGAR_PEDIDOS, SEGUIMIENTO],
   direccion: [DASHBOARD, PRODUCTIVIDAD, GUARDIAS, HONORARIOS, PRESUPUESTOS, AUDITORIA],
   facturacion: [REVISAR_LISTOS, CIERRE_MENSUAL, OBRAS_SOCIALES_FACT, PRESUPUESTOS, CONSULTAR_HC],
+  auditor_externo: [CONSULTAR_HC, AUDITORIA],
 };
 
 export const ROLE_WELCOME: Record<AppRole, string> = {
@@ -570,4 +571,5 @@ export const ROLE_WELCOME: Record<AppRole, string> = {
   transporte: "Desde acá ves las entregas y retiros que tenés que hacer.",
   direccion: "Desde acá ves el estado general de la operación y quién cambió qué.",
   facturacion: "Desde acá controlás lo que Administración deja listo, calculás los importes, cerrás cada mes por obra social y armás presupuestos.",
+  auditor_externo: "Desde acá consultás las historias clínicas y el registro de cambios. Es una cuenta de solo lectura: no se puede modificar nada.",
 };
