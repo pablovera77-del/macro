@@ -1,5 +1,7 @@
-// H11 · Cupos por módulo (Vanina 06/10, DF-C2). Es una GUÍA: pasarse se marca en rojo, no bloquea
-// (decisión pendiente: tope duro o guía, DF-C2 pregunta de cupos).
+// H11 · Cupos por módulo (Vanina 06/10, DF-C2). Es una GUÍA: pasarse se marca en rojo, pero permite asignar más
+// (Vanina, 20/10: «queda como guía»).
+// El tope se mide en visitas por día, no por paciente: un paciente con una visita por semana suma el proporcional diario
+// (1/7, aprox. 0,14). Por eso la carga de cada profesional sale de la frecuencia autorizada de sus pacientes (`cargaCupo`).
 // Supuesto a confirmar: el cupo de kinesiología respiratoria (12) se toma por semana, igual que el de motora.
 
 export const CUPOS = {
@@ -53,4 +55,38 @@ export function contarCupo(
     if (v.estado === "realizada") realizadas += 1;
   }
   return { asignadas, realizadas, tope: def.tope, semaforo: semaforoCupo(asignadas, def.tope) };
+}
+
+export type FrecuenciaCupo = {
+  frecuencia_cantidad: number | null;
+  frecuencia_unidad: string | null;
+  frecuencia_periodo: string | null;
+  dias_semana: number[] | null;
+};
+
+/** Visitas por semana que implica una frecuencia autorizada. Las «horas» no cuentan como visitas. */
+export function visitasPorSemana(f: FrecuenciaCupo): number {
+  const c = f.frecuencia_cantidad;
+  if (!c || !f.frecuencia_periodo || f.frecuencia_unidad === "horas") return 0;
+  switch (f.frecuencia_periodo) {
+    case "dia":
+      return c * (f.dias_semana?.length || 7);
+    case "semana":
+      return c;
+    case "quincena":
+      return (c * 7) / 15;
+    case "mes":
+      return (c * 7) / 30;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * Carga de un profesional según la frecuencia autorizada de sus pacientes, en la unidad del cupo:
+ * visitas por día (cupo diario: cada visita semanal suma 1/7 ≈ 0,14) o por semana (cupo semanal).
+ */
+export function cargaCupo(cupo: CupoCodigo, frecuencias: FrecuenciaCupo[]): number {
+  const semanal = frecuencias.reduce((s, f) => s + visitasPorSemana(f), 0);
+  return CUPOS[cupo].periodo === "dia" ? semanal / 7 : semanal;
 }

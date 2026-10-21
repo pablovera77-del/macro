@@ -71,10 +71,28 @@ function CampoInput({ c }: { c: Campo }) {
           ))}
         </select>
       );
+    case "Selección múltiple":
+      // Se puede marcar más de una opción (DF-C2, pregunta 7: «prestación realizada»). El «required» del
+      // navegador no sirve con casillas; la obligatoriedad la valida el servidor.
+      return (
+        <div className="flex flex-wrap gap-2" role="group" aria-label={c.label}>
+          {(c.opciones ?? []).map((op) => (
+            <label
+              key={op}
+              className="cursor-pointer rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 has-[:checked]:bg-slate-900 has-[:checked]:text-white has-[:checked]:border-slate-900"
+            >
+              <input type="checkbox" name={name} value={op} className="sr-only" />
+              {op}
+            </label>
+          ))}
+        </div>
+      );
     default:
       return <input name={name} type="text" required={req} className={inputCls} />;
   }
 }
+
+const SEP_BORRADOR = "\u001f";
 
 const MED_VACIA: MedicacionItem = { cantidad: "", droga: "", nombre_comercial: "", dosis: "", frecuencia: "" };
 
@@ -134,7 +152,13 @@ export default function EvolucionForm({
         const el = form.elements.namedItem(name);
         if (!el) continue;
         if (el instanceof RadioNodeList) {
-          el.value = value;
+          const marcadas = value.split(SEP_BORRADOR);
+          const casillas = Array.from(el).filter((x): x is HTMLInputElement => x instanceof HTMLInputElement && x.type === "checkbox");
+          if (casillas.length > 0) {
+            for (const cb of casillas) cb.checked = marcadas.includes(cb.value);
+          } else {
+            el.value = value;
+          }
         } else if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) {
           el.value = value;
         }
@@ -157,7 +181,10 @@ export default function EvolucionForm({
       if (!form) return;
       const campos: Record<string, string> = {};
       for (const [k, v] of new FormData(form).entries()) {
-        if (typeof v === "string" && (k.startsWith("campo__") || k === "alerta_motivo" || k === "conformidad_nombre" || k === "matricula") && v !== "") campos[k] = v;
+        if (typeof v === "string" && (k.startsWith("campo__") || k === "alerta_motivo" || k === "conformidad_nombre" || k === "matricula") && v !== "") {
+          // Las selecciones múltiples mandan una entrada por opción marcada: se juntan en una sola.
+          campos[k] = k in campos ? `${campos[k]}${SEP_BORRADOR}${v}` : v;
+        }
       }
       if (Object.keys(campos).length === 0 && meds.length === 0 && !alerta && Object.keys(nova).length === 0) return;
       localStorage.setItem(draftKey, JSON.stringify({ campos, meds, alerta, nova }));
@@ -227,7 +254,7 @@ export default function EvolucionForm({
           {s.titulo && <legend className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">{s.titulo}</legend>}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {s.campos.map((c) => {
-              const ancho = c.tipo === "Texto largo" || c.tipo === "Texto" || c.tipo === "Selección" ? "col-span-2 sm:col-span-4" : c.tipo === "Sí/No" ? "col-span-2 sm:col-span-2" : "col-span-1 sm:col-span-1";
+              const ancho = c.tipo === "Texto largo" || c.tipo === "Texto" || c.tipo === "Selección" || c.tipo === "Selección múltiple" ? "col-span-2 sm:col-span-4" : c.tipo === "Sí/No" ? "col-span-2 sm:col-span-2" : "col-span-1 sm:col-span-1";
               return (
                 <div key={campoKey(c)} className={ancho}>
                   <Etiqueta c={c} />

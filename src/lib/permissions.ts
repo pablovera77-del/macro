@@ -70,6 +70,7 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Agenda", accion: "Reprogramar visitas", roles: [C], guard: { file: AG, message: "Solo Coordinación reprograma visitas." } },
   { modulo: "Agenda", accion: "Marcar el resultado de una visita (confirmada, realizada, no realizada)", roles: [P, C], guard: { file: AG, message: "Solo el profesional asistencial de la visita o Coordinación cambian su estado." } },
   { modulo: "Agenda", accion: "Informar «no me atendieron» con foto de la fachada", roles: [P], guard: { file: AG, message: "Solo el profesional asistencial de la visita informa que no lo atendieron." } },
+  { modulo: "Agenda", accion: "Atender hoy a un paciente de «Mis pacientes» (crea la visita del día sin día ni hora)", roles: [P], guard: { file: "src/app/(dashboard)/mis-pacientes/actions.ts", message: "Solo el profesional asistencial atiende desde «Mis pacientes»." } },
   { modulo: "Agenda", accion: "Cancelar visitas", roles: [C], guard: { file: AG, message: "Solo Coordinación cancela visitas." } },
   { modulo: "Agenda", accion: "Iniciar una visita al llegar al domicilio", roles: [P], guard: { file: AG, message: "Solo el profesional asistencial de la visita inicia la visita." } },
   { modulo: "Agenda", accion: "Marcar un recordatorio de WhatsApp como enviado", roles: [C], guard: { file: AG, message: "Solo Coordinación marca los recordatorios como enviados." } },

@@ -6,7 +6,22 @@ import HorarioFields from "@/components/agenda/HorarioFields";
 /** «Cambiar día u horario» de una visita (Coordinación). Queda cerrado hasta que se toca. */
 export type MotivoReprogramacion = { codigo: string; nombre: string };
 
-export default function ReprogramarForm({ visitId, className = "", motivos = [] }: { visitId: string; className?: string; motivos?: MotivoReprogramacion[] }) {
+export type ProfesionalOpcion = { id: string; full_name: string };
+
+export default function ReprogramarForm({
+  visitId,
+  className = "",
+  motivos = [],
+  profesionales = [],
+  profesionalActualId,
+}: {
+  visitId: string;
+  className?: string;
+  motivos?: MotivoReprogramacion[];
+  /** Si viene, Coordinación puede pasar la visita a otro profesional (por ejemplo, cuando no atendieron y hay que mandar a otro enfermero). */
+  profesionales?: ProfesionalOpcion[];
+  profesionalActualId?: string;
+}) {
   return (
     <details className={`group ${className}`}>
       <summary className="cursor-pointer select-none list-none rounded-lg border border-slate-300 bg-white text-slate-700 text-xs font-medium px-3 py-1.5 hover:bg-slate-50 w-fit">
@@ -15,6 +30,16 @@ export default function ReprogramarForm({ visitId, className = "", motivos = [] 
       <form action={rescheduleVisitAction} className="mt-3 grid grid-cols-1 gap-3 max-w-xs rounded-xl border border-slate-200 bg-slate-50 p-3">
         <input type="hidden" name="visit_id" value={visitId} />
         <HorarioFields />
+        {profesionales.length > 0 && (
+          <label className="block text-xs font-medium text-slate-600">
+            Profesional
+            <select name="profesional_id" defaultValue={profesionalActualId ?? ""} className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900">
+              {profesionales.map((p) => (
+                <option key={p.id} value={p.id}>{p.full_name}{p.id === profesionalActualId ? " (el de la visita)" : ""}</option>
+              ))}
+            </select>
+          </label>
+        )}
         {motivos.length > 0 && (
           <label className="block text-xs font-medium text-slate-600">
             Motivo del cambio

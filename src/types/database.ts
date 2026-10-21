@@ -5507,6 +5507,25 @@ export type Database = {
         }
         Returns: undefined
       }
+      fn_atender_paciente: { Args: { p_patient: string }; Returns: string }
+      fn_mis_pacientes: {
+        Args: never
+        Returns: {
+          patient_id: string
+          nombre_completo: string
+          dni: string
+          domicilio: string
+          localidad: string | null
+          telefono: string | null
+          obra_social: string | null
+          numero_afiliado: string | null
+          diagnostico_principal: string | null
+          especialidad: Database["public"]["Enums"]["specialty"]
+          frecuencias: Json
+          visita_hoy: string | null
+          ultima_atencion: string | null
+        }[]
+      }
       fn_norm_texto: { Args: { t: string }; Returns: string }
       fn_notificar: {
         Args: {

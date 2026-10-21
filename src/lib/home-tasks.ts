@@ -227,6 +227,20 @@ const MI_AGENDA: HomeTask = {
   doc: "DF-C2 §4",
 };
 
+const MIS_PACIENTES: HomeTask = {
+  id: "mis-pacientes",
+  title: "Ver mis pacientes y atenderlos",
+  summary: "Encontrar a los pacientes que me asignaron, con sus datos y la frecuencia autorizada.",
+  steps: [
+    "Entrá a Mis pacientes: ves cada paciente con domicilio, teléfono, obra social y la frecuencia autorizada.",
+    "Cuando vayas a verlo, tocá «Atender hoy»: la visita queda en Mi agenda, sin necesidad de que Coordinación la programe.",
+    "Seguí como siempre: «Iniciar visita» al llegar, «Realizada» al terminar y la evolución con tu firma y la de la familia.",
+  ],
+  href: "/mis-pacientes",
+  cta: "Ir a Mis pacientes",
+  doc: "DF-C2 · acordado con Vanina 20/10",
+};
+
 const CARGAR_EVOLUCION: HomeTask = {
   id: "cargar-evolucion",
   title: "Cargar la evolución de una visita",
@@ -536,7 +550,7 @@ const DASHBOARD: HomeTask = {
 
 export const TASKS_BY_ROLE: Record<AppRole, HomeTask[]> = {
   coordinador_internacion: [PEDIR_INSUMOS, CONFIRMAR_LLEGADA, PLAN_TRATAMIENTO, ARMAR_AGENDA, RECORDATORIOS, ACCESO_FAMILIA, MENSAJES_EQUIPO, CONTROL_EVOLUCIONES, PRODUCTIVIDAD, GUARDIAS, INFORMAR_EGRESO],
-  profesional_asistencial: [MI_AGENDA, CARGAR_EVOLUCION, MENSAJES_EQUIPO, INFORMAR_EGRESO],
+  profesional_asistencial: [MI_AGENDA, MIS_PACIENTES, CARGAR_EVOLUCION, MENSAJES_EQUIPO, INFORMAR_EGRESO],
   administracion: [
     ALTA_PACIENTE,
     PLAN_TRATAMIENTO,

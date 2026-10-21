@@ -63,6 +63,17 @@ export async function createEvolutionAction(formData: FormData): Promise<Evoluci
   const respuestas: Record<string, string> = {};
   for (const c of campos) {
     const key = campoKey(c);
+    if (c.tipo === "Selección múltiple") {
+      // Una o más opciones de la lista; se guardan juntas, separadas por «; » (así se leen en la historia y en el PDF).
+      const marcadas = [...new Set(formData.getAll(`campo__${key}`).map((v) => texto(v)).filter(Boolean))];
+      if (marcadas.length === 0) {
+        if (c.obligatorio) return { error: `Falta completar «${c.label}»: marcá al menos una opción.` };
+        continue;
+      }
+      if (marcadas.some((m) => !(c.opciones ?? []).includes(m))) return { error: `En «${c.label}» elegí opciones de la lista.` };
+      respuestas[key] = (c.opciones ?? []).filter((o) => marcadas.includes(o)).join("; ");
+      continue;
+    }
     const valor = texto(formData.get(`campo__${key}`));
     if (!valor) {
       if (c.obligatorio) return { error: `Falta completar «${c.label}».` };

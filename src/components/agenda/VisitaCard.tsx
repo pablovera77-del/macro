@@ -123,15 +123,18 @@ export default function VisitaCard({
         </div>
       )}
 
-      {esCoordinador && (v.estado === "programada" || v.estado === "confirmada") && (
+      {/* Una visita «no realizada» (p. ej. «no me atendieron») también se puede reprogramar: vuelve a quedar programada. */}
+      {esCoordinador && (v.estado === "programada" || v.estado === "confirmada" || v.estado === "no_realizada") && (
         <div className="mt-3 flex flex-wrap items-start gap-2">
           <ReprogramarForm visitId={v.id} motivos={motivos} />
+          {v.estado !== "no_realizada" && (
           <form action={cancelVisitAction}>
             <input type="hidden" name="visit_id" value={v.id} />
             <ConfirmButton className="rounded-lg bg-slate-100 text-slate-600 text-xs font-medium px-3 py-1.5 hover:bg-slate-200 transition-colors" confirmLabel="¿Cancelar? Tocá de nuevo">
               Cancelar
             </ConfirmButton>
           </form>
+          )}
         </div>
       )}
     </div>

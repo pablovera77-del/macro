@@ -130,7 +130,7 @@ profesional_asistencial: [
 { href: "/agenda", label: "Mi agenda", icon: "agenda", description: "Visitas asignadas" },
 { href: "/evoluciones", label: "Historia clínica", icon: "evoluciones", description: "Evoluciones por disciplina" },
 { href: "/guardias/turno", label: "Mi guardia", icon: "agenda", description: "Turno, controles y firmas" },
-{ href: "/internacion", label: "Mis pacientes", icon: "internacion", description: "Informar egreso" },
+{ href: "/mis-pacientes", label: "Mis pacientes", icon: "internacion", description: "Datos, frecuencia y atención del día" },
 { href: "/ayuda", label: "Guía de uso", icon: "ayuda", description: "Cómo se hace cada cosa" },
 ],
 auditor_externo: [

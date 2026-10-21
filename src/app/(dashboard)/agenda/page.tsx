@@ -133,6 +133,9 @@ export default async function AgendaPage({
     : [];
   const proximas = visitasLista.filter(abiertas);
   const atrasadas = isCoordinador ? visits.filter((v) => abiertas(v) && estaAtrasada(v, ahora)) : [];
+  // «No me atendieron» (DF-C2 pregunta 15): visitas que el profesional no pudo hacer, para que Coordinación las reprograme.
+  const hace14dias = new Date(ahora.getTime() - 14 * 86400000).toISOString();
+  const noAtendidas = isCoordinador ? visits.filter((v) => v.estado === "no_realizada" && v.motivo_no_atencion && v.fecha_programada >= hace14dias) : [];
   const enCurso = veInterno ? visits.filter((v) => abiertas(v) && v.abierta_at) : [];
   const historial = visitasLista.filter((v) => !abiertas(v)).sort((a, b) => b.fecha_programada.localeCompare(a.fecha_programada));
 
@@ -257,6 +260,28 @@ export default async function AgendaPage({
                     <span className="text-xs text-slate-500 ml-2">{SPECIALTY_LABELS[v.especialidad] ?? v.especialidad} · {descripcionFechaHora(v)} · {v.profiles?.full_name}</span>
                   </span>
                   <ReprogramarForm visitId={v.id} motivos={motivos} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {isCoordinador && noAtendidas.length > 0 && (
+        <section id="no-atendidas" className="scroll-mt-20 bg-amber-50 border border-amber-200 rounded-2xl p-5 animate-fade-slide-up">
+          <h2 className="text-sm font-semibold text-amber-900 mb-1">No atendieron al profesional: hay que reprogramar ({noAtendidas.length})</h2>
+          <p className="text-xs text-amber-800 mb-3">Últimos 14 días. Reprogramar la deja de nuevo como visita programada; el profesional la ve en «Mi agenda».</p>
+          <ul className="space-y-2">
+            {noAtendidas.map((v) => (
+              <li key={v.id} className="bg-white border border-amber-100 rounded-xl px-3.5 py-2.5 text-sm">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <span>
+                    <span className="font-medium text-slate-900">{v.patients?.nombre_completo}</span>
+                    <span className="text-xs text-slate-500 ml-2">
+                      {SPECIALTY_LABELS[v.especialidad] ?? v.especialidad} · {descripcionFechaHora(v)} · {v.profiles?.full_name} · {v.motivo_no_atencion === "paciente_ausente" ? "paciente ausente" : v.motivo_no_atencion === "no_atendieron" ? "nadie atendió" : "otro motivo"}
+                    </span>
+                  </span>
+                  <ReprogramarForm visitId={v.id} motivos={motivos} profesionales={profesionales ?? []} profesionalActualId={v.profesional_id} />
                 </div>
               </li>
             ))}

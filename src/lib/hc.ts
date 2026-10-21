@@ -4,7 +4,7 @@ import type { Json } from "@/types/database";
 
 /**
  * Un campo de una plantilla por disciplina (tabla discipline_form_templates.campos).
- * - tipo: "Texto" | "Texto largo" | "Número" | "Sí/No" | "Selección" | "Fecha" | "Fecha y hora" | "Hora" ...
+ * - tipo: "Texto" | "Texto largo" | "Número" | "Sí/No" | "Selección" | "Selección múltiple" | "Fecha" | "Fecha y hora" | "Hora" ...
  * - clave: nombre estable con el que se guarda la respuesta (si falta, se usa el nombre del campo sin tildes).
  * - seccion: agrupa campos bajo un subtítulo (ej. "Signos vitales").
  * - narrativa: se omite en la impresión para obra social.

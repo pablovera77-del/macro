@@ -6,7 +6,7 @@ import PageHeader from "@/components/PageHeader";
 import StatusBadge from "@/components/StatusBadge";
 import { IconChart } from "@/components/icons";
 import { calcularCumplimiento, describirPlan, hoyAR, ymdAR, semanaActual, UMBRAL_VISITAS_DIA, TZ, DISCIPLINAS_PLAN, type Plan } from "@/lib/plan";
-import { CUPOS, contarCupo, esCupo, type Semaforo } from "@/lib/cupos";
+import { CUPOS, cargaCupo, contarCupo, esCupo, semaforoCupo, type Semaforo } from "@/lib/cupos";
 import { calcularProductividad, DIAS_PRODUCTIVIDAD, ROLES_PRODUCTIVIDAD, type VisitaProd } from "@/lib/productividad";
 
 const campo = "rounded-xl border border-slate-300 px-3 py-2.5 text-sm";
@@ -26,11 +26,17 @@ export default async function ProductividadPage({ searchParams }: { searchParams
   const ahora = new Date();
   const sem = semanaActual(ahora);
   const hace40 = new Date(ahora.getTime() - (DIAS_PRODUCTIVIDAD + 10) * 86400000).toISOString();
-  const [{ data: pacientes }, { data: planesRaw }, { data: visitas }, { data: profes }] = await Promise.all([
+  const hoyYmd = hoyAR();
+  const [{ data: pacientes }, { data: planesRaw }, { data: visitas }, { data: profes }, { data: equipoRaw }, { data: autorizRaw }] = await Promise.all([
     supabase.from("patients").select("id, nombre_completo").eq("estado", "activo").order("nombre_completo"),
     supabase.from("treatment_plans").select("id, patient_id, especialidad, cantidad, unidad, dias_semana, desde, hasta, activo, nota").eq("activo", true),
     supabase.from("visits").select("patient_id, profesional_id, especialidad, estado, fecha_programada, fecha_realizada").gte("fecha_programada", hace40),
     supabase.from("profiles").select("id, full_name, cupo_modulo").eq("role", "profesional_asistencial").eq("active", true).order("full_name"),
+    supabase.from("patient_care_team").select("profesional_id, patient_id, especialidad"),
+    supabase
+      .from("treatment_authorizations")
+      .select("patient_id, especialidad, frecuencia_cantidad, frecuencia_unidad, frecuencia_periodo, dias_semana")
+      .gte("periodo_hasta", hoyYmd),
   ]);
   const nombres = new Map((pacientes ?? []).map((p) => [p.id, p.nombre_completo]));
   const todas = visitas ?? [];
@@ -63,7 +69,15 @@ export default async function ProductividadPage({ searchParams }: { searchParams
     .filter((p) => p.cupo_modulo && esCupo(p.cupo_modulo))
     .map((p) => {
       const cupo = p.cupo_modulo as keyof typeof CUPOS;
-      return { id: p.id, nombre: p.full_name, cupo, def: CUPOS[cupo], ...contarCupo(cupo, todas.filter((v) => v.profesional_id === p.id), hoy, sem, ymdAR) };
+      const porVisitas = contarCupo(cupo, todas.filter((v) => v.profesional_id === p.id), hoy, sem, ymdAR);
+      // Carga por frecuencia autorizada de sus pacientes (Vanina, 20/10): un paciente con 1 visita por semana suma ~0,14 por día.
+      // Si no se puede calcular (sin pacientes con frecuencia cargada), se mide con las visitas asignadas del período.
+      const frecuencias = (equipoRaw ?? [])
+        .filter((t) => t.profesional_id === p.id && nombres.has(t.patient_id))
+        .flatMap((t) => (autorizRaw ?? []).filter((a) => a.patient_id === t.patient_id && a.especialidad === t.especialidad));
+      const carga = frecuencias.length > 0 ? cargaCupo(cupo, frecuencias) : null;
+      const asignadas = carga ?? porVisitas.asignadas;
+      return { id: p.id, nombre: p.full_name, cupo, def: CUPOS[cupo], ...porVisitas, asignadas, porFrecuencia: carga !== null, semaforo: semaforoCupo(asignadas, porVisitas.tope) };
     })
     .sort((a, b) => b.asignadas / b.tope - a.asignadas / a.tope);
   const sinCupo = (profes ?? []).filter((p) => !p.cupo_modulo).length;
@@ -123,8 +137,8 @@ export default async function ProductividadPage({ searchParams }: { searchParams
         <div>
           <h2 className="text-sm font-semibold text-slate-900">Cupo contratado de cada profesional</h2>
           <p className="text-xs text-slate-500">
-            Asignado = visitas programadas, confirmadas o realizadas del día (enfermería) o de la semana de lunes a viernes (kinesiología). Verde: dentro del cupo; amarillo: cerca (80 % o más); rojo: excedido.
-            Es una guía: no bloquea la agenda. {sinCupo > 0 ? `Falta definir el cupo de ${sinCupo} profesional${sinCupo === 1 ? "" : "es"} (Administración lo carga en Usuarios).` : ""}
+            Asignado = carga de sus pacientes según la frecuencia autorizada, medida en visitas por día (enfermería) o por semana (kinesiología): un paciente con una visita por semana suma cerca de 0,14 por día. Si todavía no hay pacientes con frecuencia cargada, se cuentan las visitas del período. Verde: dentro del cupo; amarillo: cerca (80 % o más); rojo: excedido.
+            Es una guía: se puede asignar más y queda marcado en rojo. {sinCupo > 0 ? `Falta definir el cupo de ${sinCupo} profesional${sinCupo === 1 ? "" : "es"} (Administración lo carga en Usuarios).` : ""}
           </p>
         </div>
         {filasCupo.length === 0 ? (
@@ -148,7 +162,10 @@ export default async function ProductividadPage({ searchParams }: { searchParams
                     <td className="px-4 py-2.5 text-slate-900">{f.nombre}</td>
                     <td className="px-4 py-2.5 text-slate-600">{f.def.nombre}</td>
                     <td className="px-4 py-2.5 text-slate-500 text-xs">{f.def.periodo === "dia" ? "Hoy" : "Esta semana (lun a vie)"}</td>
-                    <td className="px-4 py-2.5 text-slate-900 font-medium">{f.asignadas} de {f.tope}</td>
+                    <td className="px-4 py-2.5 text-slate-900 font-medium">
+                      {(Math.round(f.asignadas * 10) / 10).toLocaleString("es-AR")} de {f.tope}
+                      <span className="block text-[11px] font-normal text-slate-500">{f.porFrecuencia ? "por frecuencia autorizada" : "por visitas del período"}</span>
+                    </td>
                     <td className="px-4 py-2.5 text-slate-600">{f.realizadas}</td>
                     <td className="px-4 py-2.5"><StatusBadge tone={tonos[f.semaforo]} label={textoSemaforo[f.semaforo]} /></td>
                   </tr>

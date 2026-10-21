@@ -5,6 +5,7 @@ import { requireProfile, SPECIALTY_LABELS } from "@/lib/auth";
 import EvolucionDetalle from "@/components/hc/EvolucionDetalle";
 import PrintButton from "@/components/hc/PrintButton";
 import { EVOLUCION_COLS, fechaCortaAR, parseCampos } from "@/lib/hc";
+import { horaAR } from "@/lib/horario";
 
 // Disciplinas cuya planilla lleva al pie la firma y el sello de la coordinación (R79).
 const CON_PIE_COORDINACION = ["enfermeria", "kinesiologia"];
@@ -13,8 +14,8 @@ const CON_PIE_COORDINACION = ["enfermeria", "kinesiologia"];
  * Vista de impresión / PDF de una evolución (R78-R81).
  * - ?modo=completo (por defecto): todo el formulario.
  * - ?modo=os: para obra social, sin la narrativa extendida.
- * No se imprimen las horas internas de apertura y cierre de la visita; solo la fecha de la visita
- * y la fecha y hora de las firmas.
+ * Se imprime la hora de ingreso al domicilio (Vanina, 20/10). El rango horario de la visita y la hora
+ * de cierre quedan solo para control interno. Además, la fecha y hora de las firmas.
  */
 export default async function ImprimirEvolucionPage({
   params,
@@ -27,10 +28,10 @@ export default async function ImprimirEvolucionPage({
   const { modo: modoParam } = await searchParams;
   const modo = modoParam === "os" ? "os" : "completo";
   const { profile } = await requireProfile();
-  if (!["administracion", "coordinador_internacion", "profesional_asistencial", "direccion"].includes(profile.role)) redirect("/inicio");
+  if (!["administracion", "coordinador_internacion", "profesional_asistencial", "direccion", "facturacion", "auditor_externo"].includes(profile.role)) redirect("/inicio");
 
   const supabase = await createClient();
-  const cols = `${EVOLUCION_COLS}, patients(nombre_completo, dni, obra_social, numero_afiliado, obras_sociales(nombre)), profiles(full_name), visits(fecha_realizada, fecha_programada)` as const;
+  const cols = `${EVOLUCION_COLS}, patients(nombre_completo, dni, obra_social, numero_afiliado, obras_sociales(nombre)), profiles(full_name), visits(fecha_realizada, fecha_programada, abierta_at)` as const;
   const { data: e } = await supabase.from("evolutions").select(cols).eq("id", id).maybeSingle();
   if (!e) notFound();
 
@@ -45,9 +46,10 @@ export default async function ImprimirEvolucionPage({
   const campos = parseCampos(template?.campos);
 
   const paciente = e.patients as unknown as { nombre_completo: string; dni: string | null; obra_social: string | null; numero_afiliado: string | null; obras_sociales: { nombre: string } | null } | null;
-  const visita = e.visits as unknown as { fecha_realizada: string | null; fecha_programada: string } | null;
+  const visita = e.visits as unknown as { fecha_realizada: string | null; fecha_programada: string; abierta_at: string | null } | null;
   const autor = (e.profiles as unknown as { full_name: string } | null)?.full_name;
   const fechaVisita = visita?.fecha_realizada ?? visita?.fecha_programada ?? e.created_at;
+  const horaIngreso = visita?.abierta_at ? horaAR(visita.abierta_at) : null;
   const obraSocial = paciente?.obras_sociales?.nombre ?? paciente?.obra_social ?? "—";
   const disciplina = SPECIALTY_LABELS[e.especialidad] ?? e.especialidad;
   const ubicaciones = [
@@ -104,6 +106,12 @@ export default async function ImprimirEvolucionPage({
             <dt className="text-[11px] text-neutral-600">Fecha de la visita</dt>
             <dd>{fechaCortaAR(fechaVisita)}</dd>
           </div>
+          {horaIngreso && (
+            <div>
+              <dt className="text-[11px] text-neutral-600">Hora de ingreso</dt>
+              <dd>{horaIngreso} hs</dd>
+            </div>
+          )}
           <div>
             <dt className="text-[11px] text-neutral-600">Profesional</dt>
             <dd>

@@ -3,6 +3,7 @@ import {
   asMedicacion,
   asNova5,
   asRespuestas,
+  fechaCortaAR,
   fechaHoraAR,
   NOVA5_DIMENSIONES,
   resolverRespuestas,
@@ -203,7 +204,8 @@ function FirmaBloque({
               {detalle && <span className={label}> · {detalle}</span>}
             </div>
           )}
-          <div className={label}>{fechaHoraAR(fecha)}</div>
+          {/* En el PDF solo va la fecha: la hora de la firma queda como registro interno (Vanina, 20/10). */}
+          <div className={label}>{imprimible ? fechaCortaAR(fecha) : fechaHoraAR(fecha)}</div>
         </>
       ) : imprimible ? (
         <div className="text-sm text-black">{faltaTxt}</div>

@@ -10,6 +10,12 @@ import { FRANJAS, descripcionHorario, instanteSanJuan, leerHorarioDeForm, type F
 import { cargarPropuestasSemana } from "@/lib/agenda-semana";
 import { esDataUrlImagen, subirFoto } from "@/lib/fotos";
 
+const MOTIVOS_NO_ATENCION: Record<string, string> = {
+  no_atendieron: "nadie atendió",
+  paciente_ausente: "paciente ausente",
+  otro: "otro motivo",
+};
+
 function refrescar() {
   revalidatePath("/agenda");
   revalidatePath("/inicio");
@@ -143,13 +149,25 @@ export async function rescheduleVisitAction(formData: FormData) {
   const horario = leerHorarioDeForm(formData);
   if ("error" in horario) throw new Error(horario.error);
   const motivo = String(formData.get("motivo_reprogramacion") || "") || null;
+  // Opcional: pasar la visita a otro profesional (p. ej. «no me atendieron» → que vaya otro enfermero más tarde).
+  const nuevoProfesional = String(formData.get("profesional_id") || "");
+  const cambio: { profesional_id?: string } = {};
+  if (nuevoProfesional) {
+    const { data: actual } = await supabase.from("visits").select("profesional_id, especialidad").eq("id", visit_id).maybeSingle();
+    if (!actual) throw new Error("No encontramos esa visita.");
+    if (nuevoProfesional !== actual.profesional_id) {
+      const { data: prof } = await supabase.from("profiles").select("id").eq("id", nuevoProfesional).eq("role", "profesional_asistencial").eq("active", true).maybeSingle();
+      if (!prof) throw new Error("Elegí un profesional asistencial activo.");
+      cambio.profesional_id = nuevoProfesional;
+    }
+  }
   const { error } = await supabase
     .from("visits")
-    .update({ ...horario, motivo_reprogramacion: motivo, estado: "programada", abierta_at: null, abierta_lat: null, abierta_lng: null, recordatorio_enviado_at: null })
+    .update({ ...horario, ...cambio, motivo_reprogramacion: motivo, estado: "programada", abierta_at: null, abierta_lat: null, abierta_lng: null, recordatorio_enviado_at: null })
     .eq("id", visit_id);
   if (error) throw new Error(error.message);
   refrescar();
-  await flash("Visita reprogramada. El profesional la ve con la nueva fecha en «Mi agenda».");
+  await flash(cambio.profesional_id ? "Visita reprogramada y pasada a otro profesional. La ve en «Mi agenda»." : "Visita reprogramada. El profesional la ve con la nueva fecha en «Mi agenda».");
   return;
 }
 
@@ -248,6 +266,20 @@ export async function noMeAtendieronAction(formData: FormData) {
     .update({ estado: "no_realizada", cerrada_at: new Date().toISOString(), motivo_no_atencion: motivo, foto_fachada: ruta })
     .eq("id", visit_id);
   if (error) throw new Error(`No se pudo guardar: ${error.message}`);
+
+  // Aviso dentro de la plataforma a Administración y Coordinación (Configuración → Alertas) para que reprogramen la visita.
+  // Si el aviso falla, la visita ya quedó registrada como no realizada.
+  const { data: contexto } = await supabase.from("visits").select("patients(nombre_completo)").eq("id", visit_id).maybeSingle();
+  const paciente = (contexto?.patients as unknown as { nombre_completo: string } | null)?.nombre_completo ?? "un paciente";
+  await supabase.rpc("fn_notificar", {
+    p_tipo: "visita_no_atendida",
+    p_vars: { profesional: profile.full_name ?? "un profesional", paciente, motivo: MOTIVOS_NO_ATENCION[motivo] ?? motivo },
+    p_href: "/agenda",
+    p_entidad: "visits",
+    p_entidad_id: visit_id,
+    p_extra_users: [],
+  });
+
   refrescar();
-  await flash("Quedó registrado con la foto de la fachada. Coordinación la va a ver para reprogramarla.");
+  await flash("Quedó registrado con la foto de la fachada. Avisamos a Administración y Coordinación para reprogramar la visita.");
 }
