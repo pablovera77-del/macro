@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useActionState, useRef, useState, useTransition } from "react";
 import { createAdmissionAction, checkDniAction, type AdmissionState, type DniCheck, type PacienteSimilar } from "@/app/(dashboard)/internacion/actions";
-import { DISCIPLINAS_PLAN, DIAS_CORTOS, hoyAR } from "@/lib/plan";
+import { DISCIPLINAS_PLAN, hoyAR } from "@/lib/plan";
 import { SPECIALTY_LABELS } from "@/lib/roles";
 import { NOVA5_DIMENSIONES, riesgoNova5 } from "@/lib/hc";
-import { edadEnAnios, fechaCorta, TIPOS_INTERNACION, TIPOS_POR_UNIDAD, UNIDADES_TRABAJO, SIN_EMERGENCIAS } from "@/lib/paciente";
+import { edadEnAnios, fechaCorta, TIPOS_INTERNACION, TIPOS_POR_UNIDAD, UNIDADES_TRABAJO, SIN_EMERGENCIAS, INSTITUCIONES_DERIVANTES } from "@/lib/paciente";
 import { PARTICULAR } from "@/lib/legajo";
 import DniScanner from "@/components/DniScanner";
+import RenglonesEditor from "@/components/pacientes/RenglonesEditor";
+import CondicionesClinicas from "@/components/pacientes/CondicionesClinicas";
 import type { DatosDni } from "@/lib/dni-pdf417";
 
 type ObraSocial = { id: string; nombre: string };
@@ -425,10 +427,10 @@ export default function AdmissionWizard({ obrasSociales, profesionales = [], coo
               <input name="coseguro_detalle" autoComplete="off" placeholder="Detalle del coseguro (ej. 20% por visita)" className={inputCls} />
             )}
           </div>
-          <Field label="Institución derivante" hint="De dónde llega el paciente (ej. Sanatorio Argentino).">
+          <Field label="Institución derivante" hint="De dónde llega el paciente. Elegí de la lista o escribí otra: sanatorios y hospitales de la provincia, consultorio o institución externa (otra provincia).">
             <input name="institucion_derivante" autoComplete="off" list="instituciones-derivantes" className={inputCls} />
             <datalist id="instituciones-derivantes">
-              {["Sanatorio Argentino", "Hospital Rawson", "Hospital Marcial Quiroga", "Clínica Mayo", "Clínica Santa Clara", "Domicilio / consultorio"].map((i) => <option key={i} value={i} />)}
+              {INSTITUCIONES_DERIVANTES.map((i) => <option key={i} value={i} />)}
             </datalist>
           </Field>
           <Field label="Médico derivante">
@@ -460,15 +462,7 @@ export default function AdmissionWizard({ obrasSociales, profesionales = [], coo
               <p className="text-xs text-slate-500">Sin servicio de emergencias: la ficha va a mostrar «{SIN_EMERGENCIAS}».</p>
             )}
           </div>
-          <div className="sm:col-span-2 flex flex-wrap gap-x-6 gap-y-2">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input type="checkbox" name="en_tratamiento_atb" className="rounded border-slate-300" /> En tratamiento antibiótico
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input type="checkbox" name="requiere_curaciones" className="rounded border-slate-300" /> Requiere curaciones
-            </label>
-            <span className="text-[11px] text-slate-400 w-full">Sirven para filtrar el listado de pacientes.</span>
-          </div>
+          <CondicionesClinicas />
           <Field label="Aclaraciones importantes" className="sm:col-span-2" hint="Solo las ve el personal de la empresa; el paciente y el familiar no. Por ejemplo: «va a diálisis martes y miércoles de 9 a 12».">
             <textarea name="aclaraciones" rows={3} className={inputCls} />
           </Field>
@@ -509,36 +503,32 @@ export default function AdmissionWizard({ obrasSociales, profesionales = [], coo
               return <p className="mt-2 text-xs text-slate-700">Total {total}: <strong>{riesgo ? `riesgo ${riesgo}` : "sin riesgo"}</strong> <span className="text-slate-400">(1–4 bajo · 5–8 medio · 9–15 alto)</span></p>;
             })()}
           </fieldset>
+          <fieldset className="rounded-xl border border-slate-200 p-3 space-y-3">
+            <legend className="px-1 text-xs font-medium text-slate-700">Prácticas autorizadas y frecuencia</legend>
+            <p className="text-[11px] text-slate-400">Cargá lo que autorizó la obra social, un renglón por práctica (ej. Enfermería: 1 visita por día; Kinesiología motora: 3 sesiones por semana; Cuidador: 8 horas por día). Con el botón «+» sumás las que hagan falta. Es el plan de tratamiento del paciente: Administración es la única que lo modifica. Si todavía no tenés la autorización, dejá la práctica sin elegir y cargala después desde la ficha.</p>
+            <div className="flex flex-wrap gap-3">
+              <label className="text-[11px] text-slate-600">Ingreso al servicio (inicio de la autorización)
+                <input name="periodo_desde" type="date" className={`${inputCls} block mt-0.5`} />
+              </label>
+              <label className="text-[11px] text-slate-600">Vencimiento de la autorización
+                <input name="periodo_hasta" type="date" className={`${inputCls} block mt-0.5`} />
+              </label>
+            </div>
+            <RenglonesEditor obligatorio={false} />
+          </fieldset>
           <div>
-            <p className="text-xs font-medium text-slate-700 mb-1">Plan de tratamiento y equipo asistencial</p>
-            <p className="text-[11px] text-slate-400 mb-2">Para cada disciplina que corresponda, indicá cuántas visitas necesita y qué profesional la atiende. Las que dejes vacías quedan fuera del plan; se pueden completar después en la ficha.</p>
+            <p className="text-xs font-medium text-slate-700 mb-1">Equipo asistencial</p>
+            <p className="text-[11px] text-slate-400 mb-2">Elegí el profesional que atiende cada disciplina. Las que dejes sin asignar quedan visibles en las alertas de Administración y de Coordinación hasta que se asignen: ningún paciente tiene que quedar sin profesional.</p>
             <div className="rounded-xl border border-slate-200 divide-y divide-slate-100">
               {DISCIPLINAS_PLAN.map((d) => (
-                <div key={d} className="p-3 grid grid-cols-2 sm:grid-cols-12 gap-2 items-end">
-                  <span className="col-span-2 sm:col-span-2 text-sm font-medium text-slate-800 self-center">{SPECIALTY_LABELS[d]}</span>
-                  <label className="col-span-2 sm:col-span-4 block text-[11px] text-slate-500">Profesional
+                <div key={d} className="p-3 grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                  <span className="sm:col-span-4 text-sm font-medium text-slate-800">{SPECIALTY_LABELS[d]}</span>
+                  <label className="sm:col-span-8 block text-[11px] text-slate-500">Profesional
                     <select name={`equipo__${d}`} defaultValue="" className={`${inputCls} mt-0.5 py-2`}>
                       <option value="">Sin asignar</option>
                       {profesionales.map((p) => <option key={p.id} value={p.id}>{p.full_name}</option>)}
                     </select>
                   </label>
-                  <label className="block text-[11px] text-slate-500 sm:col-span-2">Visitas
-                    <input name={`plan__${d}__cantidad`} type="number" min={1} max={50} placeholder="—" className={`${inputCls} mt-0.5 py-2`} />
-                  </label>
-                  <label className="block text-[11px] text-slate-500 sm:col-span-2">Cada
-                    <select name={`plan__${d}__unidad`} defaultValue="semana" className={`${inputCls} mt-0.5 py-2`}>
-                      <option value="semana">semana</option>
-                      <option value="dia">día</option>
-                    </select>
-                  </label>
-                  <details className="col-span-2 sm:col-span-2 text-[11px] text-slate-500">
-                    <summary className="cursor-pointer select-none">Días</summary>
-                    <div className="flex flex-wrap gap-x-2 gap-y-1 mt-1">
-                      {DIAS_CORTOS.map((dc, i) => (
-                        <label key={dc} className="flex items-center gap-1"><input type="checkbox" name={`plan__${d}__dias`} value={i + 1} className="rounded border-slate-300" />{dc}</label>
-                      ))}
-                    </div>
-                  </details>
                 </div>
               ))}
             </div>

@@ -5,7 +5,7 @@ import StatusBadge from "@/components/StatusBadge";
 import EvolucionDetalle from "@/components/hc/EvolucionDetalle";
 import NotaAclaratoria from "@/components/hc/NotaAclaratoria";
 import { IconChevronDown } from "@/components/icons";
-import { asNova5, EVOLUCION_COLS, fechaHoraAR, parseCampos, RIESGO_TONE } from "@/lib/hc";
+import { asNova5, asRespuestas, EVOLUCION_COLS, fechaHoraAR, parseCampos, RIESGO_TONE } from "@/lib/hc";
 
 /**
  * Solapa "Historia clínica" de la ficha: cada evolución se abre y muestra su contenido,
@@ -33,9 +33,39 @@ export default async function HistoriaClinicaFicha({ patientId, role, userId }: 
     arr.push({ id: n.id, texto: n.texto, created_at: n.created_at, autor: (n.profiles as unknown as { full_name: string } | null)?.full_name ?? "Profesional" });
     notas.set(n.evolution_id, arr);
   }
+  // Nutrición (Vanina, 26/10): datos comparables entre evaluaciones para ver la evolución del paciente.
+  const nutricion = lista
+    .filter((e) => e.especialidad === "nutricion")
+    .map((e) => ({ id: e.id, fecha: e.created_at, r: asRespuestas(e.respuestas) }))
+    .filter((x) => x.r.peso_actual || x.r.talla)
+    .reverse();
   const soloLectura = role === "administracion" || role === "direccion" || role === "facturacion";
 
   return (
+    <div className="space-y-6">
+    {nutricion.length > 0 && (
+      <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="px-5 py-4 border-b border-slate-100">
+          <h2 className="text-sm font-semibold text-slate-900">Evolución nutricional</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Comparación de las evaluaciones de Nutrición, de la más antigua a la más nueva.</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="text-left text-slate-500">
+              <tr>{["Fecha", "Peso actual (kg)", "Peso habitual (kg)", "Talla (m)", "IMC", "% pérdida", "Diagnóstico", "Acceso", "Indicación", "Volumen (ml)", "Proteínas (g/día)", "Calorías (kcal/día)"].map((h) => <th key={h} className="px-3 py-2 font-medium whitespace-nowrap">{h}</th>)}</tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {nutricion.map((x) => (
+                <tr key={x.id} className="text-slate-800">
+                  <td className="px-3 py-2 whitespace-nowrap">{fechaHoraAR(x.fecha)}</td>
+                  {["peso_actual", "peso_habitual", "talla", "imc", "perdida_peso", "diagnostico_nutricional", "tipo_acceso", "indicacion", "volumen_ml", "proteinas_dia", "calorias_dia"].map((k) => <td key={k} className="px-3 py-2 whitespace-nowrap">{x.r[k] ?? "—"}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    )}
     <section className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
       <div className="px-5 py-4 border-b border-slate-100">
         <h2 className="text-sm font-semibold text-slate-900">Evoluciones del paciente</h2>
@@ -105,5 +135,6 @@ export default async function HistoriaClinicaFicha({ patientId, role, userId }: 
         </div>
       )}
     </section>
+    </div>
   );
 }

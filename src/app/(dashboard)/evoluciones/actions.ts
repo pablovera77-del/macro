@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { flash } from "@/lib/flash";
 import type { Enums, Json } from "@/types/database";
 import {
+  calcularCampo,
   campoKey,
   NOVA5_DIMENSIONES,
   parseCampos,
@@ -63,6 +64,7 @@ export async function createEvolutionAction(formData: FormData): Promise<Evoluci
   const respuestas: Record<string, string> = {};
   for (const c of campos) {
     const key = campoKey(c);
+    if (c.tipo === "Calculado") continue; // se calcula después, con lo que cargó el profesional
     if (c.tipo === "Selección múltiple") {
       // Una o más opciones de la lista; se guardan juntas, separadas por «; » (así se leen en la historia y en el PDF).
       const marcadas = [...new Set(formData.getAll(`campo__${key}`).map((v) => texto(v)).filter(Boolean))];
@@ -83,6 +85,12 @@ export async function createEvolutionAction(formData: FormData): Promise<Evoluci
     if (c.tipo === "Selección" && !(c.opciones ?? []).includes(valor)) return { error: `En «${c.label}» elegí una de las opciones de la lista.` };
     if ((c.tipo === "Número" || c.tipo === "Año") && !Number.isFinite(Number(valor))) return { error: `«${c.label}» tiene que ser un número.` };
     respuestas[key] = valor;
+  }
+  // Campos calculados (IMC y % de pérdida de peso en Nutrición): los calcula el servidor.
+  for (const c of campos) {
+    if (c.tipo !== "Calculado") continue;
+    const v = calcularCampo(c.formula, respuestas);
+    if (v !== null) respuestas[campoKey(c)] = v;
   }
 
   // Escala Nova 5: "No aplica" (vacío) en las cinco = no se registra. Si completa algunas, tienen que ser las cinco.

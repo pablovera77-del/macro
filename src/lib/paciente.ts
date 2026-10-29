@@ -57,3 +57,18 @@ export const SIN_EMERGENCIAS = "Debe llamar al 107";
 export function nombreCompleto(nombre: string, apellido: string): string {
   return `${nombre.trim()} ${apellido.trim()}`.replace(/\s+/g, " ").trim();
 }
+
+/**
+ * Sugerencias para «Institución derivante» (Vanina, 26/10): sanatorios y hospitales de la provincia, consultorio e
+ * institución externa (pacientes que vienen de otra provincia). Es una lista de sugerencias: se puede escribir cualquier
+ * otra institución. Falta que Vanina confirme la lista completa de la provincia.
+ */
+export const INSTITUCIONES_DERIVANTES = [
+  "Hospital Dr. Guillermo Rawson",
+  "Hospital Dr. Marcial Quiroga",
+  "Sanatorio Argentino",
+  "Clínica Mayo",
+  "Clínica Santa Clara",
+  "Consultorio",
+  "Institución externa (otra provincia)",
+];

@@ -12,7 +12,7 @@ import { ESTADO_PACIENTE_LABELS } from "@/lib/paciente";
 import { MOTIVOS_EGRESO_OPCIONES, motivoEgresoLabel, parseDatetimeLocalAR } from "@/lib/egreso";
 import type { AppRole } from "@/lib/auth";
 import { leerLegajo, leerContactosExtra, txt, PARTICULAR } from "@/lib/legajo";
-import { leerRenglones } from "@/lib/autorizaciones";
+import { leerRenglones, planDesdeRenglones, type Renglon } from "@/lib/autorizaciones";
 import { calcularSinAsignar } from "@/lib/sin-asignar";
 
 // DF-C3 §2 y §3: el alta, el legajo, las firmas de ingreso y las autorizaciones
@@ -48,6 +48,16 @@ export async function createAdmissionAction(_prev: AdmissionState, formData: For
   const upp = leerNova5Completa(NOVA5_DIMENSIONES.map((dim) => txt(formData, `upp__${dim.key}`)));
   if ("error" in upp) return { error: upp.error };
   const uppDatos = { upp_ingreso_nova5: upp.valor as unknown as Json, upp_ingreso_at: new Date().toISOString() };
+  // Prácticas autorizadas y frecuencia (paso 3, opcional): se validan antes de crear al paciente para no dejarlo a medias.
+  const desdeAut = txt(formData, "periodo_desde") || d.fecha_ingreso;
+  const hastaAut = txt(formData, "periodo_hasta");
+  const hayRenglones = [...formData.keys()].some((k) => /^r\d+_tipo$/.test(k) && String(formData.get(k) || "") !== "");
+  let renglonesAut: Renglon[] = [];
+  if (hayRenglones) {
+    const leidoAut = leerRenglones(formData, desdeAut, hastaAut);
+    if ("error" in leidoAut) return { error: leidoAut.error };
+    renglonesAut = leidoAut.renglones;
+  }
   // Coordinador/a asignado al ingreso (DF-C3 pregunta 13): arma la agenda y sale en la firma de los PDF.
   const coordinadorId = txt(formData, "coordinador_id") || null;
   if (coordinadorId) {
@@ -141,18 +151,34 @@ export async function createAdmissionAction(_prev: AdmissionState, formData: For
     if (eA) aviso += " No se pudo guardar el cuadro de aclaraciones: cargalo desde «Datos» en la ficha.";
   }
 
-  // Paso 3 del DF-C3 §3: plan de tratamiento por disciplina y equipo asistencial.
-  const planRows: { patient_id: string; especialidad: Enums<"specialty">; cantidad: number; unidad: string; dias_semana: number[] | null; creado_por: string }[] = [];
+  // Paso 3 del DF-C3 §3: prácticas autorizadas con su frecuencia (de ahí sale el plan de tratamiento) y equipo asistencial.
+  const planRows = planDesdeRenglones(renglonesAut).map((p) => ({ patient_id: patientId, especialidad: p.especialidad, cantidad: p.cantidad, unidad: p.unidad, dias_semana: p.dias_semana, creado_por: profile.id }));
   const teamRows: { patient_id: string; especialidad: Enums<"specialty">; profesional_id: string }[] = [];
   for (const esp of DISCIPLINAS_PLAN) {
-    const cantidad = Number(formData.get(`plan__${esp}__cantidad`) || 0);
-    if (Number.isInteger(cantidad) && cantidad >= 1 && cantidad <= 50) {
-      const unidad = String(formData.get(`plan__${esp}__unidad`) || "semana") === "dia" ? "dia" : "semana";
-      const dias = formData.getAll(`plan__${esp}__dias`).map(Number).filter((n) => n >= 1 && n <= 7);
-      planRows.push({ patient_id: patientId, especialidad: esp, cantidad, unidad, dias_semana: dias.length > 0 ? dias : null, creado_por: profile.id });
-    }
     const prof = String(formData.get(`equipo__${esp}`) || "");
     if (prof) teamRows.push({ patient_id: patientId, especialidad: esp, profesional_id: prof });
+  }
+  if (renglonesAut.length > 0) {
+    const { error: eAut } = await supabase.from("treatment_authorizations").insert(
+      renglonesAut.map((r) => ({
+        patient_id: patientId,
+        practica: r.practica,
+        practica_tipo: r.practica_tipo,
+        practica_aclaracion: r.practica_aclaracion,
+        especialidad: r.especialidad,
+        cantidad_autorizada: r.cantidad_autorizada,
+        periodo_desde: desdeAut,
+        periodo_hasta: hastaAut,
+        autorizado_por: profile.id,
+        frecuencia_cantidad: r.frecuencia_cantidad,
+        frecuencia_unidad: r.frecuencia_unidad,
+        frecuencia_periodo: r.frecuencia_periodo,
+        frecuencia_tipo: r.frecuencia_tipo,
+        dias_semana: r.dias_semana.length > 0 ? r.dias_semana : null,
+        veces_por_dia: r.veces_por_dia,
+      }))
+    );
+    if (eAut) aviso += " No se pudieron guardar las prácticas autorizadas: cargalas desde «Autorizaciones» en la ficha.";
   }
   if (planRows.length > 0) {
     const { error: e1 } = await supabase.from("treatment_plans").insert(planRows);
@@ -163,6 +189,7 @@ export async function createAdmissionAction(_prev: AdmissionState, formData: For
     const { error: e2 } = await supabase.from("patient_care_team").upsert(teamRows, { onConflict: "patient_id,profesional_id,especialidad", ignoreDuplicates: true });
     if (e2) aviso += " No se pudo guardar el equipo: asignalo desde Pacientes.";
   }
+  if (renglonesAut.length > 0) await avisarIngresoSinAsignar(supabase, patientId);
 
   revalidatePath("/internacion");
   revalidatePath(`/paciente/${patientId}`);
@@ -248,12 +275,32 @@ export async function confirmArrivalAction(formData: FormData) {
   const patient_id = String(formData.get("patient_id") || "");
   if (!patient_id) throw new Error("Falta el paciente.");
 
+  const { data: previo } = await supabase.from("patients").select("estado, nombre_completo").eq("id", patient_id).maybeSingle();
+
   const { error } = await supabase
     .from("patients")
     .update({ estado: "activo", llegada_confirmada_at: new Date().toISOString() })
     .eq("id", patient_id);
 
   if (error) throw new Error(error.message);
+
+  // Vanina (26/10): al confirmarse la llegada, avisan Administración, Coordinación y los profesionales del equipo.
+  // Es un extra: si el aviso falla, la llegada ya quedó confirmada.
+  if (previo && previo.estado !== "activo") {
+    try {
+      const { data: equipo } = await supabase.from("patient_care_team").select("profesional_id").eq("patient_id", patient_id);
+      await supabase.rpc("fn_notificar", {
+        p_tipo: "llegada_confirmada",
+        p_vars: { paciente: previo.nombre_completo ?? "un paciente" },
+        p_href: `/paciente/${patient_id}`,
+        p_entidad: "patients",
+        p_entidad_id: patient_id,
+        p_extra_users: [...new Set((equipo ?? []).map((e) => e.profesional_id))],
+      });
+    } catch {
+      // El aviso es un extra.
+    }
+  }
   revalidatePath("/internacion");
   await flash("Llegada confirmada. El paciente pasó a «Activo» y Coordinación ya puede programar su primera visita.");
   return;
@@ -348,6 +395,37 @@ export async function cargarAutorizacionesAction(_prev: AutorizacionState, formD
   revalidatePath(`/paciente/${patient_id}`);
   await flash(leido.renglones.length === 1 ? "Práctica autorizada." : `${leido.renglones.length} prácticas autorizadas.`);
   return { error: null, ok: true };
+}
+
+// Vanina (26/10, DF-C3 pregunta 4): dos autorizaciones vigentes de la misma práctica no pueden convivir. Administración
+// cierra una de las dos: la autorización queda vigente hasta ayer y deja de contar desde hoy (no se borra, queda en el historial).
+export async function cerrarAutorizacionAction(formData: FormData) {
+  const { profile } = await requireProfile();
+  if (!ROLES_ALTA.includes(profile.role)) throw new Error("Solo Administración cierra autorizaciones de práctica.");
+
+  const supabase = await createClient();
+  const id = Number(formData.get("authorization_id") || 0);
+  const patient_id = String(formData.get("patient_id") || "");
+  if (!id) throw new Error("Falta elegir la autorización a cerrar.");
+
+  const { data: aut } = await supabase.from("treatment_authorizations").select("id, periodo_desde, periodo_hasta").eq("id", id).maybeSingle();
+  if (!aut) throw new Error("No encontramos esa autorización.");
+  const hoy = hoyAR();
+  const ayer = new Date(`${hoy}T12:00:00Z`);
+  ayer.setUTCDate(ayer.getUTCDate() - 1);
+  const ayerYmd = ayer.toISOString().slice(0, 10);
+  if (aut.periodo_hasta < hoy) throw new Error("Esa autorización ya no está vigente.");
+  if (aut.periodo_desde > ayerYmd) {
+    throw new Error("Esa autorización empieza hoy o más adelante, así que no se puede cerrar «hasta ayer». Cerrá la otra.");
+  }
+
+  const { error } = await supabase.from("treatment_authorizations").update({ periodo_hasta: ayerYmd }).eq("id", id);
+  if (error) throw new Error(`No se pudo cerrar la autorización: ${error.message}`);
+  revalidatePath("/internacion");
+  revalidatePath("/panel-administracion");
+  if (patient_id) revalidatePath(`/paciente/${patient_id}`);
+  await flash("Autorización cerrada: dejó de estar vigente desde hoy.");
+  return;
 }
 
 // H6: si tras cargar las prácticas falta profesional o coordinador, se avisa a Coordinación (queda además la alerta visible en Inicio y Pacientes).
@@ -544,6 +622,8 @@ export async function quitarIntegranteEquipoAction(formData: FormData) {
 
   const { error } = await supabase.from("patient_care_team").delete().eq("id", id);
   if (error) throw new Error(`No se pudo quitar al profesional del equipo: ${error.message}`);
+  // Vanina (26/10): si queda una práctica autorizada sin profesional, se avisa a Coordinación.
+  if (patient_id) await avisarIngresoSinAsignar(supabase, patient_id);
   revalidatePath("/internacion");
   if (patient_id) revalidatePath(`/paciente/${patient_id}`);
   await flash("Profesional quitado del equipo. Si tenía visitas programadas, reasignalas desde la Agenda.");

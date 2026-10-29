@@ -46,7 +46,9 @@ export function semaforoPorDias(n: number): Semaforo {
   return { dias: n, tone: "verde", label: n <= 60 ? `Vigente · vence en ${dias(n)}` : "Vigente", escalon: null };
 }
 
-export const SIN_AUTORIZACION: Semaforo = { dias: null, tone: "amarillo", label: "Sin autorización cargada", escalon: null };
+// Vanina (26/10, DF-C3 pregunta 4): sin autorización cargada figura en rojo, pero se puede seguir evolucionando; cuando llega
+// la autorización se carga con fecha retroactiva.
+export const SIN_AUTORIZACION: Semaforo = { dias: null, tone: "rojo", label: "Sin autorización cargada", escalon: null };
 
 /** Cuál es la autorización «vigente» de cada práctica: la de vencimiento más lejano (las anteriores quedaron reemplazadas). */
 function ultimasPorPractica<T extends AutorizacionMin>(auths: T[]): T[] {
@@ -126,3 +128,26 @@ export const autorizacionVencida = cache(async (patientId: string, especialidad?
   const s = semaforoPorDias(especialidad ? Math.max(...ult) : Math.min(...ult));
   return { vencida: (s.dias ?? 0) < 0, sinAutorizacion: false, dias: s.dias, detalle: s.label };
 });
+
+export type AutorizacionDuplicable = {
+  id: number | string;
+  patient_id: string;
+  practica: string;
+  especialidad?: string | null;
+  periodo_desde: string;
+  periodo_hasta: string;
+};
+
+/**
+ * Autorizaciones de lo mismo que coexisten hoy en un mismo paciente (Vanina, 26/10, DF-C3 pregunta 4): no pueden convivir
+ * dos autorizaciones vigentes de la misma práctica, así que hay que cerrar una. Devuelve los grupos con 2 o más vigentes.
+ */
+export function autorizacionesDuplicadas<T extends AutorizacionDuplicable>(auths: T[], hoy: string = hoyAR()): T[][] {
+  const grupos = new Map<string, T[]>();
+  for (const a of auths) {
+    if (a.periodo_desde > hoy || a.periodo_hasta < hoy) continue;
+    const k = `${a.patient_id}|${a.especialidad ?? ""}|${a.practica.trim().toLowerCase()}`;
+    grupos.set(k, [...(grupos.get(k) ?? []), a]);
+  }
+  return [...grupos.values()].filter((g) => g.length > 1).map((g) => g.sort((x, y) => x.periodo_desde.localeCompare(y.periodo_desde)));
+}

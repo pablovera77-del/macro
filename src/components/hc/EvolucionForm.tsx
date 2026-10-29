@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createEvolutionAction } from "@/app/(dashboard)/evoluciones/actions";
-import { campoKey, NOVA5_DIMENSIONES, riesgoNova5, RIESGO_TONE, type Campo, type MedicacionItem } from "@/lib/hc";
+import { calcularCampo, campoKey, NOVA5_DIMENSIONES, riesgoNova5, RIESGO_TONE, type Campo, type MedicacionItem } from "@/lib/hc";
 import StatusBadge from "@/components/StatusBadge";
 import FirmaCanvas from "@/components/hc/FirmaCanvas";
 import DictadoButton from "@/components/hc/DictadoButton";
@@ -30,10 +30,27 @@ function TextoLargo({ name, required, rows = 3 }: { name: string; required?: boo
   );
 }
 
+function CampoCalculado({ c }: { c: Campo }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [valor, setValor] = useState("");
+  useEffect(() => {
+    const form = ref.current?.form;
+    if (!form) return;
+    const leer = (k: string) => (form.elements.namedItem(`campo__${k}`) as HTMLInputElement | null)?.value ?? "";
+    const recalcular = () => setValor(calcularCampo(c.formula, { peso_actual: leer("peso_actual"), peso_habitual: leer("peso_habitual"), talla: leer("talla") }) ?? "");
+    form.addEventListener("input", recalcular);
+    return () => form.removeEventListener("input", recalcular);
+  }, [c.formula]);
+  // Sin «name»: no se envía; el servidor lo vuelve a calcular.
+  return <input ref={ref} readOnly tabIndex={-1} value={valor} placeholder="Se calcula solo" aria-label={c.label} className={`${inputCls} bg-slate-50`} />;
+}
+
 function CampoInput({ c }: { c: Campo }) {
   const name = `campo__${campoKey(c)}`;
   const req = c.obligatorio;
   switch (c.tipo) {
+    case "Calculado":
+      return <CampoCalculado c={c} />;
     case "Texto largo":
       return <TextoLargo name={name} required={req} />;
     case "Número":

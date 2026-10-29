@@ -1,9 +1,10 @@
 "use client";
 
+import CondicionesClinicas from "@/components/pacientes/CondicionesClinicas";
 import { useActionState, useRef, useState, useTransition } from "react";
 import ActionDisclosure from "@/components/ActionDisclosure";
 import { updatePatientDataAction, type EditarDatosState } from "@/app/(dashboard)/paciente/[id]/actions";
-import { TIPOS_INTERNACION, TIPOS_POR_UNIDAD, UNIDADES_TRABAJO } from "@/lib/paciente";
+import { INSTITUCIONES_DERIVANTES, TIPOS_INTERNACION, TIPOS_POR_UNIDAD, UNIDADES_TRABAJO } from "@/lib/paciente";
 import { PARTICULAR } from "@/lib/legajo";
 
 export type DatosEditables = {
@@ -38,6 +39,9 @@ export type DatosEditables = {
   emergencias_telefono: string;
   en_tratamiento_atb: boolean;
   requiere_curaciones: boolean;
+  requiere_oxigeno: boolean;
+  soporte_nutricional: string | null;
+  acceso_venoso: string | null;
   fecha_ingreso: string;
   aclaraciones: string;
   extras: { nombre: string; parentesco: string; telefono: string; email: string }[];
@@ -136,7 +140,7 @@ export default function EditarDatosPaciente({ d, obrasSociales }: { d: DatosEdit
             <input type="checkbox" name="tiene_coseguro" checked={coseguro} onChange={(e) => setCoseguro(e.target.checked)} className="rounded border-slate-300" /> Paga coseguro
           </label>
           {coseguro && <F label="Detalle del coseguro" className="sm:col-span-3"><input name="coseguro_detalle" defaultValue={d.coseguro_detalle} className={inputCls} /></F>}
-          <F label="Institución derivante"><input name="institucion_derivante" defaultValue={d.institucion_derivante} className={inputCls} /></F>
+          <F label="Institución derivante"><input name="institucion_derivante" list="instituciones-derivantes-edit" defaultValue={d.institucion_derivante} autoComplete="off" className={inputCls} /><datalist id="instituciones-derivantes-edit">{INSTITUCIONES_DERIVANTES.map((i) => <option key={i} value={i} />)}</datalist></F>
           <F label="Médico derivante"><input name="medico_derivante" defaultValue={d.medico_derivante} className={inputCls} /></F>
           <F label="Matrícula del médico derivante"><input name="medico_matricula" defaultValue={d.medico_matricula} className={inputCls} /></F>
           <F label="Unidad de trabajo">
@@ -166,10 +170,7 @@ export default function EditarDatosPaciente({ d, obrasSociales }: { d: DatosEdit
             </div>
           )}
         </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="en_tratamiento_atb" defaultChecked={d.en_tratamiento_atb} className="rounded border-slate-300" /> En tratamiento antibiótico</label>
-          <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="requiere_curaciones" defaultChecked={d.requiere_curaciones} className="rounded border-slate-300" /> Requiere curaciones</label>
-        </div>
+        <CondicionesClinicas valores={d} />
         <F label="Aclaraciones importantes (solo para el personal)"><textarea name="aclaraciones" rows={3} defaultValue={d.aclaraciones} className={inputCls} /></F>
 
         {state.error && <p role="alert" className="text-sm rounded-lg px-3 py-2 border bg-red-50 border-red-200 text-red-700">{state.error}</p>}

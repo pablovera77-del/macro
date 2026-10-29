@@ -120,6 +120,10 @@ export async function confirmarEgresoAction(_prev: CierreState, formData: FormDa
     })
     .eq("id", patient_id);
   if (patientError) return { error: `No se pudo registrar la baja: ${patientError.message}` };
+  // Vanina (26/10): al dar de baja, el paciente deja de figurar entre los pacientes a visitar. Las visitas que
+  // quedaban programadas después del egreso se cancelan; Administración sigue viendo el legajo para facturar y consultar.
+  // Es un paso adicional: si no se puede (permisos), la baja igual queda registrada.
+  await supabase.from("visits").update({ estado: "cancelada" }).eq("patient_id", patient_id).in("estado", ["programada", "confirmada"]).gt("fecha_programada", hecho);
 
   const { data: alert, error } = await supabase
     .from("discharge_alerts")

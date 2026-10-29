@@ -37,6 +37,9 @@ export type Legajo = {
   emergencias_telefono: string | null;
   en_tratamiento_atb: boolean;
   requiere_curaciones: boolean;
+  requiere_oxigeno: boolean;
+  soporte_nutricional: string | null;
+  acceso_venoso: string | null;
   fecha_ingreso: string;
 };
 
@@ -98,6 +101,8 @@ export function leerLegajo(fd: FormData): { error: string } | { datos: Legajo } 
   const emergencias_nombre = tiene_emergencias ? txt(fd, "emergencias_nombre") : "";
   const emergencias_telefono = tiene_emergencias ? txt(fd, "emergencias_telefono") : "";
   const fecha_ingreso = txt(fd, "fecha_ingreso") || hoyAR();
+  const soporte_nutricional = tilde(fd, "requiere_soporte_nutricional") ? txt(fd, "soporte_nutricional") : "";
+  const acceso_venoso = txt(fd, "acceso_venoso");
   const lat = num(fd, "lat");
   const lng = num(fd, "lng");
 
@@ -118,6 +123,8 @@ export function leerLegajo(fd: FormData): { error: string } | { datos: Legajo } 
   if (!(TIPOS_POR_UNIDAD[unidad_trabajo] ?? []).includes(tipo_internacion)) return { error: "Elegí el tipo de internación que corresponde a la unidad de trabajo." };
   if (tiene_emergencias && !emergencias_nombre) return { error: "Si el paciente tiene servicio de emergencias, escribí cuál es." };
   if (tiene_emergencias && emergencias_telefono.replace(/\D/g, "").length < 6) return { error: "Falta el teléfono del servicio de emergencias, o no parece válido." };
+  if (tilde(fd, "requiere_soporte_nutricional") && !["sng", "gastrostomia"].includes(soporte_nutricional)) return { error: "Si requiere soporte nutricional, elegí si es con sonda nasogástrica (SNG) o con gastrostomía." };
+  if (acceso_venoso && !["via_central", "via_periferica", "sin_via"].includes(acceso_venoso)) return { error: "Elegí el acceso venoso de la lista (vía central, vía periférica o sin vía)." };
   if (!diagnostico_principal) return { error: "Falta el diagnóstico principal (motivo de la internación domiciliaria)." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha_ingreso)) return { error: "La fecha de ingreso no es válida." };
   if ((lat !== null && (lat < -90 || lat > 90)) || (lng !== null && (lng < -180 || lng > 180))) return { error: "La ubicación capturada no es válida: volvé a capturarla o dejala vacía." };
@@ -157,6 +164,9 @@ export function leerLegajo(fd: FormData): { error: string } | { datos: Legajo } 
       emergencias_telefono: emergencias_telefono || null,
       en_tratamiento_atb: tilde(fd, "en_tratamiento_atb"),
       requiere_curaciones: tilde(fd, "requiere_curaciones"),
+      requiere_oxigeno: tilde(fd, "requiere_oxigeno"),
+      soporte_nutricional: soporte_nutricional || null,
+      acceso_venoso: acceso_venoso || null,
       fecha_ingreso,
     },
   };

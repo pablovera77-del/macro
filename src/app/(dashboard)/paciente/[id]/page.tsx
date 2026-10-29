@@ -1,3 +1,4 @@
+import EstudiosTab from "@/components/pacientes/EstudiosTab";
 import Link from "next/link";
 import { frecuenciaTexto } from "@/lib/autorizaciones";
 import ConfirmButton from "@/components/ConfirmButton";
@@ -17,7 +18,9 @@ import { familyPortalEnabled, type FamilyAccessInfo } from "@/lib/family";
 import HistoriaClinicaFicha from "@/components/hc/HistoriaClinicaFicha";
 import UppFicha from "@/components/hc/UppFicha";
 import EditarDatosPaciente, { type DatosEditables } from "@/components/pacientes/EditarDatosPaciente";
-import { SIN_EMERGENCIAS, TIPOS_INTERNACION, UNIDADES_TRABAJO, edadEnAnios, SEXO_LABELS } from "@/lib/paciente";
+import { SIN_EMERGENCIAS, TIPOS_INTERNACION, UNIDADES_TRABAJO, edadEnAnios, SEXO_LABELS, fechaCorta } from "@/lib/paciente";
+import { reanudarServicioAction } from "./suspensiones-actions";
+import { SuspensionServicioForm } from "@/components/pacientes/SuspensionServicio";
 import { motivoEgresoLabel } from "@/lib/egreso";
 import { urlPunto, urlMapa } from "@/lib/mapa";
 import { urlsDeFotos } from "@/lib/fotos";
@@ -48,7 +51,7 @@ const ORDER_TONE: Record<string, SemanticTone> = { borrador: "amarillo", autoriz
 const SEMAFORO_LABELS: Record<string, string> = { vigente: "Vigente", por_vencer: "Por vencer", vencida: "Vencida" };
 const SEMAFORO_TONE: Record<string, SemanticTone> = { vigente: "verde", por_vencer: "amarillo", vencida: "rojo" };
 
-type Tab = "datos" | "resumen" | "plan" | "agenda" | "clinica" | "insumos" | "ingreso" | "mensajes" | "familia";
+type Tab = "datos" | "resumen" | "plan" | "agenda" | "clinica" | "estudios" | "insumos" | "ingreso" | "mensajes" | "familia";
 
 function fecha(iso: string | null | undefined) {
   return iso ? new Date(iso).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric", timeZone: "America/Argentina/San_Juan" }) : "—";
@@ -88,7 +91,7 @@ export default async function FichaPacientePage({
     { id: "datos", label: "Datos del paciente" },
     { id: "plan", label: "Plan de tratamiento" },
     { id: "agenda", label: "Agenda" },
-    ...(verClinica ? [{ id: "clinica" as Tab, label: "Historia clínica" }] : []),
+    ...(verClinica ? [{ id: "clinica" as Tab, label: "Historia clínica" }, { id: "estudios" as Tab, label: "Estudios" }] : []),
     ...(verInsumos ? [{ id: "insumos" as Tab, label: "Insumos y equipos" }] : []),
     { id: "ingreso", label: "Ingreso y egreso" },
     { id: "mensajes", label: "Mensajes del equipo" },
@@ -99,7 +102,7 @@ export default async function FichaPacientePage({
   const supabase = await createClient();
   const { data: p } = await supabase
     .from("patients")
-    .select("id, nombre_completo, nro_historia_clinica, apellido, nombre, dni, fecha_nacimiento, sexo, ocupacion, localidad, domicilio, domicilio_actual, telefono_actual, email_responsable, es_particular, tiene_coseguro, coseguro_detalle, institucion_derivante, unidad_trabajo, tipo_internacion, tiene_emergencias, emergencias_nombre, emergencias_telefono, en_tratamiento_atb, requiere_curaciones, medico_matricula, egreso_solicitud_firmante, egreso_solicitud_firmada_at, telefono_contacto, contacto_familiar_nombre, contacto_familiar_telefono, diagnostico_principal, obra_social, obra_social_id, numero_afiliado, medico_derivante, estado, fecha_ingreso, fecha_egreso, motivo_egreso, llegada_confirmada_at, egreso_informado_at, medicacion_confirmada_at, lat, lng, obras_sociales(nombre)")
+    .select("id, nombre_completo, nro_historia_clinica, apellido, nombre, dni, fecha_nacimiento, sexo, ocupacion, localidad, domicilio, domicilio_actual, telefono_actual, email_responsable, es_particular, tiene_coseguro, coseguro_detalle, institucion_derivante, unidad_trabajo, tipo_internacion, tiene_emergencias, emergencias_nombre, emergencias_telefono, en_tratamiento_atb, requiere_curaciones, requiere_oxigeno, soporte_nutricional, acceso_venoso, medico_matricula, egreso_solicitud_firmante, egreso_solicitud_firmada_at, telefono_contacto, contacto_familiar_nombre, contacto_familiar_telefono, diagnostico_principal, obra_social, obra_social_id, numero_afiliado, medico_derivante, estado, fecha_ingreso, fecha_egreso, motivo_egreso, llegada_confirmada_at, egreso_informado_at, medicacion_confirmada_at, lat, lng, obras_sociales(nombre)")
     .eq("id", id)
     .maybeSingle();
   if (!p) notFound();
@@ -167,6 +170,7 @@ export default async function FichaPacientePage({
         p.obra_social_id ? supabase.from("os_required_documents").select("id, nombre, obligatorio").eq("obra_social_id", p.obra_social_id).eq("activo", true).order("orden") : Promise.resolve({ data: [] as { id: string; nombre: string; obligatorio: boolean }[] }),
         supabase.from("patient_required_documents").select("doc_id").eq("patient_id", id),
         esAdmin ? supabase.from("profiles").select("id, full_name").eq("role", "profesional_asistencial").eq("active", true).order("full_name") : Promise.resolve({ data: [] as { id: string; full_name: string }[] }),
+        supabase.from("service_suspensions").select("id, desde, hasta, motivo").eq("patient_id", id).order("desde", { ascending: false }),
       ])
     : null;
   const medicacion = ingresoData?.[0].data ?? [];
@@ -175,6 +179,7 @@ export default async function FichaPacientePage({
   const docsOS = ingresoData?.[3].data ?? [];
   const docsRecibidos = new Set((ingresoData?.[4].data ?? []).map((x) => x.doc_id));
   const profesionales = (ingresoData?.[5].data ?? []) as { id: string; full_name: string }[];
+  const suspensiones = (ingresoData?.[6].data ?? []) as { id: string; desde: string; hasta: string | null; motivo: string | null }[];
 
   const obraSocial = (p.obras_sociales as unknown as { nombre: string } | null)?.nombre ?? p.obra_social ?? "Sin obra social";
   const firmados = new Map((sigs ?? []).map((s) => [s.legal_document_id, s]));
@@ -276,7 +281,7 @@ export default async function FichaPacientePage({
                 ["Servicio de emergencias", p.tiene_emergencias ? `${p.emergencias_nombre ?? ""} · ${p.emergencias_telefono ?? ""}` : SIN_EMERGENCIAS],
                 ["Diagnóstico", p.diagnostico_principal ?? "—"],
                 ["Ingreso al servicio", fecha(p.fecha_ingreso)],
-                ["Marcas", [p.en_tratamiento_atb ? "En tratamiento antibiótico" : null, p.requiere_curaciones ? "Requiere curaciones" : null].filter(Boolean).join(" · ") || "—"],
+                ["Marcas", [p.en_tratamiento_atb ? "En tratamiento antibiótico" : null, p.requiere_curaciones ? "Requiere curaciones" : null, p.requiere_oxigeno ? "Oxígeno permanente" : null, p.soporte_nutricional ? `Soporte nutricional (${p.soporte_nutricional === "sng" ? "SNG" : "gastrostomía"})` : null, p.acceso_venoso && p.acceso_venoso !== "sin_via" ? (p.acceso_venoso === "via_central" ? "Vía central" : "Vía periférica") : null].filter(Boolean).join(" · ") || "—"],
               ] as [string, string][]).map(([k, v]) => (
                 <div key={k} className="flex gap-2"><dt className="text-slate-500 w-40 shrink-0">{k}</dt><dd className="min-w-0 break-words">{v}</dd></div>
               ))}
@@ -336,6 +341,9 @@ export default async function FichaPacientePage({
                   emergencias_telefono: p.emergencias_telefono ?? "",
                   en_tratamiento_atb: p.en_tratamiento_atb,
                   requiere_curaciones: p.requiere_curaciones,
+                  requiere_oxigeno: p.requiere_oxigeno,
+                  soporte_nutricional: p.soporte_nutricional,
+                  acceso_venoso: p.acceso_venoso,
                   fecha_ingreso: p.fecha_ingreso ?? "",
                   aclaraciones,
                   extras: (contactosExtra ?? []).map((c) => ({ nombre: c.nombre, parentesco: c.parentesco ?? "", telefono: c.telefono ?? "", email: c.email ?? "" })),
@@ -438,7 +446,7 @@ export default async function FichaPacientePage({
                       </div>
                       <div className="flex items-center gap-2">
                         {c && <StatusBadge tone={c.faltan === 0 ? "verde" : "amarillo"} label={`Esta semana: ${c.cubiertas} de ${c.esperadas}${c.faltan > 0 ? ` · faltan ${c.faltan}` : ""}`} />}
-                        {puedeEditarPlan && (
+                        {esAdmin && (
                           <form action={endPlanAction}>
                             <input type="hidden" name="plan_id" value={pl.id} />
                             <input type="hidden" name="patient_id" value={id} />
@@ -453,7 +461,7 @@ export default async function FichaPacientePage({
             )}
           </section>
 
-          {puedeEditarPlan && p.estado !== "dado_de_baja" && (
+          {esAdmin && p.estado !== "dado_de_baja" && (
             <section className={card}>
               <h2 className="text-sm font-semibold text-slate-900 mb-1">Agregar o cambiar una disciplina</h2>
               <p className="text-xs text-slate-500 mb-4">Si la disciplina ya está en el plan, el plan anterior queda en el historial.</p>
@@ -530,6 +538,8 @@ export default async function FichaPacientePage({
 
       {tab === "clinica" && <HistoriaClinicaFicha patientId={id} role={role} userId={profile.id} />}
 
+      {tab === "estudios" && <EstudiosTab patientId={id} role={role} userId={profile.id} />}
+
       {tab === "insumos" && (
         <div className="grid gap-4 md:grid-cols-2">
           <section className={card}>
@@ -601,6 +611,30 @@ export default async function FichaPacientePage({
             </div>
           </section>
 
+          {(esAdmin || suspensiones.length > 0) && (
+            <section className={card} id="suspension">
+              <h2 className="text-sm font-semibold text-slate-900 mb-1">Suspensión temporal del servicio</h2>
+              <p className="text-xs text-slate-500 mb-3">Para internaciones transitorias. En Sancor, OSDE, Jerárquicos y OSFATLYF (prorrogan mes a mes) la suspensión se registra acá, dentro de la misma autorización. En Provincia y DAMSU se cierra el ID y se abre uno nuevo al retomar.</p>
+              {suspensiones.length > 0 && (
+                <ul className="divide-y divide-slate-100 text-sm mb-3">
+                  {suspensiones.map((s) => (
+                    <li key={s.id} className="py-2 flex items-center justify-between gap-3 flex-wrap">
+                      <span>{fechaCorta(s.desde)} → {s.hasta ? fechaCorta(s.hasta) : <span className="font-medium text-amber-700">sin servicio (abierta)</span>}{s.motivo && <span className="text-slate-500"> · {s.motivo}</span>}</span>
+                      {esAdmin && !s.hasta && (
+                        <form action={reanudarServicioAction}>
+                          <input type="hidden" name="id" value={s.id} />
+                          <input type="hidden" name="patient_id" value={id} />
+                          <button type="submit" className={btnGhost}>Retomar hoy</button>
+                        </form>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {esAdmin && p.estado !== "dado_de_baja" && <SuspensionServicioForm patientId={id} />}
+            </section>
+          )}
+
           <section className={card} id="paso-4">
             <h2 className="text-sm font-semibold text-slate-900 mb-3">Paso 4 · Medicación vigente y equipamiento</h2>
             {medicacion.length === 0 ? (
@@ -610,7 +644,7 @@ export default async function FichaPacientePage({
                 {medicacion.map((m) => (
                   <li key={m.id} className="py-2 flex items-center justify-between gap-3 flex-wrap">
                     <span><span className="font-medium text-slate-900">{m.medicamento}</span> <span className="text-slate-500">{[m.dosis, m.via, m.frecuencia].filter(Boolean).join(" · ")}</span></span>
-                    {puedeEditarPlan && (
+                    {esAdmin && (
                       <form action={removeMedicationAction}>
                         <input type="hidden" name="id" value={m.id} />
                         <input type="hidden" name="patient_id" value={id} />
@@ -621,7 +655,7 @@ export default async function FichaPacientePage({
                 ))}
               </ul>
             )}
-            {puedeEditarPlan && (
+            {esAdmin && (
               <form action={addMedicationAction} className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-4 items-end">
                 <input type="hidden" name="patient_id" value={id} />
                 <input name="medicamento" required placeholder="Medicamento" className={`${inputCls} col-span-2`} />

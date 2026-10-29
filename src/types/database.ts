@@ -2063,6 +2063,32 @@ export type Database = {
           },
         ]
       }
+      patient_studies: {
+        Row: { id: string; patient_id: string; descripcion: string; fecha_estudio: string | null; se_factura: boolean; autorizado: boolean | null; archivo: string | null; nombre_original: string | null; solicitud_id: string | null; cargado_por: string | null; created_at: string }
+        Insert: { id?: string; patient_id: string; descripcion: string; fecha_estudio?: string | null; se_factura?: boolean; autorizado?: boolean | null; archivo?: string | null; nombre_original?: string | null; solicitud_id?: string | null; cargado_por?: string | null; created_at?: string }
+        Update: { id?: string; patient_id?: string; descripcion?: string; fecha_estudio?: string | null; se_factura?: boolean; autorizado?: boolean | null; archivo?: string | null; nombre_original?: string | null; solicitud_id?: string | null; cargado_por?: string | null; created_at?: string }
+        Relationships: []
+      }
+      study_requests: {
+        Row: { id: string; patient_id: string; detalle: string; solicitado_por: string; estado: string; created_at: string; gestionado_por: string | null; gestionado_at: string | null }
+        Insert: { id?: string; patient_id: string; detalle: string; solicitado_por: string; estado?: string; created_at?: string; gestionado_por?: string | null; gestionado_at?: string | null }
+        Update: { id?: string; patient_id?: string; detalle?: string; solicitado_por?: string; estado?: string; created_at?: string; gestionado_por?: string | null; gestionado_at?: string | null }
+        Relationships: [
+          {
+            foreignKeyName: "study_requests_solicitado_por_fkey"
+            columns: ["solicitado_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_suspensions: {
+        Row: { id: string; patient_id: string; desde: string; hasta: string | null; motivo: string | null; creado_por: string | null; created_at: string }
+        Insert: { id?: string; patient_id: string; desde: string; hasta?: string | null; motivo?: string | null; creado_por?: string | null; created_at?: string }
+        Update: { id?: string; patient_id?: string; desde?: string; hasta?: string | null; motivo?: string | null; creado_por?: string | null; created_at?: string }
+        Relationships: []
+      }
       patient_aclaraciones: {
         Row: {
           id: string
@@ -2915,6 +2941,9 @@ export type Database = {
           obra_social_id: string | null
           ocupacion: string | null
           requiere_curaciones: boolean
+          requiere_oxigeno: boolean
+          soporte_nutricional: string | null
+          acceso_venoso: string | null
           sexo: string | null
           telefono_actual: string | null
           telefono_contacto: string | null
@@ -2973,6 +3002,9 @@ export type Database = {
           obra_social_id?: string | null
           ocupacion?: string | null
           requiere_curaciones?: boolean
+          requiere_oxigeno?: boolean
+          soporte_nutricional?: string | null
+          acceso_venoso?: string | null
           sexo?: string | null
           telefono_actual?: string | null
           telefono_contacto?: string | null
@@ -3031,6 +3063,9 @@ export type Database = {
           obra_social_id?: string | null
           ocupacion?: string | null
           requiere_curaciones?: boolean
+          requiere_oxigeno?: boolean
+          soporte_nutricional?: string | null
+          acceso_venoso?: string | null
           sexo?: string | null
           telefono_actual?: string | null
           telefono_contacto?: string | null
@@ -5508,6 +5543,7 @@ export type Database = {
         Returns: undefined
       }
       fn_atender_paciente: { Args: { p_patient: string }; Returns: string }
+      fn_solicitar_estudio: { Args: { p_patient: string; p_detalle: string }; Returns: string }
       fn_mis_pacientes: {
         Args: never
         Returns: {

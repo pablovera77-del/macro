@@ -19,7 +19,36 @@ export type Campo = {
   ayuda?: string;
   paso?: string;
   narrativa?: boolean;
+  /** Solo para tipo «Calculado»: qué se calcula (imc, perdida_peso). */
+  formula?: string;
 };
+
+const redondear1 = (n: number) => (Math.round(n * 10) / 10).toString();
+const numero = (v: string | undefined) => {
+  const n = Number(String(v ?? "").replace(",", "."));
+  return String(v ?? "").trim() !== "" && Number.isFinite(n) ? n : null;
+};
+
+/**
+ * Campos calculados del formulario de Nutrición (pedido de Vanina, 26/10): IMC = peso actual / talla² y
+ * % de pérdida de peso = (peso habitual − peso actual) / peso habitual × 100. La talla va en metros; si se carga
+ * en centímetros (más de 3) se convierte. El servidor vuelve a calcularlos: no se confía en lo que manda el navegador.
+ */
+export function calcularCampo(formula: string | undefined, v: Record<string, string | undefined>): string | null {
+  const actual = numero(v.peso_actual);
+  if (formula === "imc") {
+    let talla = numero(v.talla);
+    if (actual === null || talla === null || talla <= 0) return null;
+    if (talla > 3) talla /= 100;
+    return redondear1(actual / (talla * talla));
+  }
+  if (formula === "perdida_peso") {
+    const habitual = numero(v.peso_habitual);
+    if (actual === null || habitual === null || habitual <= 0) return null;
+    return redondear1(((habitual - actual) / habitual) * 100);
+  }
+  return null;
+}
 
 export type MedicacionItem = {
   cantidad: string;

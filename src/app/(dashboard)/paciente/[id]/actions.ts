@@ -13,6 +13,8 @@ import type { Enums } from "@/types/database";
 import { leerLegajo, leerContactosExtra, txt } from "@/lib/legajo";
 
 const PLAN_ROLES: AppRole[] = ["administracion", "coordinador_internacion"];
+// Vanina (26/10, DF-C3 preguntas 9 y 14): el plan de tratamiento y la medicación los carga y modifica solo Administración.
+const ADMIN_ROLES: AppRole[] = ["administracion"];
 const ESPECIALIDADES = new Set<string>(DISCIPLINAS_PLAN);
 
 function refresh(patientId: string) {
@@ -25,7 +27,7 @@ function refresh(patientId: string) {
 // el plan anterior se cierra (activo = false, hasta = hoy) y el nuevo apunta a él.
 export async function savePlanAction(formData: FormData) {
   const { profile } = await requireProfile();
-  if (!PLAN_ROLES.includes(profile.role)) throw new Error("Solo Administración o Coordinación modifican el plan de tratamiento.");
+  if (!ADMIN_ROLES.includes(profile.role)) throw new Error("Solo Administración modifica el plan de tratamiento.");
   const supabase = await createClient();
 
   const patient_id = String(formData.get("patient_id") || "");
@@ -68,7 +70,7 @@ export async function savePlanAction(formData: FormData) {
 
 export async function endPlanAction(formData: FormData) {
   const { profile } = await requireProfile();
-  if (!PLAN_ROLES.includes(profile.role)) throw new Error("Solo Administración o Coordinación modifican el plan de tratamiento.");
+  if (!ADMIN_ROLES.includes(profile.role)) throw new Error("Solo Administración modifica el plan de tratamiento.");
   const supabase = await createClient();
   const plan_id = String(formData.get("plan_id") || "");
   const patient_id = String(formData.get("patient_id") || "");
@@ -95,7 +97,7 @@ export async function postMessageAction(formData: FormData) {
 // Paso 4 del alta: medicación vigente.
 export async function addMedicationAction(formData: FormData) {
   const { profile } = await requireProfile();
-  if (!PLAN_ROLES.includes(profile.role)) throw new Error("Solo Administración o Coordinación cargan la medicación vigente.");
+  if (!ADMIN_ROLES.includes(profile.role)) throw new Error("Solo Administración carga la medicación vigente.");
   const supabase = await createClient();
   const patient_id = String(formData.get("patient_id") || "");
   const medicamento = String(formData.get("medicamento") || "").trim();
@@ -109,7 +111,7 @@ export async function addMedicationAction(formData: FormData) {
 
 export async function removeMedicationAction(formData: FormData) {
   const { profile } = await requireProfile();
-  if (!PLAN_ROLES.includes(profile.role)) throw new Error("Solo Administración o Coordinación modifican la medicación vigente.");
+  if (!ADMIN_ROLES.includes(profile.role)) throw new Error("Solo Administración modifica la medicación vigente.");
   const supabase = await createClient();
   const id = String(formData.get("id") || "");
   const patient_id = String(formData.get("patient_id") || "");

@@ -136,3 +136,28 @@ export function leerRenglones(fd: FormData, desde: string, hasta: string): { err
   if (renglones.length === 0) return { error: "Cargá al menos una práctica autorizada." };
   return { renglones };
 }
+
+/**
+ * Plan de tratamiento (treatment_plans) que se deriva de los renglones autorizados: cantidad por día o por semana de cada
+ * disciplina. Las horas (cuidadores, guardias), las quincenas y los meses no entran en el plan semanal de visitas.
+ */
+export function planDesdeRenglones(renglones: Renglon[]): { especialidad: Especialidad; cantidad: number; unidad: "dia" | "semana"; dias_semana: number[] | null }[] {
+  const porEsp = new Map<Especialidad, Renglon[]>();
+  for (const r of renglones) {
+    if (r.especialidad === "otra" || r.frecuencia_unidad === "horas" || !["dia", "semana"].includes(r.frecuencia_periodo)) continue;
+    porEsp.set(r.especialidad, [...(porEsp.get(r.especialidad) ?? []), r]);
+  }
+  const out: { especialidad: Especialidad; cantidad: number; unidad: "dia" | "semana"; dias_semana: number[] | null }[] = [];
+  for (const [especialidad, lista] of porEsp) {
+    const todosPorDia = lista.every((r) => r.frecuencia_periodo === "dia");
+    if (todosPorDia) {
+      const cantidad = Math.min(lista.reduce((a, r) => a + r.frecuencia_cantidad, 0), 50);
+      const dias = [...new Set(lista.flatMap((r) => r.dias_semana))].sort();
+      out.push({ especialidad, cantidad, unidad: "dia", dias_semana: dias.length > 0 ? dias : null });
+    } else {
+      const cantidad = Math.min(lista.reduce((a, r) => a + (r.frecuencia_periodo === "dia" ? r.frecuencia_cantidad * (r.dias_semana.length || 7) : r.frecuencia_cantidad), 0), 50);
+      out.push({ especialidad, cantidad, unidad: "semana", dias_semana: null });
+    }
+  }
+  return out;
+}

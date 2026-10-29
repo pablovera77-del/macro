@@ -42,6 +42,8 @@ const USR = "src/app/(dashboard)/usuarios/actions.ts";
 const CFG = "src/app/(dashboard)/configuracion/actions.ts";
 const LPF = "src/app/(dashboard)/listo-para-facturar/actions.ts";
 const HON = "src/app/(dashboard)/honorarios/actions.ts";
+const SUSP = "src/app/(dashboard)/paciente/[id]/suspensiones-actions.ts";
+const EST = "src/app/(dashboard)/paciente/[id]/estudios-actions.ts";
 
 export const PERMISOS: Permiso[] = [
   // Pacientes e ingreso
@@ -51,15 +53,23 @@ export const PERMISOS: Permiso[] = [
   { modulo: "Pacientes", accion: "Registrar consentimientos firmados", roles: [A], guard: { file: INTER, message: "Solo Administración registra las firmas de ingreso." } },
   { modulo: "Pacientes", accion: "Armar el equipo asistencial", roles: [A, C], guard: { file: INTER, message: "Solo Administración o Coordinación arman el equipo asistencial." } },
   { modulo: "Pacientes", accion: "Quitar a un profesional del equipo asistencial", roles: [A, C], guard: { file: INTER, message: "Solo Administración o Coordinación arman el equipo asistencial." } },
+  { modulo: "Pacientes", accion: "Cerrar una autorización de práctica duplicada", roles: [A], guard: { file: INTER, message: "Solo Administración cierra autorizaciones de práctica." } },
+  { modulo: "Ficha", accion: "Registrar una suspensión temporal del servicio", roles: [A], guard: { file: SUSP, message: "Solo Administración registra suspensiones del servicio." } },
+  { modulo: "Ficha", accion: "Registrar que el servicio se retoma", roles: [A], guard: { file: SUSP, message: "Solo Administración registra la reanudación del servicio." } },
   { modulo: "Pacientes", accion: "Pedir y registrar la respuesta de una prórroga de autorización", roles: [A], guard: { file: INTER, message: "Solo Administración gestiona las prórrogas de autorizaciones." } },
   { modulo: "Pacientes", accion: "Generar el link de llegada para la familia", roles: [A, C], guard: { file: INTER, message: "Solo Administración o Coordinación generan el link de llegada." } },
   { modulo: "Pacientes", accion: "Confirmar la llegada al domicilio", roles: [A, C], guard: { file: INTER, message: "Solo Administración o Coordinación confirman la llegada." } },
   { modulo: "Pacientes", accion: "Informar un egreso", roles: [A, C, P], guard: { file: INTER, message: "Solo un profesional asistencial, Coordinación o Administración pueden informar un egreso." } },
   { modulo: "Pacientes", accion: "Confirmar la baja definitiva", roles: [A], guard: { file: PACS, message: "Solo Administración confirma la baja definitiva de un paciente." } },
   { modulo: "Pacientes", accion: "Cargar autorizaciones de stock", roles: [A], guard: { file: PACS, message: "Solo Administración carga autorizaciones." } },
+  // Estudios complementarios (Vanina, 26/10)
+  { modulo: "Ficha", accion: "Cargar un estudio complementario con su archivo", roles: [A], guard: { file: EST, message: "Solo Administración carga los estudios complementarios." } },
+  { modulo: "Ficha", accion: "Marcar un estudio como autorizado o quitarlo", roles: [A], guard: { file: EST, message: "Solo Administración modifica los estudios complementarios." } },
+  { modulo: "Ficha", accion: "Solicitar un estudio a Administración (médico)", roles: [P], guard: { file: EST, message: "Solo un profesional asistencial médico solicita estudios." } },
+  { modulo: "Ficha", accion: "Gestionar las solicitudes de estudios", roles: [A], guard: { file: EST, message: "Solo Administración gestiona las solicitudes de estudios." } },
   // Ficha del paciente
-  { modulo: "Ficha", accion: "Cambiar el plan de tratamiento", roles: [A, C], guard: { file: PAC, message: "Solo Administración o Coordinación modifican el plan de tratamiento." } },
-  { modulo: "Ficha", accion: "Cargar la medicación vigente", roles: [A, C], guard: { file: PAC, message: "Solo Administración o Coordinación cargan la medicación vigente." } },
+  { modulo: "Ficha", accion: "Cambiar el plan de tratamiento", roles: [A], guard: { file: PAC, message: "Solo Administración modifica el plan de tratamiento." } },
+  { modulo: "Ficha", accion: "Cargar la medicación vigente", roles: [A], guard: { file: PAC, message: "Solo Administración carga la medicación vigente." } },
   { modulo: "Ficha", accion: "Confirmar «sin medicación»", roles: [A], guard: { file: PAC, message: "Solo Administración confirma el paso de medicación." } },
   { modulo: "Ficha", accion: "Tildar el checklist de información al paciente", roles: [A], guard: { file: PAC, message: "Solo Administración completa el checklist de información al paciente." } },
   { modulo: "Ficha", accion: "Registrar documentación de la obra social recibida", roles: [A], guard: { file: PAC, message: "Solo Administración registra la documentación recibida." } },

@@ -59,9 +59,9 @@ const SEMAFORO_LABELS: Record<string, string> = {
 export default async function InternacionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ nuevo?: string; admitido?: string; ver?: string; os?: string; atb?: string; cur?: string }>;
+  searchParams: Promise<{ nuevo?: string; admitido?: string; ver?: string; os?: string; atb?: string; cur?: string; oxi?: string; sn?: string }>;
 }) {
-  const { nuevo, admitido, ver, os: osFiltro, atb, cur } = await searchParams;
+  const { nuevo, admitido, ver, os: osFiltro, atb, cur, oxi, sn } = await searchParams;
   const { profile } = await requireProfile();
   const supabase = await createClient();
 
@@ -89,7 +89,7 @@ export default async function InternacionPage({
     supabase
       .from("patients")
       .select(
-        "id, nombre_completo, dni, domicilio, en_tratamiento_atb, requiere_curaciones, es_particular, contacto_familiar_nombre, contacto_familiar_telefono, obra_social, obra_social_id, estado, fecha_ingreso, fecha_egreso, motivo_egreso, diagnostico_principal, llegada_confirmada_at, medicacion_confirmada_at, egreso_informado_at, egreso_motivo_informado, profiles:egreso_informado_por(full_name), obras_sociales(nombre)"
+        "id, nombre_completo, dni, domicilio, en_tratamiento_atb, requiere_curaciones, requiere_oxigeno, soporte_nutricional, es_particular, contacto_familiar_nombre, contacto_familiar_telefono, obra_social, obra_social_id, estado, fecha_ingreso, fecha_egreso, motivo_egreso, diagnostico_principal, llegada_confirmada_at, medicacion_confirmada_at, egreso_informado_at, egreso_motivo_informado, profiles:egreso_informado_por(full_name), obras_sociales(nombre)"
       )
       .order("fecha_ingreso", { ascending: false }),
     // DF-C3 §2: responsable_id habilita rutear el semáforo de vencimientos (más
@@ -228,15 +228,18 @@ export default async function InternacionPage({
     altas_hoy: { label: "Altas de hoy", test: (p) => p.fecha_ingreso === hoyAR },
     bajas_hoy: { label: "Bajas de hoy", test: (p) => p.fecha_egreso === hoyAR },
     altas_mes: { label: "Altas de este mes", test: (p) => p.fecha_ingreso?.slice(0, 7) === mesAR },
+    dados_de_baja: { label: "Pacientes dados de baja (consulta de historia y facturación)", test: (p) => p.estado === "dado_de_baja" },
     bajas_mes: { label: "Bajas de este mes", test: (p) => p.fecha_egreso?.slice(0, 7) === mesAR },
   };
   const filtroActivo = ver ? FILTROS[ver] ?? null : null;
   // H2 (Vanina 06/10): además del filtro de las tarjetas, se filtra por obra social, antibiótico y curaciones.
-  const filtrosLegajo = [osFiltro, atb === "1" ? "atb" : "", cur === "1" ? "cur" : ""].filter(Boolean).length > 0;
+  const filtrosLegajo = [osFiltro, atb === "1" ? "atb" : "", cur === "1" ? "cur" : "", oxi === "1" ? "oxi" : "", sn === "1" ? "sn" : ""].filter(Boolean).length > 0;
   const pacientesVisibles = (filtroActivo ? (patients ?? []).filter(filtroActivo.test) : (patients ?? [])).filter((p) => {
     if (osFiltro === "__particular" ? !p.es_particular : osFiltro ? p.obra_social_id !== osFiltro : false) return false;
     if (atb === "1" && !p.en_tratamiento_atb) return false;
     if (cur === "1" && !p.requiere_curaciones) return false;
+    if (oxi === "1" && !p.requiere_oxigeno) return false;
+    if (sn === "1" && !p.soporte_nutricional) return false;
     return true;
   });
 
@@ -419,6 +422,8 @@ export default async function InternacionPage({
           </label>
           <label className="flex items-center gap-1.5 pb-1.5"><input type="checkbox" name="atb" value="1" defaultChecked={atb === "1"} className="rounded border-slate-300" /> En tratamiento antibiótico</label>
           <label className="flex items-center gap-1.5 pb-1.5"><input type="checkbox" name="cur" value="1" defaultChecked={cur === "1"} className="rounded border-slate-300" /> Requiere curaciones</label>
+          <label className="flex items-center gap-1.5 pb-1.5"><input type="checkbox" name="oxi" value="1" defaultChecked={oxi === "1"} className="rounded border-slate-300" /> Oxígeno permanente</label>
+          <label className="flex items-center gap-1.5 pb-1.5"><input type="checkbox" name="sn" value="1" defaultChecked={sn === "1"} className="rounded border-slate-300" /> Soporte nutricional</label>
           <button className="rounded-lg bg-slate-900 text-white text-xs font-medium px-3 py-1.5 hover:bg-slate-800 transition-colors">Filtrar</button>
           {filtrosLegajo && (
             <Link href={ver ? `/internacion?ver=${ver}` : "/internacion"} className="text-xs font-medium text-[var(--brand-teal)] underline underline-offset-2 pb-1.5">Limpiar</Link>
@@ -461,6 +466,8 @@ export default async function InternacionPage({
                     <Link href={`/paciente/${p.id}?tab=datos`} className="ml-2 text-xs font-medium text-[var(--brand-teal)] underline underline-offset-2">Consultar datos</Link>
                     {p.en_tratamiento_atb && <span className="ml-2 rounded-full bg-sky-50 text-sky-700 text-[10px] font-medium px-2 py-0.5">ATB</span>}
                     {p.requiere_curaciones && <span className="ml-1 rounded-full bg-sky-50 text-sky-700 text-[10px] font-medium px-2 py-0.5">Curaciones</span>}
+                    {p.requiere_oxigeno && <span className="ml-1 rounded-full bg-sky-50 text-sky-700 text-[10px] font-medium px-2 py-0.5">Oxígeno</span>}
+                    {p.soporte_nutricional && <span className="ml-1 rounded-full bg-sky-50 text-sky-700 text-[10px] font-medium px-2 py-0.5">{p.soporte_nutricional === "sng" ? "SNG" : "Gastrostomía"}</span>}
                     <div className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                       <IconMapPin className="w-3 h-3" /> {p.domicilio} · {obraSocial ?? "sin obra social"}
                       {p.dni && <span className="text-slate-400">· DNI {p.dni}</span>}
