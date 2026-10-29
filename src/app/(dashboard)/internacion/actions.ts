@@ -12,7 +12,7 @@ import { ESTADO_PACIENTE_LABELS } from "@/lib/paciente";
 import { MOTIVOS_EGRESO_OPCIONES, motivoEgresoLabel, parseDatetimeLocalAR } from "@/lib/egreso";
 import type { AppRole } from "@/lib/auth";
 import { leerLegajo, leerContactosExtra, txt, PARTICULAR } from "@/lib/legajo";
-import { leerRenglones, planDesdeRenglones, type Renglon } from "@/lib/autorizaciones";
+import { leerRenglones, planDesdeRenglones, leerDocumentoAutorizacion, TIPOS_DOCUMENTO, MAX_BYTES_DOCUMENTO, type Renglon } from "@/lib/autorizaciones";
 import { calcularSinAsignar } from "@/lib/sin-asignar";
 
 // DF-C3 §2 y §3: el alta, el legajo, las firmas de ingreso y las autorizaciones
@@ -165,6 +165,7 @@ export async function createAdmissionAction(_prev: AdmissionState, formData: For
         practica: r.practica,
         practica_tipo: r.practica_tipo,
         practica_aclaracion: r.practica_aclaracion,
+        codigo_practica: r.codigo_practica,
         especialidad: r.especialidad,
         cantidad_autorizada: r.cantidad_autorizada,
         periodo_desde: desdeAut,
@@ -353,6 +354,33 @@ export async function reportarEgresoAction(formData: FormData) {
   return;
 }
 
+
+/**
+ * Datos del documento que emite la obra social (número, auditor, vencimiento) y su archivo original (PDF o imagen).
+ * Es el comprobante que se adjunta al facturar: varias obras sociales exigen el número de autorización y el pedido original.
+ */
+async function leerDocumentoYArchivo(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  patientId: string,
+  formData: FormData
+): Promise<{ error: string } | { campos: Record<string, string | null>; ruta: string | null }> {
+  const leido = leerDocumentoAutorizacion(formData);
+  if ("error" in leido) return { error: leido.error };
+  let ruta: string | null = null;
+  let nombre: string | null = null;
+  const archivo = formData.get("documento");
+  if (archivo instanceof File && archivo.size > 0) {
+    const ext = TIPOS_DOCUMENTO[archivo.type];
+    if (!ext) return { error: "El documento de la obra social tiene que ser un PDF o una imagen (JPG, PNG)." };
+    if (archivo.size > MAX_BYTES_DOCUMENTO) return { error: "El documento pesa más de 10 MB. Comprimilo o sacale una foto con menos calidad." };
+    ruta = `${patientId}/${crypto.randomUUID()}.${ext}`;
+    const { error: eUp } = await supabase.storage.from("autorizaciones").upload(ruta, Buffer.from(await archivo.arrayBuffer()), { contentType: archivo.type, upsert: false });
+    if (eUp) return { error: `No se pudo subir el documento (${eUp.message}). Probá de nuevo.` };
+    nombre = archivo.name.slice(0, 200);
+  }
+  return { campos: { ...leido.doc, documento_archivo: ruta, documento_nombre: nombre }, ruta };
+}
+
 export type AutorizacionState = { error: string | null; ok?: boolean };
 
 // DF-C3 §7 / DF-C4 §3 y H3 (Vanina 06/10): autorización de prácticas por obra social, con lista de prácticas y
@@ -369,13 +397,17 @@ export async function cargarAutorizacionesAction(_prev: AutorizacionState, formD
   if (!patient_id) return { error: "Falta el paciente de la autorización." };
   const leido = leerRenglones(formData, desde, hasta);
   if ("error" in leido) return { error: leido.error };
+  const docAut = await leerDocumentoYArchivo(supabase, patient_id, formData);
+  if ("error" in docAut) return { error: docAut.error };
 
   const { error } = await supabase.from("treatment_authorizations").insert(
     leido.renglones.map((r) => ({
       patient_id,
+      ...docAut.campos,
       practica: r.practica,
       practica_tipo: r.practica_tipo,
       practica_aclaracion: r.practica_aclaracion,
+      codigo_practica: r.codigo_practica,
       especialidad: r.especialidad,
       cantidad_autorizada: r.cantidad_autorizada,
       periodo_desde: desde,
@@ -389,7 +421,10 @@ export async function cargarAutorizacionesAction(_prev: AutorizacionState, formD
       veces_por_dia: r.veces_por_dia,
     }))
   );
-  if (error) return { error: `No se pudo guardar la autorización: ${error.message}` };
+  if (error) {
+    if (docAut.ruta) await supabase.storage.from("autorizaciones").remove([docAut.ruta]);
+    return { error: `No se pudo guardar la autorización: ${error.message}` };
+  }
   await avisarIngresoSinAsignar(supabase, patient_id);
   revalidatePath("/internacion");
   revalidatePath(`/paciente/${patient_id}`);
@@ -491,12 +526,17 @@ export async function renovarAutorizacionesAction(_prev: AutorizacionState, form
     if (ultimoInicio && desde <= ultimoInicio) return { error: "El inicio de la renovación tiene que ser posterior al inicio de la autorización que renueva." };
   }
 
+  const docAut = await leerDocumentoYArchivo(supabase, patient_id, formData);
+  if ("error" in docAut) return { error: docAut.error };
+
   const { error } = await supabase.from("treatment_authorizations").insert(
     leido.renglones.map((r, i) => ({
       patient_id,
+      ...docAut.campos,
       practica: r.practica,
       practica_tipo: r.practica_tipo,
       practica_aclaracion: r.practica_aclaracion,
+      codigo_practica: r.codigo_practica,
       especialidad: r.especialidad,
       cantidad_autorizada: r.cantidad_autorizada,
       periodo_desde: desde,
@@ -511,7 +551,10 @@ export async function renovarAutorizacionesAction(_prev: AutorizacionState, form
       renueva_a: renuevaPorIndice.get(i) ?? null,
     }))
   );
-  if (error) return { error: `No se pudo guardar la renovación: ${error.message}` };
+  if (error) {
+    if (docAut.ruta) await supabase.storage.from("autorizaciones").remove([docAut.ruta]);
+    return { error: `No se pudo guardar la renovación: ${error.message}` };
+  }
 
   let heredados = 0;
   if (heredarStock) {

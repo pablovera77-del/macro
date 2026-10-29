@@ -32,6 +32,8 @@ export const PERIODOS_FRECUENCIA: Record<string, string> = { dia: "día", semana
 const DIAS_DEL_PERIODO: Record<string, number> = { dia: 1, semana: 7, quincena: 15, mes: 30 };
 
 export type Renglon = {
+  /** Código de la práctica según la obra social (opcional). */
+  codigo_practica: string | null;
   practica_tipo: string;
   practica: string; // etiqueta legible (la que se muestra y se compara)
   practica_aclaracion: string | null;
@@ -89,6 +91,7 @@ export function leerRenglones(fd: FormData, desde: string, hasta: string): { err
   for (const n of idx) {
     const tipo = String(fd.get(`r${n}_tipo`) || "");
     const aclaracion = String(fd.get(`r${n}_aclaracion`) || "").trim() || null;
+    const codigo_practica = String(fd.get(`r${n}_codigo`) || "").trim().slice(0, 40) || null;
     const cantidad = Number(fd.get(`r${n}_cantidad`) || 0);
     const unidad = String(fd.get(`r${n}_unidad`) || "");
     const periodo = String(fd.get(`r${n}_periodo`) || "");
@@ -120,6 +123,7 @@ export function leerRenglones(fd: FormData, desde: string, hasta: string): { err
       }
     }
     renglones.push({
+      codigo_practica,
       practica_tipo: tipo,
       practica: tipo === "otros" ? `Otros: ${aclaracion}` : pr.label,
       practica_aclaracion: aclaracion,
@@ -161,3 +165,18 @@ export function planDesdeRenglones(renglones: Renglon[]): { especialidad: Especi
   }
   return out;
 }
+
+
+/** Datos del documento que emite la obra social (iguales para todos los renglones de la autorización). */
+export type DocumentoAutorizacion = { nro_autorizacion: string | null; auditor_nombre: string | null; vencimiento_documento: string | null };
+
+export function leerDocumentoAutorizacion(fd: FormData): { error: string } | { doc: DocumentoAutorizacion } {
+  const nro = String(fd.get("nro_autorizacion") || "").trim().slice(0, 60) || null;
+  const auditor = String(fd.get("auditor_nombre") || "").trim().slice(0, 120) || null;
+  const venc = String(fd.get("vencimiento_documento") || "").trim() || null;
+  if (venc && !FECHA.test(venc)) return { error: "El vencimiento del formulario no es una fecha válida." };
+  return { doc: { nro_autorizacion: nro, auditor_nombre: auditor, vencimiento_documento: venc } };
+}
+
+export const TIPOS_DOCUMENTO: Record<string, string> = { "application/pdf": "pdf", "image/jpeg": "jpg", "image/png": "png" };
+export const MAX_BYTES_DOCUMENTO = 10 * 1024 * 1024;

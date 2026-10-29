@@ -96,7 +96,7 @@ export default async function InternacionPage({
     // abajo) hacia la persona de Administración a cargo de cada obra social.
     supabase.from("obras_sociales").select("id, nombre, responsable_id, profiles:responsable_id(full_name)").eq("activa", true).order("nombre"),
     supabase.from("v_treatment_authorization_status").select("*").order("periodo_hasta"),
-    supabase.from("treatment_authorizations").select("id, patient_id, practica_tipo, practica_aclaracion, frecuencia_cantidad, frecuencia_unidad, frecuencia_periodo, dias_semana, periodo_desde, periodo_hasta, renueva_a"),
+    supabase.from("treatment_authorizations").select("id, patient_id, practica_tipo, practica_aclaracion, codigo_practica, frecuencia_cantidad, frecuencia_unidad, frecuencia_periodo, dias_semana, periodo_desde, periodo_hasta, renueva_a"),
     supabase.from("patient_authorizations").select("patient_id, vigente_hasta"),
     supabase.from("patient_care_team").select("id, patient_id, profesional_id, especialidad, profiles(full_name)"),
     supabase.from("profiles").select("id, full_name, role").in("role", ["profesional_asistencial"]).eq("active", true),
@@ -138,6 +138,7 @@ export default async function InternacionPage({
         renueva: d.id,
         practica_tipo: d.practica_tipo ?? "",
         aclaracion: d.practica_aclaracion ?? "",
+        codigo: d.codigo_practica ?? "",
         cantidad: d.frecuencia_cantidad ?? 1,
         unidad: d.frecuencia_unidad ?? "visita",
         periodo: d.frecuencia_periodo ?? "semana",

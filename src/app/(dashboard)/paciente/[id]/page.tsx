@@ -111,7 +111,7 @@ export default async function FichaPacientePage({
     supabase.from("patient_care_team").select("id, especialidad, profesional_id, profiles(full_name)").eq("patient_id", id),
     supabase.from("visits").select("id, patient_id, especialidad, fecha_programada, sin_hora, franja, hora_desde, hora_hasta, estado, motivo_no_atencion, foto_fachada, profiles!visits_profesional_id_fkey(full_name)").eq("patient_id", id).order("fecha_programada", { ascending: false }).limit(80),
     supabase.from("v_treatment_authorization_status").select("*").eq("patient_id", id).order("periodo_hasta"),
-    supabase.from("treatment_authorizations").select("id, frecuencia_cantidad, frecuencia_unidad, frecuencia_periodo, dias_semana, renueva_a").eq("patient_id", id),
+    supabase.from("treatment_authorizations").select("id, frecuencia_cantidad, frecuencia_unidad, frecuencia_periodo, dias_semana, renueva_a, nro_autorizacion, codigo_practica, auditor_nombre, vencimiento_documento, documento_archivo, documento_nombre").eq("patient_id", id),
     supabase.from("legal_documents").select("id, codigo, titulo, resumen, requiere_firma_profesional").eq("activo", true).order("orden"),
     supabase.from("patient_document_signatures").select("legal_document_id, firmante_nombre, firmado_at, profesional_id").eq("patient_id", id),
     supabase.from("treatment_plans").select("id, patient_id, especialidad, cantidad, unidad, dias_semana, desde, hasta, activo, nota, created_at").eq("patient_id", id).order("created_at", { ascending: false }),
@@ -124,6 +124,13 @@ export default async function FichaPacientePage({
   const plans = (plansRaw ?? []) as unknown as (Plan & { created_at: string })[];
   const planesActivos = plans.filter((x) => x.activo);
   const historialPlanes = plans.filter((x) => !x.activo);
+
+  // Documento original de cada autorización (PDF o foto), con enlace temporal de una hora.
+  const archivosAut = [...new Set((authDet ?? []).map((d) => d.documento_archivo).filter((x): x is string => !!x))];
+  const { data: firmadasAut } = archivosAut.length > 0 && ["administracion", "facturacion", "direccion", "auditor_externo", "coordinador_internacion"].includes(role)
+    ? await supabase.storage.from("autorizaciones").createSignedUrls(archivosAut, 3600)
+    : { data: [] as { path: string | null; signedUrl: string }[] };
+  const urlDocumentoAut = new Map((firmadasAut ?? []).map((f) => [f.path, f.signedUrl]));
 
   const { data: evolutions } = verClinica
     ? await supabase.from("evolutions").select("id, especialidad, created_at, firma_profesional_at, conformidad_familiar, profiles(full_name)").eq("patient_id", id).order("created_at", { ascending: false }).limit(10)
@@ -762,7 +769,14 @@ export default async function FichaPacientePage({
           </section>
 
           <section className={card}>
-            <h2 className="text-sm font-semibold text-slate-900 mb-3">Prácticas autorizadas por la obra social</h2>
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+              <h2 className="text-sm font-semibold text-slate-900">Prácticas autorizadas por la obra social</h2>
+              {["administracion", "facturacion", "direccion", "coordinador_internacion", "auditor_externo"].includes(role) && (
+                <Link href={`/paciente/${id}/legajo-facturacion`} className="text-xs font-medium text-teal-700 underline underline-offset-2">
+                  Legajo de facturación (imprimir)
+                </Link>
+              )}
+            </div>
             {(auths ?? []).length === 0 ? (
               <p className="text-sm text-slate-400">Sin autorizaciones cargadas.</p>
             ) : (
@@ -785,13 +799,26 @@ export default async function FichaPacientePage({
                             {i === 0 ? "Autorización actual" : "Autorización anterior"} · del {fecha(desde)} al {fecha(hasta)}
                             {filas.some((a) => a.id !== null && detalle.get(a.id)?.renueva_a) && <span className="text-slate-400"> · renovación</span>}
                           </div>
+                          {(() => {
+                            const doc = filas.map((a) => (a.id !== null ? detalle.get(a.id) : null)).find((d) => d && (d.nro_autorizacion || d.auditor_nombre || d.vencimiento_documento || d.documento_archivo));
+                            if (!doc) return null;
+                            const url = doc.documento_archivo ? urlDocumentoAut.get(doc.documento_archivo) : null;
+                            return (
+                              <p className="text-xs text-slate-600 mb-1.5">
+                                {doc.nro_autorizacion && <>N.º de autorización {doc.nro_autorizacion}</>}
+                                {doc.auditor_nombre && <> · auditor {doc.auditor_nombre}</>}
+                                {doc.vencimiento_documento && <> · formulario vence el {fecha(doc.vencimiento_documento)}</>}
+                                {url && <> · <a href={url} target="_blank" rel="noreferrer" className="underline underline-offset-2 text-[var(--brand-teal)]">ver documento original</a></>}
+                              </p>
+                            );
+                          })()}
                           <ul className="text-sm space-y-1.5">
                             {filas.map((a) => {
                               const d = a.id !== null ? detalle.get(a.id) : null;
                               return (
                                 <li key={a.id} className="flex items-center gap-2 flex-wrap">
                                   <StatusBadge tone={SEMAFORO_TONE[a.estado_semaforo ?? "vigente"] ?? "gris"} label={SEMAFORO_LABELS[a.estado_semaforo ?? "vigente"]} />
-                                  {a.practica} · {(d && frecuenciaTexto(d)) ?? `${a.cantidad_autorizada}x ${SPECIALTY_LABELS[a.especialidad ?? ""] ?? a.especialidad}`}
+                                  {a.practica}{d?.codigo_practica ? ` (cód. ${d.codigo_practica})` : ""} · {(d && frecuenciaTexto(d)) ?? `${a.cantidad_autorizada}x ${SPECIALTY_LABELS[a.especialidad ?? ""] ?? a.especialidad}`}
                                 </li>
                               );
                             })}

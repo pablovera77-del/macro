@@ -52,6 +52,24 @@ export default function AutorizacionesForm({
         </label>
       </div>
 
+      <fieldset className="rounded-xl border border-slate-200 bg-slate-50/60 p-2.5 space-y-2">
+        <legend className="px-1 text-[11px] font-medium text-slate-600">Documento de la obra social (para facturar)</legend>
+        <div className="flex flex-wrap gap-3">
+          <label className="text-[11px] text-slate-600">N.º de autorización o solicitud
+            <input name="nro_autorizacion" maxLength={60} className={`${inputCls} block mt-0.5 w-44`} />
+          </label>
+          <label className="text-[11px] text-slate-600">Auditor
+            <input name="auditor_nombre" maxLength={120} className={`${inputCls} block mt-0.5 w-44`} />
+          </label>
+          <label className="text-[11px] text-slate-600">Vencimiento del formulario
+            <input name="vencimiento_documento" type="date" className={`${inputCls} block mt-0.5`} />
+          </label>
+        </div>
+        <label className="text-[11px] text-slate-600 block">Documento original (PDF o foto, hasta 10 MB)
+          <input name="documento" type="file" accept="application/pdf,image/jpeg,image/png" className={`${inputCls} block mt-0.5 w-full`} />
+        </label>
+      </fieldset>
+
       <RenglonesEditor inicial={inicial} />
 
       {modo === "renovar" && conStock && (

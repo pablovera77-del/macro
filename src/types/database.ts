@@ -4370,6 +4370,12 @@ export type Database = {
           practica_tipo: string | null
           renueva_a: number | null
           veces_por_dia: number | null
+          auditor_nombre: string | null
+          codigo_practica: string | null
+          documento_archivo: string | null
+          documento_nombre: string | null
+          nro_autorizacion: string | null
+          vencimiento_documento: string | null
         }
         Insert: {
           autorizado_por?: string | null
@@ -4390,6 +4396,12 @@ export type Database = {
           practica_tipo?: string | null
           renueva_a?: number | null
           veces_por_dia?: number | null
+          auditor_nombre?: string | null
+          codigo_practica?: string | null
+          documento_archivo?: string | null
+          documento_nombre?: string | null
+          nro_autorizacion?: string | null
+          vencimiento_documento?: string | null
         }
         Update: {
           autorizado_por?: string | null
@@ -4410,6 +4422,12 @@ export type Database = {
           practica_tipo?: string | null
           renueva_a?: number | null
           veces_por_dia?: number | null
+          auditor_nombre?: string | null
+          codigo_practica?: string | null
+          documento_archivo?: string | null
+          documento_nombre?: string | null
+          nro_autorizacion?: string | null
+          vencimiento_documento?: string | null
         }
         Relationships: [
           {

@@ -7,6 +7,7 @@ export type RenglonInicial = {
   renueva?: number;
   practica_tipo: string;
   aclaracion: string;
+  codigo?: string;
   cantidad: number;
   unidad: string;
   periodo: string;
@@ -43,6 +44,9 @@ export default function RenglonesEditor({ inicial, obligatorio = true }: { inici
                   <option value="" disabled={obligatorio}>{obligatorio ? "Elegí la práctica…" : "Sin práctica (completar después)"}</option>
                   {PRACTICAS.map((p) => <option key={p.codigo} value={p.codigo}>{p.label}</option>)}
                 </select>
+              </label>
+              <label className="text-[11px] text-slate-600">Código de la OS
+                <input name={`r${f.key}_codigo`} defaultValue={f.v.codigo ?? ""} maxLength={40} placeholder="opcional" className={`${inputCls} block mt-0.5 w-24`} />
               </label>
               <label className="text-[11px] text-slate-600">Cantidad
                 <select name={`r${f.key}_cantidad`} defaultValue={String(f.v.cantidad)} className={`${inputCls} block mt-0.5`}>
