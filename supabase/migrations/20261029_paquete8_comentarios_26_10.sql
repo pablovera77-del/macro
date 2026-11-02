@@ -104,7 +104,7 @@ create policy estudios_delete on storage.objects for delete
   using (bucket_id = 'estudios' and public.get_current_app_role() = 'administracion');
 
 insert into public.alert_types (codigo, nombre, descripcion, urgencia, mensaje, canal_app, canal_email, canal_whatsapp, activo)
-select 'estudio_solicitado', 'El médico solicitó un estudio', 'Un médico pidió un estudio complementario para un paciente. Administración lo gestiona (presupuesto, autorización o turno).', 'normal',
+select 'estudio_solicitado', 'El médico solicitó un estudio', 'Un médico pidió un estudio complementario para un paciente. Administración lo gestiona (presupuesto, autorización o turno).', 'inmediata',
        '{profesional} solicitó un estudio para {paciente}: {estudio}.', true, false, false, true
 where not exists (select 1 from public.alert_types where codigo = 'estudio_solicitado');
 insert into public.alert_type_recipients (alert_type, role)
